@@ -142,21 +142,29 @@ src/notebooklm_mcp/
 
 ## Troubleshooting
 
-### "401 Unauthorized" or "403 Forbidden"
-- Cookies or CSRF token expired
-- Re-extract from Chrome DevTools
+**For comprehensive troubleshooting**, see **[docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)**.
 
-### "Invalid CSRF token"
-- The `at=` value expired
-- Must match the current session
+### Quick Reference: Auth Recovery
 
-### Empty notebook list
-- Session might be for a different Google account
-- Verify you're logged into the correct account
+When `notebook_list()` returns 0 notebooks (auth dead):
 
-### Rate limit errors
-- Free tier: ~50 queries/day
-- Wait until the next day or upgrade to Plus
+1. Close all NotebookLM tabs in Chrome
+2. Run: `notebooklm-mcp-auth`
+3. **Restart Claude Code** (required to reload tokens)
+4. Verify: `notebook_list()` should return your notebooks
+
+**Auth rotation pattern:** Heavy API usage (~25+ calls) can trigger cookie rotation on free tier.
+
+### Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| 401/403 errors | Cookies expired | Re-run `notebooklm-mcp-auth` |
+| notebook_list returns 0 | Auth dead | Full auth recovery (see above) |
+| Auth CLI succeeds but API fails | MCP server has stale tokens | Restart Claude Code |
+| video_overview fails "No sources" | API quirk | Retry the request |
+| Mind maps missing from studio_status | Stored separately | Use `mind_map_list()` |
+| Rate limit errors | Free tier: ~50 queries/day | Wait or upgrade to Plus |
 
 ## Documentation
 
