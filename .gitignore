@@ -31,6 +31,10 @@ ENV/
 *.swp
 *.swo
 
+# Session/tool state (machine-specific)
+.bbot/
+.claude/
+
 # Testing
 .pytest_cache/
 .coverage
