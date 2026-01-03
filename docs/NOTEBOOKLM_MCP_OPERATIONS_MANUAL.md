@@ -42,6 +42,18 @@ assert result["count"] > 0, "Auth failed - see Auth Recovery below"
 
 When MCP tools return 0 notebooks or auth errors despite valid-looking tokens:
 
+**⚠️ CRITICAL: Close ALL sessions first (discovered 2026-01-03)**
+
+Running multiple MCP hosts simultaneously OR having NotebookLM open in a browser causes rapid session invalidation. Google sees multiple "clients" and kills the session within minutes.
+
+**Before auth, close ALL of these:**
+- Claude Desktop (Cmd+Q, not just close window)
+- Claude Code (quit terminal)
+- Any browser tabs with NotebookLM open
+- Any other apps using notebooklm-mcp
+
+**Then run:**
+
 ```bash
 # 1. Nuke cached auth and chrome profile
 rm -rf ~/.notebooklm-mcp/chrome-profile ~/.notebooklm-mcp/auth.json
