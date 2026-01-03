@@ -5,14 +5,18 @@ Reverse-engineered internal API. See CLAUDE.md for full documentation.
 """
 
 import json
+import logging
 import os
 import re
+import time
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 # Ownership constants (from metadata position 0)
@@ -193,6 +197,11 @@ class NotebookLMClient:
     SOURCE_TYPE_GOOGLE_DOCS = 1
     SOURCE_TYPE_GOOGLE_OTHER = 2
     SOURCE_TYPE_PASTED_TEXT = 4
+
+    # Retry configuration for auth failures
+    # NotebookLM free tier rotates cookies after ~25 API calls
+    MAX_RETRIES = 2  # Max retry attempts after auth failure
+    RETRY_DELAY = 1.0  # Seconds between retries
 
     # Query endpoint (different from batchexecute - streaming gRPC-style)
     QUERY_ENDPOINT = "/_/LabsTailwindUi/data/google.internal.labs.tailwind.orchestration.v1.LabsTailwindOrchestrationService/GenerateFreeFormStreamed"
@@ -438,6 +447,89 @@ class NotebookLMClient:
                             return result_str
         return None
 
+    def _is_auth_error(self, exc: Exception) -> bool:
+        """Check if an exception indicates an auth failure.
+
+        Auth failures can manifest as:
+        - HTTP 401 Unauthorized
+        - HTTP 403 Forbidden
+        - HTTP 400 with CSRF-related error text
+        - Specific error patterns in response body
+        """
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            if status in (401, 403):
+                return True
+            # 400 can indicate CSRF token issues
+            if status == 400:
+                text = exc.response.text.lower()
+                if "csrf" in text or "token" in text or "unauthorized" in text:
+                    return True
+        return False
+
+    def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        body: str,
+        timeout: float | None = None,
+    ) -> httpx.Response:
+        """Execute an HTTP request with automatic auth retry.
+
+        On auth failures (401, 403), attempts to refresh tokens and retry.
+        Provides resilience against NotebookLM's cookie rotation on free tier.
+
+        Args:
+            method: HTTP method (currently only "post" supported)
+            url: Full URL to request
+            body: Request body content
+            timeout: Optional timeout in seconds
+
+        Returns:
+            httpx.Response on success
+
+        Raises:
+            httpx.HTTPStatusError: If request fails after all retries
+        """
+        last_exception: Exception | None = None
+
+        for attempt in range(self.MAX_RETRIES + 1):
+            try:
+                client = self._get_client()
+                if timeout:
+                    response = client.post(url, content=body, timeout=timeout)
+                else:
+                    response = client.post(url, content=body)
+                response.raise_for_status()
+                return response
+
+            except httpx.HTTPStatusError as e:
+                last_exception = e
+                if self._is_auth_error(e) and attempt < self.MAX_RETRIES:
+                    logger.warning(
+                        f"Auth error (HTTP {e.response.status_code}) on attempt {attempt + 1}, "
+                        f"refreshing tokens and retrying..."
+                    )
+                    time.sleep(self.RETRY_DELAY)
+                    try:
+                        self._refresh_auth_tokens()
+                        # Invalidate current client to get fresh headers
+                        self._client = None
+                    except Exception as refresh_err:
+                        logger.error(f"Failed to refresh tokens: {refresh_err}")
+                        raise e from refresh_err
+                    continue
+                raise
+
+            except httpx.RequestError as e:
+                # Network errors - don't retry for these
+                raise
+
+        # Should not reach here, but just in case
+        if last_exception:
+            raise last_exception
+        raise RuntimeError("Request failed with no exception captured")
+
     def _call_rpc(
         self,
         rpc_id: str,
@@ -445,15 +537,13 @@ class NotebookLMClient:
         path: str = "/",
         timeout: float | None = None,
     ) -> Any:
-        """Execute an RPC call and return the extracted result."""
-        client = self._get_client()
+        """Execute an RPC call and return the extracted result.
+
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)
-        if timeout:
-            response = client.post(url, content=body, timeout=timeout)
-        else:
-            response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body, timeout)
         parsed = self._parse_response(response.text)
         return self._extract_rpc_result(parsed, rpc_id)
 
@@ -526,9 +616,10 @@ class NotebookLMClient:
     # =========================================================================
 
     def list_notebooks(self, debug: bool = False) -> list[Notebook]:
-        """List all notebooks."""
-        client = self._get_client()
+        """List all notebooks.
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # [null, 1, null, [2]] - params for list notebooks
         params = [None, 1, None, [2]]
         body = self._build_request_body(self.RPC_LIST_NOTEBOOKS, params)
@@ -538,8 +629,7 @@ class NotebookLMClient:
             print(f"[DEBUG] URL: {url}")
             print(f"[DEBUG] Body: {body[:200]}...")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         if debug:
             print(f"[DEBUG] Response status: {response.status_code}")
@@ -772,20 +862,19 @@ class NotebookLMClient:
         WARNING: This action is IRREVERSIBLE. The notebook and all its sources,
         notes, and generated content will be permanently deleted.
 
+        Uses _request_with_retry for automatic auth failure recovery.
+
         Args:
             notebook_id: The notebook UUID to delete
 
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
-
         params = [[notebook_id], [2]]
         body = self._build_request_body(self.RPC_DELETE_NOTEBOOK, params)
         url = self._build_url(self.RPC_DELETE_NOTEBOOK)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_DELETE_NOTEBOOK)
@@ -794,15 +883,14 @@ class NotebookLMClient:
 
     def check_source_freshness(self, source_id: str) -> bool | None:
         """Check if a Drive source is fresh (up-to-date with Google Drive).
-    """
-        client = self._get_client()
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         params = [None, [source_id], [2]]
         body = self._build_request_body(self.RPC_CHECK_FRESHNESS, params)
         url = self._build_url(self.RPC_CHECK_FRESHNESS)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CHECK_FRESHNESS)
@@ -816,16 +904,15 @@ class NotebookLMClient:
 
     def sync_drive_source(self, source_id: str) -> dict | None:
         """Sync a Drive source with the latest content from Google Drive.
-    """
-        client = self._get_client()
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # Sync params: [null, ["source_id"], [2]]
         params = [None, [source_id], [2]]
         body = self._build_request_body(self.RPC_SYNC_DRIVE, params)
         url = self._build_url(self.RPC_SYNC_DRIVE)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_SYNC_DRIVE)
@@ -858,22 +945,21 @@ class NotebookLMClient:
         WARNING: This action is IRREVERSIBLE. The source will be permanently
         deleted from the notebook.
 
+        Uses _request_with_retry for automatic auth failure recovery.
+
         Args:
             source_id: The source UUID to delete
 
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
-
         # Delete source params: [[["source_id"]], [2]]
         # Note: Extra nesting compared to delete_notebook
         params = [[[source_id]], [2]]
         body = self._build_request_body(self.RPC_DELETE_SOURCE, params)
         url = self._build_url(self.RPC_DELETE_SOURCE)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_DELETE_SOURCE)
@@ -941,9 +1027,9 @@ class NotebookLMClient:
 
     def add_url_source(self, notebook_id: str, url: str) -> dict | None:
         """Add a URL (website or YouTube) as a source to a notebook.
-    """
-        client = self._get_client()
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # URL source params structure:
         source_data = [None, None, [url], None, None, None, None, None, None, None, 1]
         params = [
@@ -956,8 +1042,7 @@ class NotebookLMClient:
         source_path = f"/notebook/{notebook_id}"
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
-        response = client.post(url_endpoint, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url_endpoint, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
@@ -973,9 +1058,9 @@ class NotebookLMClient:
 
     def add_text_source(self, notebook_id: str, text: str, title: str = "Pasted Text") -> dict | None:
         """Add pasted text as a source to a notebook.
-    """
-        client = self._get_client()
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # Text source params structure:
         source_data = [None, [title, text], None, 2, None, None, None, None, None, None, 1]
         params = [
@@ -988,8 +1073,7 @@ class NotebookLMClient:
         source_path = f"/notebook/{notebook_id}"
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
-        response = client.post(url_endpoint, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url_endpoint, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
@@ -1011,9 +1095,9 @@ class NotebookLMClient:
         mime_type: str = "application/vnd.google-apps.document"
     ) -> dict | None:
         """Add a Google Drive document as a source to a notebook.
-    """
-        client = self._get_client()
 
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # Drive source params structure (verified from network capture):
         source_data = [
             [document_id, mime_type, 1, title],  # Drive document info at position 0
@@ -1038,8 +1122,7 @@ class NotebookLMClient:
         source_path = f"/notebook/{notebook_id}"
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
-        response = client.post(url_endpoint, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url_endpoint, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
@@ -1049,7 +1132,7 @@ class NotebookLMClient:
             if source_list and len(source_list) > 0:
                 source_data = source_list[0]
                 source_id = source_data[0][0] if source_data[0] else None
-                source_title = source_data[1] if len(source_data) > 1 else document_name
+                source_title = source_data[1] if len(source_data) > 1 else title
                 return {"id": source_id, "title": source_title}
         return None
 
@@ -1064,6 +1147,8 @@ class NotebookLMClient:
 
         Supports both new conversations and follow-up queries. For follow-ups,
         the conversation history is automatically included from the cache.
+
+        Uses _request_with_retry for automatic auth failure recovery.
 
         Args:
             notebook_id: The notebook UUID
@@ -1082,8 +1167,6 @@ class NotebookLMClient:
             - raw_response: The raw parsed response (for debugging)
         """
         import uuid
-
-        client = self._get_client()
 
         # If no source_ids provided, get them from the notebook
         if source_ids is None:
@@ -1139,8 +1222,7 @@ class NotebookLMClient:
         query_string = urllib.parse.urlencode(url_params)
         url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}?{query_string}"
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         # Parse streaming response
         answer_text = self._parse_query_response(response.text)
@@ -1320,7 +1402,9 @@ class NotebookLMClient:
         mode: str = "fast",
     ) -> dict | None:
         """Start a research session to discover sources.
-    """
+
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         # Validate inputs
         source_lower = source.lower()
         mode_lower = mode.lower()
@@ -1337,8 +1421,6 @@ class NotebookLMClient:
         # Map to internal constants
         source_type = self.RESEARCH_SOURCE_WEB if source_lower == "web" else self.RESEARCH_SOURCE_DRIVE
 
-        client = self._get_client()
-
         if mode_lower == "fast":
             # Fast Research: Ljjv0c
             params = [[query, source_type], None, 1, notebook_id]
@@ -1351,8 +1433,7 @@ class NotebookLMClient:
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, rpc_id)
@@ -1376,21 +1457,20 @@ class NotebookLMClient:
 
         Call this repeatedly until status is "completed".
 
+        Uses _request_with_retry for automatic auth failure recovery.
+
         Args:
             notebook_id: The notebook UUID
 
         Returns:
             Dict with status, sources, and summary when complete
         """
-        client = self._get_client()
-
         # Poll params: [null, null, "notebook_id"]
         params = [None, None, notebook_id]
         body = self._build_request_body(self.RPC_POLL_RESEARCH, params)
         url = self._build_url(self.RPC_POLL_RESEARCH, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_POLL_RESEARCH)
@@ -1524,11 +1604,11 @@ class NotebookLMClient:
         sources: list[dict],
     ) -> list[dict]:
         """Import research sources into the notebook.
-    """
+
+        Uses _request_with_retry for automatic auth failure recovery.
+        """
         if not sources:
             return []
-
-        client = self._get_client()
 
         # Build source array for import
         # Web source: [null, null, ["url", "title"], null, null, null, null, null, null, null, 2]
@@ -1579,8 +1659,7 @@ class NotebookLMClient:
 
         # Import can take a long time when fetching multiple web sources
         # Use 120s timeout instead of the default 30s
-        response = client.post(url, content=body, timeout=120.0)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body, timeout=120.0)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_IMPORT_RESEARCH)
@@ -1616,9 +1695,9 @@ class NotebookLMClient:
         focus_prompt: str = "",
     ) -> dict | None:
         """Create an Audio Overview (podcast) for a notebook.
-    """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
 
@@ -1653,8 +1732,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -1686,8 +1764,9 @@ class NotebookLMClient:
         focus_prompt: str = "",
     ) -> dict | None:
         """Create a Video Overview for a notebook.
-    """
-        client = self._get_client()
+
+        Uses retry logic to handle auth token rotation.
+        """
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -1722,8 +1801,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -1747,16 +1825,15 @@ class NotebookLMClient:
 
     def poll_studio_status(self, notebook_id: str) -> list[dict]:
         """Poll for studio content (audio/video overviews) status.
-    """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         # Poll params: [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
         params = [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
         body = self._build_request_body(self.RPC_POLL_STUDIO, params)
         url = self._build_url(self.RPC_POLL_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_POLL_STUDIO)
@@ -1896,16 +1973,15 @@ class NotebookLMClient:
 
         Returns:
             True on success, False on failure
-        """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         # Delete studio artifact params: [[2], "artifact_id"]
         params = [[2], artifact_id]
         body = self._build_request_body(self.RPC_DELETE_STUDIO, params)
         url = self._build_url(self.RPC_DELETE_STUDIO)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_DELETE_STUDIO)
@@ -1922,9 +1998,9 @@ class NotebookLMClient:
         focus_prompt: str = "",
     ) -> dict | None:
         """Create an Infographic from notebook sources.
-    """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
 
@@ -1949,8 +2025,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -1982,9 +2057,9 @@ class NotebookLMClient:
         focus_prompt: str = "",
     ) -> dict | None:
         """Create a Slide Deck from notebook sources.
-    """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
 
@@ -2008,8 +2083,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -2040,8 +2114,9 @@ class NotebookLMClient:
         language: str = "en",
     ) -> dict | None:
         """Create a Report from notebook sources.
-    """
-        client = self._get_client()
+
+        Uses retry logic to handle auth token rotation.
+        """
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2126,8 +2201,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -2156,8 +2230,9 @@ class NotebookLMClient:
         card_count: str = "default",
     ) -> dict | None:
         """Create Flashcards from notebook sources.
-    """
-        client = self._get_client()
+
+        Uses retry logic to handle auth token rotation.
+        """
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2202,8 +2277,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -2232,13 +2306,14 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create Quiz from notebook sources.
 
+        Uses retry logic to handle auth token rotation.
+
         Args:
             notebook_id: Notebook UUID
             source_ids: List of source UUIDs
             question_count: Number of questions (default: 2)
             difficulty: Difficulty level (default: 2)
         """
-        client = self._get_client()
         sources_nested = [[[sid]] for sid in source_ids]
 
         # Quiz options at position 9: [null, [2, null*6, [question_count, difficulty]]]
@@ -2264,8 +2339,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -2295,13 +2369,14 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create Data Table from notebook sources.
 
+        Uses retry logic to handle auth token rotation.
+
         Args:
             notebook_id: Notebook UUID
             source_ids: List of source UUIDs
             description: Description of the data table to create
             language: Language code (default: "en")
         """
-        client = self._get_client()
         sources_nested = [[[sid]] for sid in source_ids]
 
         # Data Table options at position 18: [null, [description, language]]
@@ -2320,8 +2395,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CREATE_STUDIO)
@@ -2350,14 +2424,14 @@ class NotebookLMClient:
         This is step 1 of 2 for creating a mind map. After generation,
         use save_mind_map() to save it to a notebook.
 
+        Uses retry logic to handle auth token rotation.
+
         Args:
             source_ids: List of source UUIDs to include
 
         Returns:
             Dict with mind_map_json and generation_id, or None on failure
         """
-        client = self._get_client()
-
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
 
@@ -2372,8 +2446,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_GENERATE_MIND_MAP, params)
         url = self._build_url(self.RPC_GENERATE_MIND_MAP)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_GENERATE_MIND_MAP)
@@ -2410,6 +2483,8 @@ class NotebookLMClient:
         This is step 2 of 2 for creating a mind map. First use
         generate_mind_map() to create the JSON structure.
 
+        Uses retry logic to handle auth token rotation.
+
         Args:
             notebook_id: The notebook UUID
             mind_map_json: The JSON string from generate_mind_map()
@@ -2419,8 +2494,6 @@ class NotebookLMClient:
         Returns:
             Dict with mind_map_id and saved info, or None on failure
         """
-        client = self._get_client()
-
         # Build source IDs in the simpler format: [[id1], [id2], ...]
         sources_simple = [[sid] for sid in source_ids]
 
@@ -2437,8 +2510,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_SAVE_MIND_MAP, params)
         url = self._build_url(self.RPC_SAVE_MIND_MAP, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_SAVE_MIND_MAP)
@@ -2462,16 +2534,15 @@ class NotebookLMClient:
 
     def list_mind_maps(self, notebook_id: str) -> list[dict]:
         """List all Mind Maps in a notebook.
-    """
-        client = self._get_client()
 
+        Uses retry logic to handle auth token rotation.
+        """
         params = [notebook_id]
 
         body = self._build_request_body(self.RPC_LIST_MIND_MAPS, params)
         url = self._build_url(self.RPC_LIST_MIND_MAPS, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        response = self._request_with_retry("post", url, body)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_LIST_MIND_MAPS)
