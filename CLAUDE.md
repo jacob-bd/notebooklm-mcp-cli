@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## SESSION RECOVERY (Read First After Compaction)
+
+**If you just resumed from context compaction and NotebookLM tools are failing:**
+
+1. **Quick health check**: `notebook_list()` - if returns 0 notebooks, auth is dead
+2. **Auth refresh**: User must run `notebooklm-mcp-auth` in terminal, then restart Claude Code
+3. **Verify recovery**: `notebook_list()` should return notebooks again
+
+**Auth dies after ~25 API calls on free tier.** The client has auto-retry logic, but if cookies fully expire, manual refresh is needed.
+
+---
+
 ## Project Overview
 
 **NotebookLM MCP Server** - Provides programmatic access to NotebookLM (notebooklm.google.com) using reverse-engineered internal APIs.

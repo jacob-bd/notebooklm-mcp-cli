@@ -61,11 +61,13 @@ def get_client() -> NotebookLMClient:
 
 
 @mcp.tool()
-def notebook_list(max_results: int = 100) -> dict[str, Any]:
+def notebook_list(max_results: int = 100, compact: bool = True) -> dict[str, Any]:
     """List all notebooks.
 
     Args:
         max_results: Maximum number of notebooks to return (default: 100)
+        compact: If True (default), return only essential fields (id, title, source_count).
+                Use compact=False for full details including URLs and timestamps.
     """
     try:
         client = get_client()
@@ -74,17 +76,23 @@ def notebook_list(max_results: int = 100) -> dict[str, Any]:
         # Count owned vs shared notebooks
         owned_count = sum(1 for nb in notebooks if nb.is_owned)
         shared_count = len(notebooks) - owned_count
-        
+
         # Count notebooks shared by me (owned + is_shared=True)
         shared_by_me_count = sum(1 for nb in notebooks if nb.is_owned and nb.is_shared)
 
-        return {
-            "status": "success",
-            "count": len(notebooks),
-            "owned_count": owned_count,
-            "shared_count": shared_count,
-            "shared_by_me_count": shared_by_me_count,
-            "notebooks": [
+        if compact:
+            # Compact mode: minimal fields to save tokens
+            notebook_data = [
+                {
+                    "id": nb.id,
+                    "title": nb.title[:50] + "..." if len(nb.title) > 50 else nb.title,
+                    "sources": nb.source_count,
+                }
+                for nb in notebooks[:max_results]
+            ]
+        else:
+            # Full mode: all fields
+            notebook_data = [
                 {
                     "id": nb.id,
                     "title": nb.title,
@@ -96,7 +104,15 @@ def notebook_list(max_results: int = 100) -> dict[str, Any]:
                     "modified_at": nb.modified_at,
                 }
                 for nb in notebooks[:max_results]
-            ],
+            ]
+
+        return {
+            "status": "success",
+            "count": len(notebooks),
+            "owned_count": owned_count,
+            "shared_count": shared_count,
+            "shared_by_me_count": shared_by_me_count,
+            "notebooks": notebook_data,
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -133,17 +149,26 @@ def notebook_get(notebook_id: str) -> dict[str, Any]:
 
     Args:
         notebook_id: Notebook UUID
+
+    Returns structured data instead of raw API arrays to save tokens.
     """
     try:
         client = get_client()
         result = client.get_notebook(notebook_id)
 
-        # Extract timestamps from metadata if available
-        # Result structure: [title, sources, id, emoji, null, metadata, ...]
-        # metadata[5] = modified_at, metadata[8] = created_at
+        if not result or not isinstance(result, list):
+            return {"status": "error", "error": "Invalid response from API"}
+
+        # Parse result structure: [title, sources, id, emoji, null, metadata, ...]
+        title = result[0] if len(result) > 0 else ""
+        sources_raw = result[1] if len(result) > 1 else []
+        notebook_id_resp = result[2] if len(result) > 2 else notebook_id
+        emoji = result[3] if len(result) > 3 else None
+
+        # Extract timestamps from metadata
         created_at = None
         modified_at = None
-        if result and isinstance(result, list) and len(result) > 5:
+        if len(result) > 5:
             metadata = result[5]
             if isinstance(metadata, list):
                 if len(metadata) > 5:
@@ -151,9 +176,24 @@ def notebook_get(notebook_id: str) -> dict[str, Any]:
                 if len(metadata) > 8:
                     created_at = parse_timestamp(metadata[8])
 
+        # Parse sources into structured format
+        sources = []
+        if isinstance(sources_raw, list):
+            for src in sources_raw:
+                if isinstance(src, list) and len(src) >= 2:
+                    # Source structure: [[id], title, metadata, ...]
+                    src_id = src[0][0] if isinstance(src[0], list) and len(src[0]) > 0 else None
+                    src_title = src[1] if len(src) > 1 else "Untitled"
+                    if src_id:
+                        sources.append({"id": src_id, "title": src_title})
+
         return {
             "status": "success",
-            "notebook": result,
+            "notebook_id": notebook_id_resp,
+            "title": title,
+            "emoji": emoji,
+            "source_count": len(sources),
+            "sources": sources,
             "created_at": created_at,
             "modified_at": modified_at,
         }
