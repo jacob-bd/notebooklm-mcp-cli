@@ -59,6 +59,10 @@ def get_cache_path() -> Path:
     """Get the path to the auth cache file."""
     cache_dir = Path.home() / ".notebooklm-mcp"
     cache_dir.mkdir(exist_ok=True)
+    try:
+        os.chmod(cache_dir, 0o700)
+    except Exception:
+        pass  # Best effort
     return cache_dir / "auth.json"
 
 
@@ -99,6 +103,10 @@ def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
     cache_path = get_cache_path()
     with open(cache_path, "w") as f:
         json.dump(tokens.to_dict(), f, indent=2)
+    try:
+        os.chmod(cache_path, 0o600)
+    except Exception:
+        pass  # Best effort
     if not silent:
         print(f"Auth tokens cached to {cache_path}")
 
