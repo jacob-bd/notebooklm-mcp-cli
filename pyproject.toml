@@ -38,3 +38,7 @@ notebooklm-mcp-auth = "notebooklm_mcp.auth_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/notebooklm_mcp"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
