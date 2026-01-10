@@ -53,3 +53,6 @@ Studio_tools_plan.md
 
 # Local project memory (personal, not shared)
 CLAUDE.local.md
+
+# local sync artifacts
+.stfolder/
