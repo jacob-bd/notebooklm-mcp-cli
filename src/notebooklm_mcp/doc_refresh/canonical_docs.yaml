@@ -1,9 +1,16 @@
 # Canonical Document Manifest for Doc Refresh
-# Version: 0.1.0
+# Version: 0.2.0
 # Last Updated: 2026-01-10
 
 # Tiered approach: Tier 1 required, Tier 2-3 included if they exist
 # Loop auto-detects repo complexity by scanning for existing docs
+
+# Tier 3 path resolution: Check candidates in order, use first that exists
+# Repos can override via repo_overrides section below
+tier3_candidates:
+  - "docs/{repo_name}/"        # e.g., docs/brain_on_tap/ for C017
+  - "docs/deep_reference/"     # Alternative naming
+  - "docs/"                    # Flat structure fallback
 
 tiers:
   tier1:
@@ -71,15 +78,18 @@ tiers:
     name: "NotebookLM Deep Reference (kitted repos)"
     description: "Full documentation for NotebookLM ingestion"
     required: false
+    # Path resolution: {tier3_root} is resolved from tier3_candidates above
+    # Documents are relative to the resolved tier3_root
+    path_prefix: "{tier3_root}"
     documents:
-      - path: "docs/OVERVIEW.md"
+      - path: "OVERVIEW.md"
         purpose: "System overview, ecosystem fit"
         must_exist: false
         stub_allowed: true
         validation:
           - has_metadata_header
 
-      - path: "docs/QUICKSTART.md"
+      - path: "QUICKSTART.md"
         purpose: "Install, run, verification"
         must_exist: false
         stub_allowed: true
@@ -87,14 +97,14 @@ tiers:
           - has_metadata_header
           - code_refs_valid
 
-      - path: "docs/ARCHITECTURE.md"
+      - path: "ARCHITECTURE.md"
         purpose: "Component diagram, data flow"
         must_exist: false
         stub_allowed: true
         validation:
           - has_metadata_header
 
-      - path: "docs/CODE_TOUR.md"
+      - path: "CODE_TOUR.md"
         purpose: "File map, key functions"
         must_exist: false
         stub_allowed: true
@@ -102,21 +112,22 @@ tiers:
           - has_metadata_header
           - code_refs_valid
 
-      - path: "docs/OPERATIONS.md"
+      - path: "OPERATIONS.md"
         purpose: "Run modes, troubleshooting"
         must_exist: false
         stub_allowed: true
         validation:
           - has_metadata_header
 
-      - path: "docs/SECURITY.md"
+      - path: "SECURITY.md"
+        alternate_names: ["SECURITY_AND_PRIVACY.md"]  # C017 uses this variant
         purpose: "What stays local, security notes"
         must_exist: false
         stub_allowed: true
         validation:
           - has_metadata_header
 
-      - path: "docs/OPEN_QUESTIONS.md"
+      - path: "OPEN_QUESTIONS.md"
         purpose: "Unresolved decisions"
         must_exist: false
         stub_allowed: true
@@ -208,3 +219,22 @@ change_detection:
     - "content_delta > threshold"
     - "major_version_bump"
     - "--force flag"
+
+# Repo-specific overrides
+# Use repo folder name (e.g., "C017_brain-on-tap") as key
+repo_overrides:
+  C017_brain-on-tap:
+    tier3_root: "docs/brain_on_tap"
+    # C017 uses SECURITY_AND_PRIVACY.md instead of SECURITY.md (handled via alternate_names)
+    # Has additional docs like TABS.md, ILLUSTRATION_BRIEF.md that are repo-specific
+
+  C021_notebooklm-mcp:
+    tier3_root: "docs"
+    # Uses flat docs/ structure
+
+  # Template for adding new repos:
+  # RepoName:
+  #   tier3_root: "docs/subfolder"  # Or "docs" for flat structure
+  #   extra_docs:                    # Optional repo-specific docs to include
+  #     - path: "docs/SPECIAL.md"
+  #       purpose: "Repo-specific doc"
