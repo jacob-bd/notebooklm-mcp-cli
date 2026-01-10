@@ -135,12 +135,33 @@ notebooks:
         source_id: 765d55ce-f22c-4e08-8eb9-a79198d1b532
         updated_at: '2026-01-10T18:31:44.523833Z'
   C018_terminal-insights:
-    notebook_id: null
+    notebook_id: 53aace5c-a2ec-4463-8ec0-281ab99b6dfe
     notebook_url: null
     last_sync: null
     tier: null
     doc_hashes: {}
     artifacts: {}
+    docs:
+      README.md:
+        hash: 47a2c1bfa15a
+        source_id: 28755b8c-d852-4bdc-bbe2-ed63b947c5a2
+        updated_at: '2026-01-10T19:13:47.074524Z'
+      CHANGELOG.md:
+        hash: 0e72eb9479a7
+        source_id: 328ad550-264f-40bc-a858-38dee6a830ef
+        updated_at: '2026-01-10T19:13:47.074524Z'
+      META.yaml:
+        hash: 2c5341b894c8
+        source_id: 3faa3a77-0075-4b55-84bc-e7a72a5df63b
+        updated_at: '2026-01-10T19:13:47.074524Z'
+      CLAUDE.md:
+        hash: e79f71be78fc
+        source_id: fe081a52-a9ed-4a60-a49a-3a3093a460d5
+        updated_at: '2026-01-10T19:13:47.074524Z'
+      docs/ARCHITECTURE.md:
+        hash: 1ed6d829c381
+        source_id: 6f3790cf-f6de-4ef7-9d86-6b27cf83f387
+        updated_at: '2026-01-10T19:13:47.074524Z'
 sync_log: []
 config:
   auto_create_notebook: true
