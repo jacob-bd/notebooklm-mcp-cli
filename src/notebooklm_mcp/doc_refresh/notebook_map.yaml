@@ -110,6 +110,10 @@ notebooks:
         hash: 535510d9ae18
         source_id: b0c45ad0-0c8c-49e3-81bd-ed088eab1a3f
         updated_at: '2026-01-10T18:54:03.327405Z'
+      CHANGELOG.md:
+        hash: 6d830d089898
+        source_id: f824683d-7cf1-4e6b-92a9-19aa60b99ac1
+        updated_at: '2026-01-10T22:06:00.216060Z'
   C003_sadb_canonical:
     notebook_id: 2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
     notebook_url: null
