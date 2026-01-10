@@ -1,0 +1,12 @@
+purpose: Authentication helper for NotebookLM MCP - Token extraction and caching
+status: active
+dependencies:
+  - json
+  - os
+  - time
+  - dataclasses
+  - pathlib
+  - re
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

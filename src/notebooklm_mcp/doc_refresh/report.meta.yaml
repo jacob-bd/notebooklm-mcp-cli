@@ -1,0 +1,8 @@
+purpose: Report formatting for validation results - Human and machine-readable outputs
+status: active
+dependencies:
+  - typing
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

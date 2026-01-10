@@ -1,0 +1,12 @@
+purpose: NotebookLM artifact refresh - Standard 7 artifacts regeneration on doc changes
+status: active
+dependencies:
+  - time
+  - dataclasses
+  - enum
+  - typing
+  - hashing
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

@@ -1,0 +1,16 @@
+purpose: NotebookLM MCP API client - Reverse-engineered internal API for NotebookLM
+status: active
+dependencies:
+  - json
+  - logging
+  - os
+  - re
+  - time
+  - urllib.parse
+  - dataclasses
+  - datetime
+  - typing
+  - httpx
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

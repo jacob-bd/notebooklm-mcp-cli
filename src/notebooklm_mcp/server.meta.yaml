@@ -1,0 +1,10 @@
+purpose: NotebookLM MCP Server - FastMCP server with tools for notebooks, sources, studio content generation
+status: active
+dependencies:
+  - typing
+  - fastmcp
+  - api_client
+  - auth
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

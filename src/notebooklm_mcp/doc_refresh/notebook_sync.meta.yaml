@@ -1,0 +1,11 @@
+purpose: NotebookLM source synchronization for doc-refresh - Handles syncing documentation to NotebookLM notebooks
+status: active
+dependencies:
+  - dataclasses
+  - datetime
+  - pathlib
+  - typing
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

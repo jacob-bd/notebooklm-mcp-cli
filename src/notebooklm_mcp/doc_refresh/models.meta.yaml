@@ -1,0 +1,10 @@
+purpose: Data models for doc-refresh validation and discovery
+status: active
+dependencies:
+  - dataclasses
+  - enum
+  - pathlib
+  - typing
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

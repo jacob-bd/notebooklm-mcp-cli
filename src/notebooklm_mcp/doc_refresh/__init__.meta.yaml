@@ -1,0 +1,15 @@
+purpose: Doc Refresh Module - Ralph Loop for Documentation Maintenance (public API)
+status: active
+dependencies:
+  - discover
+  - hashing
+  - manifest
+  - models
+  - report
+  - runner
+  - artifact_refresh
+  - notebook_sync
+  - validate
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

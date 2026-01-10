@@ -1,0 +1,6 @@
+purpose: NotebookLM MCP Server - Access to NotebookLM using reverse-engineered internal APIs
+status: active
+dependencies: []
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

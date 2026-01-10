@@ -1,0 +1,19 @@
+purpose: CLI runner for doc-refresh validation, NotebookLM sync, and artifact refresh
+status: active
+dependencies:
+  - argparse
+  - sys
+  - pathlib
+  - typing
+  - yaml
+  - artifact_refresh
+  - discover
+  - hashing
+  - manifest
+  - models
+  - notebook_sync
+  - report
+  - validate
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

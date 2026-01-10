@@ -1,0 +1,10 @@
+purpose: Content hashing and change detection for documentation files using SHA-256
+status: active
+dependencies:
+  - hashlib
+  - pathlib
+  - typing
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

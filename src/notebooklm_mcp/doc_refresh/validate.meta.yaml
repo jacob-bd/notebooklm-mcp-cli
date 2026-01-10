@@ -1,0 +1,10 @@
+purpose: Document validation - Metadata headers, links, and code references
+status: active
+dependencies:
+  - re
+  - pathlib
+  - typing
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

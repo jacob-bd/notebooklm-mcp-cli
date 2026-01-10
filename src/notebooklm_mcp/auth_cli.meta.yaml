@@ -1,0 +1,17 @@
+purpose: CLI tool to authenticate with NotebookLM MCP via Chrome DevTools Protocol
+status: active
+dependencies:
+  - json
+  - re
+  - sys
+  - time
+  - pathlib
+  - httpx
+  - websocket
+  - platform
+  - subprocess
+  - argparse
+  - auth
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

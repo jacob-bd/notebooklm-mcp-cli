@@ -1,0 +1,10 @@
+purpose: Filesystem discovery for canonical documentation - Scans repos for tier classification
+status: active
+dependencies:
+  - pathlib
+  - typing
+  - manifest
+  - models
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford

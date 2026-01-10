@@ -1,0 +1,9 @@
+purpose: Manifest loading and Tier 3 path resolution
+status: active
+dependencies:
+  - pathlib
+  - typing
+  - yaml
+created: "2026-01-10"
+last_reviewed: "2026-01-10"
+author: Jeremy Bradford
