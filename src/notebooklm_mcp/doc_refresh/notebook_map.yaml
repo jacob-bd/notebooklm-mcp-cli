@@ -123,9 +123,9 @@ notebooks:
     artifacts: {}
     docs:
       README.md:
-        hash: 6a5bd34f3c3b
-        source_id: dd9ddd8c-5f9e-499c-93f5-2e988b81b900
-        updated_at: '2026-01-10T18:31:44.523833Z'
+        hash: db77c86bf581
+        source_id: 882c7c89-1c77-4873-886b-f1edd9cd9d6c
+        updated_at: '2026-01-10T22:13:26.464954Z'
       CHANGELOG.md:
         hash: 0f6ee933f835
         source_id: 3ac97768-e6a7-4c10-8321-f421d89215a0
@@ -135,9 +135,37 @@ notebooks:
         source_id: 219d96b0-f73d-469e-9caa-5fbcabb37b64
         updated_at: '2026-01-10T18:31:44.523833Z'
       CLAUDE.md:
-        hash: 2b7e66589331
-        source_id: 765d55ce-f22c-4e08-8eb9-a79198d1b532
-        updated_at: '2026-01-10T18:31:44.523833Z'
+        hash: d519da0cb05f
+        source_id: b1b2fd33-9070-4a0e-be1f-b3d999b5e480
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/OVERVIEW.md:
+        hash: 83cfcc4bc8e7
+        source_id: 9d895d0a-3f6e-4729-8bfb-a9e81a37b812
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/QUICKSTART.md:
+        hash: 7c727369f5c1
+        source_id: 41b9bc57-c0ec-430e-9886-859032b56f9b
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/ARCHITECTURE.md:
+        hash: 042b95a4d8db
+        source_id: e4074a52-b8ae-4995-b7da-7cdc35b18970
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/CODE_TOUR.md:
+        hash: 2361363b932f
+        source_id: c207be8c-58fc-47ea-b1a9-d9b231e77fd3
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/OPERATIONS.md:
+        hash: c84f15ef142d
+        source_id: 3956a15a-e614-4f37-8c26-fa0d9accbcce
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/SECURITY_AND_PRIVACY.md:
+        hash: 05322456e3dc
+        source_id: 4bff7c68-c7d7-4758-9e7e-58e945faaa21
+        updated_at: '2026-01-10T22:13:26.464954Z'
+      docs/sadb_canonical/OPEN_QUESTIONS.md:
+        hash: c3b1c472fbc7
+        source_id: 20dea237-d0c7-491b-b28c-f6eca592fc2d
+        updated_at: '2026-01-10T22:13:26.464954Z'
   C018_terminal-insights:
     notebook_id: 53aace5c-a2ec-4463-8ec0-281ab99b6dfe
     notebook_url: null
