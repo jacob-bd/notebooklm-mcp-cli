@@ -82,6 +82,14 @@ notebooks:
         hash: 4729581c4c63
         source_id: 52279e79-f8ab-45a4-b586-c48a6f13f187
         updated_at: '2026-01-10T17:58:44.293902Z'
+      CHANGELOG.md:
+        hash: ee0d19e84522
+        source_id: 718ce82f-b83a-4257-bcd9-06d6e6ca0f45
+        updated_at: '2026-01-10T18:23:35.135904Z'
+      META.yaml:
+        hash: 62b03fc6b0f5
+        source_id: f0654ec3-8f95-4e8e-be49-1978da82e2f5
+        updated_at: '2026-01-10T18:23:35.135904Z'
   C001_mission-control:
     notebook_id: null
     notebook_url: null
