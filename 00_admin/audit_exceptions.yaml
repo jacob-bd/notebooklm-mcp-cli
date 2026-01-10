@@ -1,0 +1,26 @@
+version: 1
+repo: C021_notebooklm-mcp
+
+owner: "Jeremy Bradford"
+created_at: "2026-01-10"
+review:
+  cadence: "quarterly"
+  next_review: "2026-04-10"
+  goal: "Re-evaluate if skills/ should become standard in C010 after more repos adopt it."
+
+allowed_additional_dirs:
+  - docs
+  - skills
+
+per_dir:
+  docs:
+    owner: "Jeremy"
+    justification: "Repo documentation and doc-refresh phase docs."
+    planned_destination: "docs/ (public-facing discoverability)."
+  skills:
+    owner: "Jeremy"
+    justification: "Claude Code slash-command skill definitions (e.g., /doc-refresh)."
+    planned_destination: "skills/ (Claude Code discovery pattern)."
+
+required_files:
+  - README.md
