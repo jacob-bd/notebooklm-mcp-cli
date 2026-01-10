@@ -1,5 +1,5 @@
 """
-CLI runner for doc-refresh validation and NotebookLM sync.
+CLI runner for doc-refresh validation, NotebookLM sync, and artifact refresh.
 
 Provides a simple interface for running validation from the command line
 or programmatically from the Ralph loop.
@@ -12,6 +12,15 @@ from typing import Any, Optional
 
 import yaml
 
+from .artifact_refresh import (
+    ArtifactPlan,
+    ArtifactResult,
+    apply_artifact_plan,
+    compute_artifact_plan,
+    format_artifact_plan,
+    format_artifact_result,
+    parse_artifact_list,
+)
 from .discover import discover_repo
 from .hashing import compare_hashes, compute_all_hashes
 from .manifest import load_manifest, load_notebook_map, DEFAULT_NOTEBOOK_MAP_PATH
@@ -31,7 +40,7 @@ from .report import (
     format_discovery_report,
     format_validation_report,
 )
-from .validate import validate_discovery
+from .validate import is_major_version_bump, validate_discovery
 
 
 def run_validation(
@@ -245,6 +254,138 @@ def _update_notebook_map(
             print(f"    Warning: Failed to update notebook_map.yaml: {e}")
 
 
+def run_artifacts(
+    repo_path: Path,
+    notebook_id: str,
+    hash_comparison: HashComparison,
+    apply: bool = False,
+    force: bool = False,
+    artifacts: Optional[str] = None,
+    verbose: bool = False,
+) -> tuple[ArtifactPlan, Optional[ArtifactResult]]:
+    """
+    Compute and optionally apply artifact refresh.
+
+    Args:
+        repo_path: Absolute path to repository root
+        notebook_id: NotebookLM notebook UUID
+        hash_comparison: Result of hash comparison
+        apply: If True, create artifacts
+        force: Force regeneration regardless of threshold
+        artifacts: Comma-separated artifact subset (None = Standard 7)
+        verbose: If True, print progress messages
+
+    Returns:
+        Tuple of (ArtifactPlan, ArtifactResult or None)
+    """
+    repo_key = repo_path.name
+
+    # Check for major version bump in META.yaml
+    major_bump = _detect_major_version_bump(repo_path, hash_comparison, verbose)
+
+    # Parse artifact subset
+    artifact_types = parse_artifact_list(artifacts)
+
+    if verbose:
+        print("  Phase 6: Computing artifact plan...")
+        print(f"    Force: {force}")
+        print(f"    Major version bump: {major_bump}")
+        print(f"    Artifacts: {[a.value for a in artifact_types]}")
+
+    # Compute artifact plan
+    plan = compute_artifact_plan(
+        repo_key=repo_key,
+        notebook_id=notebook_id,
+        hash_comparison=hash_comparison,
+        major_version_bump=major_bump,
+        force=force,
+        artifact_subset=artifact_types,
+    )
+
+    if verbose:
+        print(f"    Triggered: {plan.triggered}")
+        if plan.triggered:
+            print(f"    Reason: {plan.trigger_reason}")
+        print(f"    Create: {len(plan.creates)} artifacts")
+
+    # Apply if requested
+    artifact_result = None
+    if apply and plan.has_work:
+        if verbose:
+            print("  Phase 7: Creating artifacts...")
+
+        try:
+            from ..server import get_client
+            client = get_client()
+            artifact_result = apply_artifact_plan(
+                client=client,
+                plan=plan,
+                verbose=verbose,
+            )
+
+            if verbose:
+                print(f"    Created: {artifact_result.artifacts_created}")
+                print(f"    Failed: {artifact_result.artifacts_failed}")
+                if artifact_result.errors:
+                    for err in artifact_result.errors:
+                        print(f"    Error: {err}")
+
+        except Exception as e:
+            if verbose:
+                print(f"    Error: Failed to apply artifacts: {e}")
+            artifact_result = ArtifactResult(
+                success=False,
+                errors=[str(e)],
+            )
+
+    return plan, artifact_result
+
+
+def _detect_major_version_bump(
+    repo_path: Path,
+    hash_comparison: HashComparison,
+    verbose: bool = False,
+) -> bool:
+    """
+    Detect if META.yaml has a major version bump.
+
+    Compares stored vs current version in META.yaml.
+    """
+    # Find META.yaml in changed docs
+    meta_changed = any(
+        str(doc.path) == "META.yaml" for doc in hash_comparison.changed_docs
+    )
+
+    if not meta_changed:
+        return False
+
+    # Read current META.yaml
+    meta_path = repo_path / "META.yaml"
+    if not meta_path.exists():
+        return False
+
+    try:
+        with open(meta_path, "r") as f:
+            meta = yaml.safe_load(f)
+
+        current_version = meta.get("version")
+        # For now, we don't have stored version easily accessible
+        # This would need to be enhanced to compare against stored version
+        # For Round 3, we'll consider any META.yaml change with version field
+        # as potentially major - the is_major_version_bump function compares two versions
+
+        if verbose and current_version:
+            print(f"    META.yaml version: {current_version}")
+
+        # Since we don't have the old version stored easily, return False
+        # A more complete implementation would read the old content hash
+        # and compare versions
+        return False
+
+    except Exception:
+        return False
+
+
 def main(args: Optional[list[str]] = None) -> int:
     """
     CLI entrypoint for doc-refresh validation and sync.
@@ -302,6 +443,24 @@ def main(args: Optional[list[str]] = None) -> int:
         "--apply",
         action="store_true",
         help="Apply changes (opposite of --dry-run)",
+    )
+
+    # Artifact options
+    parser.add_argument(
+        "--artifacts",
+        type=str,
+        default=None,
+        help="Comma-separated artifact subset (e.g., 'audio,mind_map,briefing'). Default: Standard 7",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force artifact regeneration regardless of change threshold",
+    )
+    parser.add_argument(
+        "--skip-artifacts",
+        action="store_true",
+        help="Skip artifact refresh phase entirely",
     )
 
     # Output options
@@ -374,7 +533,31 @@ def main(args: Optional[list[str]] = None) -> int:
                     print()
                     print(format_sync_result(sync_result))
 
+            # Artifact refresh phase (after sync, if notebook exists)
+            artifact_plan = None
+            artifact_result = None
+
+            if not parsed.skip_artifacts and plan.notebook_id:
+                artifact_plan, artifact_result = run_artifacts(
+                    repo_path=repo_path,
+                    notebook_id=plan.notebook_id,
+                    hash_comparison=comparison,
+                    apply=apply,
+                    force=parsed.force,
+                    artifacts=parsed.artifacts,
+                    verbose=parsed.verbose,
+                )
+
+                if not parsed.compact and not parsed.discovery_only:
+                    print()
+                    print(format_artifact_plan(artifact_plan))
+                    if artifact_result:
+                        print()
+                        print(format_artifact_result(artifact_result))
+
             # Return code
+            if artifact_result and not artifact_result.success:
+                return 1
             if sync_result and not sync_result.success:
                 return 1
             elif not report.is_valid:

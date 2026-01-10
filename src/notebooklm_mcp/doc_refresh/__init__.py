@@ -7,12 +7,13 @@ This module provides:
 - Document discovery and validation
 - Hash-based change detection
 - NotebookLM source synchronization
+- Artifact refresh (Standard 7)
 - Ralph loop prompt (PROMPT.md)
 
-Invoked via: /doc-refresh [--target PATH] [--force] [--docs-only] [--artifacts LIST]
+Invoked via: /doc-refresh [--target PATH] [--force] [--artifacts LIST] [--skip-artifacts]
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Public API
 from .discover import discover_repo, get_docs_needing_hash, get_existing_docs
@@ -46,7 +47,18 @@ from .report import (
     format_for_yaml,
     format_validation_report,
 )
-from .runner import main as cli_main, run_validation, run_sync
+from .runner import main as cli_main, run_validation, run_sync, run_artifacts
+from .artifact_refresh import (
+    ArtifactPlan,
+    ArtifactResult,
+    ArtifactType,
+    STANDARD_7,
+    apply_artifact_plan,
+    compute_artifact_plan,
+    format_artifact_plan,
+    format_artifact_result,
+    parse_artifact_list,
+)
 from .notebook_sync import (
     SyncAction,
     SyncPlan,
@@ -100,6 +112,17 @@ __all__ = [
     "cli_main",
     "run_validation",
     "run_sync",
+    "run_artifacts",
+    # Artifact Refresh
+    "ArtifactPlan",
+    "ArtifactResult",
+    "ArtifactType",
+    "STANDARD_7",
+    "apply_artifact_plan",
+    "compute_artifact_plan",
+    "format_artifact_plan",
+    "format_artifact_result",
+    "parse_artifact_list",
     # Sync
     "SyncAction",
     "SyncPlan",
