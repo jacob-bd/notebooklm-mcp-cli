@@ -60,7 +60,7 @@ notebooks:
         source_id: 1393885c-12c4-49bd-a750-f6ca575d7275
         updated_at: '2026-01-10T17:32:46.483533Z'
   C021_notebooklm-mcp:
-    notebook_id: null
+    notebook_id: e371f5f0-5a2c-4cc3-83fa-0369f1a91751
     notebook_url: null
     last_sync: null
     tier: null
@@ -73,6 +73,15 @@ notebooks:
       infographic: null
       flashcards: null
       quiz: null
+    docs:
+      README.md:
+        hash: cd3d9f8bf20d
+        source_id: 99a809e3-5b9c-4555-979a-7b6f7edbdc15
+        updated_at: '2026-01-10T17:58:44.293902Z'
+      CLAUDE.md:
+        hash: 4729581c4c63
+        source_id: 52279e79-f8ab-45a4-b586-c48a6f13f187
+        updated_at: '2026-01-10T17:58:44.293902Z'
   C001_mission-control:
     notebook_id: null
     notebook_url: null
