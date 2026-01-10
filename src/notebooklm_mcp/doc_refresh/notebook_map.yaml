@@ -91,12 +91,25 @@ notebooks:
         source_id: f0654ec3-8f95-4e8e-be49-1978da82e2f5
         updated_at: '2026-01-10T18:23:35.135904Z'
   C001_mission-control:
-    notebook_id: null
+    notebook_id: 8cf7f836-fe14-43ad-9efd-9815e481982d
     notebook_url: null
     last_sync: null
     tier: null
     doc_hashes: {}
     artifacts: {}
+    docs:
+      README.md:
+        hash: 74e3450b5eb0
+        source_id: 99c2a4a7-270f-4ab6-b9ae-bd661bc7296a
+        updated_at: '2026-01-10T18:54:03.327405Z'
+      META.yaml:
+        hash: e0ddf2946fb0
+        source_id: dda1de23-35a8-42f7-b023-932c044734a7
+        updated_at: '2026-01-10T18:54:03.327405Z'
+      CLAUDE.md:
+        hash: 535510d9ae18
+        source_id: b0c45ad0-0c8c-49e3-81bd-ed088eab1a3f
+        updated_at: '2026-01-10T18:54:03.327405Z'
   C003_sadb_canonical:
     notebook_id: 2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
     notebook_url: null
