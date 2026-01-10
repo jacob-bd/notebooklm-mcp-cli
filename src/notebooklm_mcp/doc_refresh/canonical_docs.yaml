@@ -1,0 +1,210 @@
+# Canonical Document Manifest for Doc Refresh
+# Version: 0.1.0
+# Last Updated: 2026-01-10
+
+# Tiered approach: Tier 1 required, Tier 2-3 included if they exist
+# Loop auto-detects repo complexity by scanning for existing docs
+
+tiers:
+  tier1:
+    name: "Required (every repo)"
+    description: "Minimum viable documentation for any repo"
+    required: true
+    documents:
+      - path: "README.md"
+        purpose: "Entry point, quick mental model"
+        must_exist: true
+        stub_allowed: false
+        validation:
+          - has_metadata_header
+          - accurate_claims
+
+      - path: "CHANGELOG.md"
+        purpose: "Change history"
+        must_exist: true
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+      - path: "META.yaml"
+        purpose: "Project metadata (version, status)"
+        must_exist: true
+        stub_allowed: true
+        validation:
+          - valid_yaml
+          - has_version
+
+  tier2:
+    name: "Extended (complex repos)"
+    description: "Additional docs for repos with more structure"
+    required: false
+    documents:
+      - path: "CLAUDE.md"
+        purpose: "Claude Code session guidance"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+          - accurate_claims
+          - code_refs_valid
+
+      - path: "glossary.yaml"
+        purpose: "Domain terms and concepts"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - valid_yaml
+
+      - path: "10_docs/"
+        purpose: "Working agreements folder (Betty Protocol)"
+        must_exist: false
+        is_directory: true
+        scan_pattern: "10_docs/**/*.md"
+
+      - path: "20_receipts/"
+        purpose: "Change receipts (Betty Protocol)"
+        must_exist: false
+        is_directory: true
+        scan_pattern: "20_receipts/**/*.md"
+
+  tier3:
+    name: "NotebookLM Deep Reference (kitted repos)"
+    description: "Full documentation for NotebookLM ingestion"
+    required: false
+    documents:
+      - path: "docs/OVERVIEW.md"
+        purpose: "System overview, ecosystem fit"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+      - path: "docs/QUICKSTART.md"
+        purpose: "Install, run, verification"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+          - code_refs_valid
+
+      - path: "docs/ARCHITECTURE.md"
+        purpose: "Component diagram, data flow"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+      - path: "docs/CODE_TOUR.md"
+        purpose: "File map, key functions"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+          - code_refs_valid
+
+      - path: "docs/OPERATIONS.md"
+        purpose: "Run modes, troubleshooting"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+      - path: "docs/SECURITY.md"
+        purpose: "What stays local, security notes"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+      - path: "docs/OPEN_QUESTIONS.md"
+        purpose: "Unresolved decisions"
+        must_exist: false
+        stub_allowed: true
+        validation:
+          - has_metadata_header
+
+# Validation rules definitions
+validation_rules:
+  has_metadata_header:
+    description: "Document has YAML frontmatter or version/date header"
+    check: "First lines contain Version: or Last Updated: or YAML frontmatter"
+
+  accurate_claims:
+    description: "Statements about the repo match actual state"
+    check: "Manual verification - flag for human review if uncertain"
+
+  code_refs_valid:
+    description: "File paths and line numbers in the doc exist"
+    check: "Parse file:line references and verify files exist"
+
+  working_links:
+    description: "Internal markdown links resolve"
+    check: "Extract [text](path) links and verify targets exist"
+
+  valid_yaml:
+    description: "File is valid YAML"
+    check: "Parse as YAML without errors"
+
+  has_version:
+    description: "META.yaml contains a version field"
+    check: "YAML contains 'version' key"
+
+# NotebookLM artifacts (Standard 7)
+artifacts:
+  - id: "mind_map"
+    name: "Mind Map"
+    tool: "mind_map_create"
+    default_trigger: "any_doc_change"
+
+  - id: "briefing_doc"
+    name: "Briefing Doc"
+    tool: "report_create"
+    tool_params:
+      report_format: "Briefing Doc"
+    default_trigger: "any_doc_change"
+
+  - id: "study_guide"
+    name: "Study Guide"
+    tool: "report_create"
+    tool_params:
+      report_format: "Study Guide"
+    default_trigger: "content_restructure"
+
+  - id: "audio_overview"
+    name: "Audio Overview"
+    tool: "audio_overview_create"
+    tool_params:
+      format: "deep_dive"
+      length: "default"
+    default_trigger: "major_changes"
+
+  - id: "infographic"
+    name: "Infographic"
+    tool: "infographic_create"
+    tool_params:
+      orientation: "landscape"
+      detail_level: "standard"
+    default_trigger: "architecture_changes"
+
+  - id: "flashcards"
+    name: "Flashcards"
+    tool: "flashcards_create"
+    tool_params:
+      difficulty: "medium"
+    default_trigger: "content_additions"
+
+  - id: "quiz"
+    name: "FAQ/Quiz"
+    tool: "quiz_create"
+    tool_params:
+      question_count: 5
+      difficulty: 2
+    default_trigger: "content_additions"
+
+# Change detection thresholds
+change_detection:
+  content_delta_threshold: 0.15  # 15% change triggers artifact refresh
+  triggers:
+    - "content_delta > threshold"
+    - "major_version_bump"
+    - "--force flag"

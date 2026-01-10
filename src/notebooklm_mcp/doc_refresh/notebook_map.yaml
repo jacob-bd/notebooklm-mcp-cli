@@ -1,0 +1,90 @@
+# NotebookLM Repo-to-Notebook Mapping
+# Version: 0.1.0
+# Last Updated: 2026-01-10
+#
+# This file maps repositories to their NotebookLM notebooks.
+# Each entry tracks:
+#   - notebook_id: UUID of the NotebookLM notebook
+#   - last_sync: Date of last successful doc sync
+#   - doc_hashes: Content hashes for change detection
+#   - tier: Detected tier level (simple/complex/kitted)
+
+# Base path for all repos (can be overridden per entry)
+workspace_root: "~/SyncedProjects"
+
+notebooks:
+  # Gold standard - fully kitted repo with complete documentation
+  C017_brain-on-tap:
+    notebook_id: "c0b11752-c427-4191-ac73-5dc27b879750"
+    notebook_url: "https://notebooklm.google.com/notebook/c0b11752-c427-4191-ac73-5dc27b879750"
+    last_sync: "2026-01-03"
+    tier: "kitted"
+    doc_hashes: {}  # Populated on first sync
+    artifacts:
+      mind_map: null  # Will store artifact IDs after creation
+      briefing_doc: null
+      study_guide: null
+      audio_overview: null
+      infographic: null
+      flashcards: null
+      quiz: null
+
+  # This repo - NotebookLM MCP server
+  C021_notebooklm-mcp:
+    notebook_id: null  # Will be created on first sync
+    notebook_url: null
+    last_sync: null
+    tier: null  # Will be detected on first scan
+    doc_hashes: {}
+    artifacts:
+      mind_map: null
+      briefing_doc: null
+      study_guide: null
+      audio_overview: null
+      infographic: null
+      flashcards: null
+      quiz: null
+
+  # Mission control / credential vault
+  C001_mission-control:
+    notebook_id: null
+    notebook_url: null
+    last_sync: null
+    tier: null
+    doc_hashes: {}
+    artifacts: {}
+
+  # Knowledge pipeline (primary)
+  C003_sadb_canonical:
+    notebook_id: null
+    notebook_url: null
+    last_sync: null
+    tier: null
+    doc_hashes: {}
+    artifacts: {}
+
+  # Terminal insights / collaboration
+  C018_terminal-insights:
+    notebook_id: null
+    notebook_url: null
+    last_sync: null
+    tier: null
+    doc_hashes: {}
+    artifacts: {}
+
+# Sync history log (last 10 syncs)
+sync_log: []
+
+# Configuration
+config:
+  # Auto-create notebook if not found
+  auto_create_notebook: true
+
+  # Default notebook title format
+  notebook_title_template: "{repo_name} Documentation Hub"
+
+  # Hash algorithm for change detection
+  hash_algorithm: "sha256"
+
+  # Truncate hashes to this length for readability
+  hash_length: 12
