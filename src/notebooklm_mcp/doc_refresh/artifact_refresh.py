@@ -417,7 +417,7 @@ def _all_artifacts_complete(status: Any, created: dict) -> bool:
     Check if all created artifacts are complete.
 
     Args:
-        status: Response from studio_status
+        status: Response from poll_studio_status (list of artifact dicts)
         created: Dict of artifact_type -> creation info
 
     Returns:
@@ -426,16 +426,18 @@ def _all_artifacts_complete(status: Any, created: dict) -> bool:
     if not status:
         return False
 
-    # Check if status indicates completion
-    # The exact structure depends on the API response
-    # For now, assume completion if we got a response with artifacts
-    artifacts = status.get("artifacts", [])
+    # poll_studio_status returns a list of artifact dicts directly
+    # Each has: artifact_id, title, type, status, ...
+    artifacts = status if isinstance(status, list) else []
+
     if not artifacts and not created:
         return True
 
     # Count completed artifacts
+    # Status can be "in_progress", "completed", or "unknown"
     completed_count = sum(
-        1 for a in artifacts if a.get("status") in ("ready", "completed", "complete")
+        1 for a in artifacts
+        if isinstance(a, dict) and a.get("status") in ("ready", "completed", "complete")
     )
 
     return completed_count >= len(created)
