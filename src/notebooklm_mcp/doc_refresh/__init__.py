@@ -6,12 +6,13 @@ This module provides:
 - Repo-to-notebook mapping (notebook_map.yaml)
 - Document discovery and validation
 - Hash-based change detection
+- NotebookLM source synchronization
 - Ralph loop prompt (PROMPT.md)
 
 Invoked via: /doc-refresh [--target PATH] [--force] [--docs-only] [--artifacts LIST]
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # Public API
 from .discover import discover_repo, get_docs_needing_hash, get_existing_docs
@@ -45,7 +46,18 @@ from .report import (
     format_for_yaml,
     format_validation_report,
 )
-from .runner import main as cli_main, run_validation
+from .runner import main as cli_main, run_validation, run_sync
+from .notebook_sync import (
+    SyncAction,
+    SyncPlan,
+    SyncResult,
+    apply_sync_plan,
+    compute_sync_plan,
+    ensure_notebook,
+    format_sync_plan,
+    format_sync_result,
+    make_source_title,
+)
 from .validate import (
     extract_version,
     is_major_version_bump,
@@ -87,6 +99,17 @@ __all__ = [
     # Runner
     "cli_main",
     "run_validation",
+    "run_sync",
+    # Sync
+    "SyncAction",
+    "SyncPlan",
+    "SyncResult",
+    "apply_sync_plan",
+    "compute_sync_plan",
+    "ensure_notebook",
+    "format_sync_plan",
+    "format_sync_result",
+    "make_source_title",
     # Validate
     "extract_version",
     "is_major_version_bump",

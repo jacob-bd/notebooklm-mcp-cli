@@ -11,6 +11,9 @@ review:
 allowed_additional_dirs:
   - docs
   - skills
+  - src
+  - tests
+  - workflows
 
 per_dir:
   docs:
@@ -21,6 +24,18 @@ per_dir:
     owner: "Jeremy"
     justification: "Claude Code slash-command skill definitions (e.g., /doc-refresh)."
     planned_destination: "skills/ (Claude Code discovery pattern)."
+  src:
+    owner: "Jeremy"
+    justification: "Python package source code (src layout per PEP 517/518)."
+    planned_destination: "src/ (standard Python packaging layout)."
+  tests:
+    owner: "Jeremy"
+    justification: "pytest test suite for the notebooklm-mcp package."
+    planned_destination: "tests/ (standard Python testing layout)."
+  workflows:
+    owner: "Jeremy"
+    justification: "GitHub Actions CI/CD workflow definitions."
+    planned_destination: ".github/workflows/ (if repo is published to GitHub)."
 
 required_files:
   - README.md

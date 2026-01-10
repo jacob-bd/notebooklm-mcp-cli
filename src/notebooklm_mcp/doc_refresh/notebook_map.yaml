@@ -1,40 +1,10 @@
-# NotebookLM Repo-to-Notebook Mapping
-# Version: 0.1.0
-# Last Updated: 2026-01-10
-#
-# This file maps repositories to their NotebookLM notebooks.
-# Each entry tracks:
-#   - notebook_id: UUID of the NotebookLM notebook
-#   - last_sync: Date of last successful doc sync
-#   - doc_hashes: Content hashes for change detection
-#   - tier: Detected tier level (simple/complex/kitted)
-
-# Base path for all repos (can be overridden per entry)
-workspace_root: "~/SyncedProjects"
-
+workspace_root: ~/SyncedProjects
 notebooks:
-  # Gold standard - fully kitted repo with complete documentation
   C017_brain-on-tap:
-    notebook_id: "c0b11752-c427-4191-ac73-5dc27b879750"
-    notebook_url: "https://notebooklm.google.com/notebook/c0b11752-c427-4191-ac73-5dc27b879750"
-    last_sync: "2026-01-03"
-    tier: "kitted"
-    doc_hashes: {}  # Populated on first sync
-    artifacts:
-      mind_map: null  # Will store artifact IDs after creation
-      briefing_doc: null
-      study_guide: null
-      audio_overview: null
-      infographic: null
-      flashcards: null
-      quiz: null
-
-  # This repo - NotebookLM MCP server
-  C021_notebooklm-mcp:
-    notebook_id: null  # Will be created on first sync
-    notebook_url: null
-    last_sync: null
-    tier: null  # Will be detected on first scan
+    notebook_id: c0b11752-c427-4191-ac73-5dc27b879750
+    notebook_url: https://notebooklm.google.com/notebook/c0b11752-c427-4191-ac73-5dc27b879750
+    last_sync: '2026-01-03'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: null
@@ -44,8 +14,65 @@ notebooks:
       infographic: null
       flashcards: null
       quiz: null
-
-  # Mission control / credential vault
+    docs:
+      README.md:
+        hash: 53167b2b89cc
+        source_id: d66208dd-8fd8-4f63-8818-0e5ff3b47998
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      CHANGELOG.md:
+        hash: 070dfc31133a
+        source_id: b5b8c58a-bcc5-423c-bea2-46eb1d53029f
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      META.yaml:
+        hash: 0b6a7bc6efd2
+        source_id: 1ab8c840-a6e0-4ec4-90fb-c2353ec27b9b
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      CLAUDE.md:
+        hash: f86d5e14c393
+        source_id: 7ea5747a-a6ba-4062-bbfd-dd06cd3bac1c
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/OVERVIEW.md:
+        hash: fce19df22fea
+        source_id: ebd7f435-6371-44ee-a6a6-e90cf38c8762
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/QUICKSTART.md:
+        hash: 9324b6ed23d1
+        source_id: ea152549-da1f-49cc-ab24-68044f11d077
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/ARCHITECTURE.md:
+        hash: 7c64477a115a
+        source_id: 69f0fc7e-78ae-4f5d-baea-093232a15721
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/CODE_TOUR.md:
+        hash: 8b6abf29c806
+        source_id: d1f3c9cf-7dc6-4573-970f-fb204302a3fa
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/OPERATIONS.md:
+        hash: 676c0d10cbf8
+        source_id: 50da6ec0-09e9-4358-8df4-963cfd5ab931
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/SECURITY_AND_PRIVACY.md:
+        hash: 38a267b7d5f2
+        source_id: d39fc531-3e2f-470f-b314-e75ffe42215a
+        updated_at: '2026-01-10T17:32:46.483533Z'
+      docs/brain_on_tap/OPEN_QUESTIONS.md:
+        hash: 9715d3f647b3
+        source_id: 1393885c-12c4-49bd-a750-f6ca575d7275
+        updated_at: '2026-01-10T17:32:46.483533Z'
+  C021_notebooklm-mcp:
+    notebook_id: null
+    notebook_url: null
+    last_sync: null
+    tier: null
+    doc_hashes: {}
+    artifacts:
+      mind_map: null
+      briefing_doc: null
+      study_guide: null
+      audio_overview: null
+      infographic: null
+      flashcards: null
+      quiz: null
   C001_mission-control:
     notebook_id: null
     notebook_url: null
@@ -53,8 +80,6 @@ notebooks:
     tier: null
     doc_hashes: {}
     artifacts: {}
-
-  # Knowledge pipeline (primary)
   C003_sadb_canonical:
     notebook_id: null
     notebook_url: null
@@ -62,8 +87,6 @@ notebooks:
     tier: null
     doc_hashes: {}
     artifacts: {}
-
-  # Terminal insights / collaboration
   C018_terminal-insights:
     notebook_id: null
     notebook_url: null
@@ -71,20 +94,9 @@ notebooks:
     tier: null
     doc_hashes: {}
     artifacts: {}
-
-# Sync history log (last 10 syncs)
 sync_log: []
-
-# Configuration
 config:
-  # Auto-create notebook if not found
   auto_create_notebook: true
-
-  # Default notebook title format
-  notebook_title_template: "{repo_name} Documentation Hub"
-
-  # Hash algorithm for change detection
-  hash_algorithm: "sha256"
-
-  # Truncate hashes to this length for readability
+  notebook_title_template: '{repo_name} Documentation Hub'
+  hash_algorithm: sha256
   hash_length: 12

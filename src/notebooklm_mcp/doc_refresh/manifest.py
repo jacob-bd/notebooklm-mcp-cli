@@ -111,9 +111,25 @@ def get_stored_hashes(notebook_map: dict[str, Any], repo_name: str) -> dict[str,
     """
     Get stored document hashes for a repo from notebook_map.yaml.
 
+    Supports both v0.1.0 (doc_hashes: {path: hash}) and v0.2.0 (docs: {path: {hash, source_id, updated_at}}) formats.
+
     Returns:
         Dict mapping doc path (str) to hash (str)
     """
     notebooks = notebook_map.get("notebooks", {})
     repo_data = notebooks.get(repo_name, {})
+
+    # Check for v0.2.0 format (docs with nested structure)
+    docs = repo_data.get("docs", {})
+    if docs:
+        result = {}
+        for path, info in docs.items():
+            if isinstance(info, dict):
+                result[path] = info.get("hash", "")
+            else:
+                # Fallback if somehow not a dict
+                result[path] = str(info)
+        return result
+
+    # Fallback to v0.1.0 format (doc_hashes)
     return repo_data.get("doc_hashes", {})
