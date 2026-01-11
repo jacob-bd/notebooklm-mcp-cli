@@ -92,11 +92,18 @@ notebooks:
         updated_at: '2026-01-10T18:23:35.135904Z'
   C001_mission-control:
     notebook_id: 8cf7f836-fe14-43ad-9efd-9815e481982d
-    notebook_url: null
-    last_sync: null
-    tier: null
+    notebook_url: https://notebooklm.google.com/notebook/8cf7f836-fe14-43ad-9efd-9815e481982d
+    last_sync: '2026-01-10'
+    tier: kitted
     doc_hashes: {}
-    artifacts: {}
+    artifacts:
+      mind_map: null
+      briefing_doc: null
+      study_guide: null
+      audio_overview: null
+      infographic: null
+      flashcards: null
+      quiz: null
     docs:
       README.md:
         hash: 74e3450b5eb0
@@ -114,6 +121,34 @@ notebooks:
         hash: 6d830d089898
         source_id: f824683d-7cf1-4e6b-92a9-19aa60b99ac1
         updated_at: '2026-01-10T22:06:00.216060Z'
+      docs/mission_control/OVERVIEW.md:
+        hash: 02595db78734
+        source_id: 14740082-94ee-43a8-a596-d0ba521b0135
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/QUICKSTART.md:
+        hash: 0f09560cdec2
+        source_id: 1bc85d74-70ef-4118-8043-1a293c65f1eb
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/ARCHITECTURE.md:
+        hash: 12b0d6487d8b
+        source_id: 200567fc-5830-4a8f-9005-ed641adfdc43
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/CODE_TOUR.md:
+        hash: 8e5734e05f29
+        source_id: f6822bf0-c930-48b4-9343-cea9f198624c
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/OPERATIONS.md:
+        hash: 5f41f01ea565
+        source_id: f57c5357-c8da-49c9-b0db-9516b450a959
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/SECURITY_AND_PRIVACY.md:
+        hash: 67543c81fae6
+        source_id: cbd21e4c-4af9-4b9f-95e6-1f33cafdc195
+        updated_at: '2026-01-10T22:30:00.000000Z'
+      docs/mission_control/OPEN_QUESTIONS.md:
+        hash: 62eb5810b6a3
+        source_id: 344ef7db-f380-477a-a556-d0b86d8c95ce
+        updated_at: '2026-01-10T22:30:00.000000Z'
   C003_sadb_canonical:
     notebook_id: 2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
     notebook_url: null
