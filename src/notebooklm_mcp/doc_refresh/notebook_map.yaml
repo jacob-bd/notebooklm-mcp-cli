@@ -61,9 +61,9 @@ notebooks:
         updated_at: '2026-01-10T17:32:46.483533Z'
   C021_notebooklm-mcp:
     notebook_id: e371f5f0-5a2c-4cc3-83fa-0369f1a91751
-    notebook_url: null
-    last_sync: null
-    tier: null
+    notebook_url: https://notebooklm.google.com/notebook/e371f5f0-5a2c-4cc3-83fa-0369f1a91751
+    last_sync: '2026-01-10'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: null
@@ -90,6 +90,34 @@ notebooks:
         hash: 62b03fc6b0f5
         source_id: f0654ec3-8f95-4e8e-be49-1978da82e2f5
         updated_at: '2026-01-10T18:23:35.135904Z'
+      docs/notebooklm_mcp/OVERVIEW.md:
+        hash: null
+        source_id: ef9bc3c0-53ec-4132-85ea-29a01efb946e
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/QUICKSTART.md:
+        hash: null
+        source_id: e7937363-44cb-43fb-a401-8e25ed83720f
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/ARCHITECTURE.md:
+        hash: null
+        source_id: 5514eed5-3759-466d-9918-f59d979aaf38
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/CODE_TOUR.md:
+        hash: null
+        source_id: d6c257cb-4f69-4449-a3c9-f19b9cf3e4f9
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/OPERATIONS.md:
+        hash: null
+        source_id: 2ef6fed0-55d1-4426-951a-ab15aa93e33b
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/SECURITY_AND_PRIVACY.md:
+        hash: null
+        source_id: 52bc8934-3e6c-4dab-878e-5cafbeac181c
+        updated_at: '2026-01-10T23:30:00.000000Z'
+      docs/notebooklm_mcp/OPEN_QUESTIONS.md:
+        hash: null
+        source_id: 619befb0-7b18-4476-9489-0ca7eb65db51
+        updated_at: '2026-01-10T23:30:00.000000Z'
   C001_mission-control:
     notebook_id: 8cf7f836-fe14-43ad-9efd-9815e481982d
     notebook_url: https://notebooklm.google.com/notebook/8cf7f836-fe14-43ad-9efd-9815e481982d
