@@ -203,11 +203,18 @@ notebooks:
         updated_at: '2026-01-10T22:13:26.464954Z'
   C018_terminal-insights:
     notebook_id: 53aace5c-a2ec-4463-8ec0-281ab99b6dfe
-    notebook_url: null
-    last_sync: null
-    tier: null
+    notebook_url: https://notebooklm.google.com/notebook/53aace5c-a2ec-4463-8ec0-281ab99b6dfe
+    last_sync: '2026-01-10'
+    tier: kitted
     doc_hashes: {}
-    artifacts: {}
+    artifacts:
+      mind_map: null
+      briefing_doc: null
+      study_guide: null
+      audio_overview: null
+      infographic: null
+      flashcards: null
+      quiz: null
     docs:
       README.md:
         hash: 47a2c1bfa15a
@@ -229,6 +236,34 @@ notebooks:
         hash: 1ed6d829c381
         source_id: 6f3790cf-f6de-4ef7-9d86-6b27cf83f387
         updated_at: '2026-01-10T19:13:47.074524Z'
+      docs/terminal_insights/OVERVIEW.md:
+        hash: null
+        source_id: 2a499e3f-0485-45c9-a36b-aab7c169ae93
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/QUICKSTART.md:
+        hash: null
+        source_id: 77a4e300-3bc5-4671-a688-bfc67cdc5f0b
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/ARCHITECTURE.md:
+        hash: null
+        source_id: c51596ad-020d-4c67-834a-624225d897d6
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/CODE_TOUR.md:
+        hash: null
+        source_id: 74b3e261-ba88-46a1-916d-065e8c01a465
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/OPERATIONS.md:
+        hash: null
+        source_id: 0b1742d6-b387-44c4-b18e-efc1a5a75191
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/SECURITY_AND_PRIVACY.md:
+        hash: null
+        source_id: 4b2acca0-4d62-4591-9701-e351679bcd39
+        updated_at: '2026-01-10T23:00:00.000000Z'
+      docs/terminal_insights/OPEN_QUESTIONS.md:
+        hash: null
+        source_id: 09b53d6e-562b-4667-9bf4-a076ab19c5e8
+        updated_at: '2026-01-10T23:00:00.000000Z'
 sync_log: []
 config:
   auto_create_notebook: true
