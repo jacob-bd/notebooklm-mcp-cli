@@ -124,10 +124,31 @@ For each discovered canonical doc:
 
 **Goal:** Sync documents to NotebookLM notebook.
 
-1. **Look up or create notebook:**
-   - Check notebook_map.yaml for notebook_id
-   - If null, create new notebook: `notebook_create(title="{repo_name} Documentation Hub")`
-   - Store notebook_id in notebook_map.yaml
+1. **Look up or create notebook (DUPLICATE CHECK REQUIRED):**
+
+   **Step A - Check notebook_map.yaml:**
+   - Read notebook_map.yaml for this repo's notebook_id
+   - If notebook_id exists, proceed to Step B
+   - If notebook_id is null/missing, proceed to Step C
+
+   **Step B - Verify existing notebook is valid:**
+   - Call `notebook_list()` and check if notebook_id still exists
+   - If found: use it, skip creation
+   - If NOT found: clear the stale ID, proceed to Step C
+
+   **Step C - Search for existing notebook by name (CRITICAL!):**
+   - Call `notebook_list()` to get all notebooks
+   - Search for notebooks with titles matching:
+     - `{repo_name}` (exact match)
+     - `{repo_name} Documentation`
+     - `{repo_name} Documentation Hub`
+     - Any title containing `{repo_name}`
+   - If found: use the existing notebook (prefer one with most sources)
+   - If multiple found: WARN user about duplicates, use the one with most sources
+   - Store the notebook_id in notebook_map.yaml
+   - **ONLY if NO matching notebook exists:** create new with `notebook_create(title="{repo_name} Documentation Hub")`
+
+   **NEVER create a notebook without first checking for existing ones!**
 
 2. **Determine docs to sync:**
    - Use change detection: only sync docs whose hash changed
@@ -241,6 +262,7 @@ For each discovered canonical doc:
 2. **Idempotent:** Running twice should produce same result
 3. **Non-destructive:** Don't change doc meaning without human approval
 4. **Truthful promise:** Only output promise when genuinely complete
+5. **NO DUPLICATE NOTEBOOKS:** ALWAYS call `notebook_list()` and search by repo name BEFORE creating any notebook. Duplicates waste research resources and create confusion. If unsure, ask the user rather than creating a new notebook.
 
 ---
 
