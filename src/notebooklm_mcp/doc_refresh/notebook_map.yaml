@@ -559,8 +559,8 @@ notebooks:
   P171_elevenlabs-music-mcp:
     notebook_id: f5a89dc0-3faf-40c6-ad7f-e514a9ba0569
     notebook_url: https://notebooklm.google.com/notebook/f5a89dc0-3faf-40c6-ad7f-e514a9ba0569
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 9831190a-8214-4dda-93ac-3fd7a5a02a13  # Regenerated with full sources
@@ -591,6 +591,27 @@ notebooks:
       EXECUTIVE_SUMMARY.md:
         source_id: c5937081-48c0-4204-ab78-5e5c5e2a0d0d
         updated_at: '2026-01-11T15:30:00.000000Z'
+      10_docs/elevenlabs-music-mcp/OVERVIEW.md:
+        source_id: 257ce775-7e7a-40ef-8c26-990b1a85d289
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/QUICKSTART.md:
+        source_id: 52e61aa4-a654-4615-9f81-41b304818f69
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/ARCHITECTURE.md:
+        source_id: ada7c03a-ffa7-45a0-89b6-12d13c388021
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/CODE_TOUR.md:
+        source_id: e59136c4-88a3-4589-b8af-f58072fbcc04
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/OPERATIONS.md:
+        source_id: 45e46557-03ff-496a-9ed4-035985255615
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/SECURITY_AND_PRIVACY.md:
+        source_id: f87ec57c-0b7d-487c-8f9d-bcf3ab82cd3c
+        updated_at: '2026-01-12T12:00:00.000000Z'
+      10_docs/elevenlabs-music-mcp/OPEN_QUESTIONS.md:
+        source_id: 6ac33f6f-eacd-4315-b74a-d5e4ba20ada1
+        updated_at: '2026-01-12T12:00:00.000000Z'
   P172_lyra-live:
     notebook_id: 5c05e2b4-5231-499a-95a8-a7ff64f922e7
     notebook_url: https://notebooklm.google.com/notebook/5c05e2b4-5231-499a-95a8-a7ff64f922e7
