@@ -574,6 +574,9 @@ notebooks:
       META.yaml:
         source_id: 66ffa5be-8c21-4d9e-b412-7f3ea1c5d8a9
         updated_at: '2026-01-11T07:15:00.000000Z'
+      protocols/tier3_documentation_spec.md:
+        source_id: 9950b276-2794-46a9-95f9-00d0c076b148
+        updated_at: '2026-01-11T23:00:00.000000Z'
   P051_mcp-servers:
     notebook_id: cf6aa09f-9e61-4eec-9656-de94f7948e19
     notebook_url: https://notebooklm.google.com/notebook/cf6aa09f-9e61-4eec-9656-de94f7948e19
