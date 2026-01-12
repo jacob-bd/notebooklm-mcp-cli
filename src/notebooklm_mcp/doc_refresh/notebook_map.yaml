@@ -435,8 +435,8 @@ notebooks:
   P151_clouddriveinventory:
     notebook_id: 55cdd3e7-2f15-4fbb-bb73-367339807b21
     notebook_url: https://notebooklm.google.com/notebook/55cdd3e7-2f15-4fbb-bb73-367339807b21
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 299160c0-bac2-4bbb-9689-e067dad8bf94
@@ -462,6 +462,27 @@ notebooks:
       RELATIONS.yaml:
         source_id: 1738fc38-59df-49b8-a218-6bc7adff3af5
         updated_at: '2026-01-11T09:00:00.000000Z'
+      10_docs/clouddriveinventory/OVERVIEW.md:
+        source_id: 25aade49-e40e-400a-b5e4-1303d5bb13b2
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/QUICKSTART.md:
+        source_id: f2bf955c-06f0-4266-acb3-c87ed1da9ed6
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/ARCHITECTURE.md:
+        source_id: 7bd0fe4d-6821-48fb-8a03-b9bcd6c121c1
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/CODE_TOUR.md:
+        source_id: fdbef5f5-c042-46ba-b98f-9c490e687023
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/OPERATIONS.md:
+        source_id: aa3ee271-582b-4c92-a7d6-d10ac86ad105
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/SECURITY_AND_PRIVACY.md:
+        source_id: f94be09a-8e69-4e02-b345-e14b9b5f4a5a
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/clouddriveinventory/OPEN_QUESTIONS.md:
+        source_id: 12af2c3b-c4e6-454e-b723-fd1c7011386a
+        updated_at: '2026-01-12T08:00:00.000000Z'
   P167_dj-claude-mcp:
     notebook_id: ddfb5765-341a-417a-87d1-b46316323abc
     notebook_url: https://notebooklm.google.com/notebook/ddfb5765-341a-417a-87d1-b46316323abc
