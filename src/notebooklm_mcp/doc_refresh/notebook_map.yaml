@@ -559,7 +559,7 @@ notebooks:
     artifacts:
       mind_map: 2af7af78-7119-4fd4-a2c1-39b9a37402a3
       briefing_doc: 72e58661-c4a8-454e-a8ab-64a9f7b950aa
-      study_guide: 3d23b521-6693-47b0-9018-edf2f0c7b130
+      study_guide: 806cddae-ba57-4818-9efd-36147384672b  # Regenerated 2026-01-12 with tier3_documentation_spec.md
       flashcards: 45db8ad1-e817-478f-b1a7-595422e3fafb
       quiz: 9b11be56-c414-4a89-a81d-6a66c276a9e7
       audio_overview: null  # Rate limited - regenerate later
