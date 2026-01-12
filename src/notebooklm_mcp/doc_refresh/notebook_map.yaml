@@ -60,6 +60,9 @@ notebooks:
         hash: 9715d3f647b3
         source_id: 1393885c-12c4-49bd-a750-f6ca575d7275
         updated_at: '2026-01-10T17:32:46.483533Z'
+      20_receipts/visual_regression_20260111.md:
+        source_id: 996f51bb-1b6b-47c1-b88c-2463da3d6130
+        updated_at: '2026-01-11T22:00:00.000000Z'
   C021_notebooklm-mcp:
     notebook_id: e371f5f0-5a2c-4cc3-83fa-0369f1a91751
     notebook_url: https://notebooklm.google.com/notebook/e371f5f0-5a2c-4cc3-83fa-0369f1a91751
@@ -180,6 +183,9 @@ notebooks:
         hash: 62eb5810b6a3
         source_id: 344ef7db-f380-477a-a556-d0b86d8c95ce
         updated_at: '2026-01-10T22:30:00.000000Z'
+      20_receipts/visual_regression_20260111.md:
+        source_id: cc5a1953-2489-4fa2-a5a7-eb2de852cad4
+        updated_at: '2026-01-11T22:00:00.000000Z'
   C003_sadb_canonical:
     notebook_id: 2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
     notebook_url: https://notebooklm.google.com/notebook/2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
