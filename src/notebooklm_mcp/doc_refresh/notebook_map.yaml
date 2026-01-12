@@ -486,8 +486,8 @@ notebooks:
   P167_dj-claude-mcp:
     notebook_id: ddfb5765-341a-417a-87d1-b46316323abc
     notebook_url: https://notebooklm.google.com/notebook/ddfb5765-341a-417a-87d1-b46316323abc
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 5a13b8f0-3f64-4791-ab80-5ac069d78b9a
@@ -535,6 +535,27 @@ notebooks:
       SECURITY.md:
         source_id: d325a00b-ec18-4374-a83a-2d333758ed0b
         updated_at: '2026-01-11T09:00:00.000000Z'
+      10_docs/dj-claude-mcp/OVERVIEW.md:
+        source_id: 097d3c21-3bfe-4e4c-aaca-b5e2935338fe
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/QUICKSTART.md:
+        source_id: 11e25b20-0b8f-4539-8042-ac1fc784ebcb
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/ARCHITECTURE.md:
+        source_id: 04fd4e42-347c-4283-a263-34351ef906b2
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/CODE_TOUR.md:
+        source_id: c32334eb-7cec-4c40-9617-e1db187724a5
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/OPERATIONS.md:
+        source_id: 6495ee5e-29ca-4101-bc7c-d20e54dceca5
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/SECURITY_AND_PRIVACY.md:
+        source_id: 74be38c9-5f99-4a11-8c81-dded96eda263
+        updated_at: '2026-01-12T08:00:00.000000Z'
+      10_docs/dj-claude-mcp/OPEN_QUESTIONS.md:
+        source_id: 1b8c8021-9fee-43c9-b6bf-80c5cf86888a
+        updated_at: '2026-01-12T08:00:00.000000Z'
   P171_elevenlabs-music-mcp:
     notebook_id: f5a89dc0-3faf-40c6-ad7f-e514a9ba0569
     notebook_url: https://notebooklm.google.com/notebook/f5a89dc0-3faf-40c6-ad7f-e514a9ba0569
