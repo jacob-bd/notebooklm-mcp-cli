@@ -377,8 +377,8 @@ notebooks:
   P110_knowledge-synthesis-tool:
     notebook_id: b98c2627-07e6-474f-a4bc-359a0c2caa89
     notebook_url: https://notebooklm.google.com/notebook/b98c2627-07e6-474f-a4bc-359a0c2caa89
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: f721bba1-6b18-40cd-afae-3da1c2922c61
@@ -411,6 +411,27 @@ notebooks:
       PRODUCT-REQUIREMENTS-V2.md:
         source_id: 8a2bc15a-0756-4732-ae14-cfb2e3983d8a
         updated_at: '2026-01-11T09:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/OVERVIEW.md:
+        source_id: fa685c81-d5a5-4e5e-828d-d9b41a88e8e7
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/QUICKSTART.md:
+        source_id: e0dc6d64-2329-4ad4-a59d-e1d0ad828e4f
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/ARCHITECTURE.md:
+        source_id: 873a0d8f-11cf-4e91-997c-403ca820f79f
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/CODE_TOUR.md:
+        source_id: afb51f0f-a950-4fbc-82b4-edddf0d62602
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/OPERATIONS.md:
+        source_id: 7ee3a825-0e31-4c91-b475-5a8ab6bf74d7
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/SECURITY_AND_PRIVACY.md:
+        source_id: efbc48dc-5842-43a0-add9-600c521fba5f
+        updated_at: '2026-01-12T07:00:00.000000Z'
+      10_docs/knowledge_synthesis_tool/OPEN_QUESTIONS.md:
+        source_id: 7bd71fa1-ed76-4471-b69a-0e090d699600
+        updated_at: '2026-01-12T07:00:00.000000Z'
   P151_clouddriveinventory:
     notebook_id: 55cdd3e7-2f15-4fbb-bb73-367339807b21
     notebook_url: https://notebooklm.google.com/notebook/55cdd3e7-2f15-4fbb-bb73-367339807b21
