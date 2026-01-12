@@ -313,8 +313,8 @@ notebooks:
   P050_ableton-mcp:
     notebook_id: 8ce9881e-a02d-44a7-8a48-6efd5ed91444
     notebook_url: https://notebooklm.google.com/notebook/8ce9881e-a02d-44a7-8a48-6efd5ed91444
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 4e1cf594-cd96-4140-9f02-09d9b6f5c11a
@@ -353,6 +353,27 @@ notebooks:
       WHY_I_CARE.md:
         source_id: 10f22bc4-bdd6-4857-a233-55b0bd63a699
         updated_at: '2026-01-11T09:00:00.000000Z'
+      10_docs/ableton_mcp/OVERVIEW.md:
+        source_id: 38a66f94-376b-43b7-bfc5-ee3966eb411d
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/QUICKSTART.md:
+        source_id: 494fbae6-33fd-491a-94ff-eba13d2398c1
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/ARCHITECTURE.md:
+        source_id: d05c07e5-dbe2-4271-9f86-53e96d324063
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/CODE_TOUR.md:
+        source_id: fde3d0a1-4a4a-447a-95b2-fa5e22b75979
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/OPERATIONS.md:
+        source_id: af68b018-5415-4cd6-af10-407d2e2106fb
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/SECURITY_AND_PRIVACY.md:
+        source_id: c34e598c-ad92-4940-88d2-af31ad26b9ab
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      10_docs/ableton_mcp/OPEN_QUESTIONS.md:
+        source_id: ee6e604a-4b78-46fd-a1ec-caafa2bbbcbf
+        updated_at: '2026-01-12T06:00:00.000000Z'
   P110_knowledge-synthesis-tool:
     notebook_id: b98c2627-07e6-474f-a4bc-359a0c2caa89
     notebook_url: https://notebooklm.google.com/notebook/b98c2627-07e6-474f-a4bc-359a0c2caa89
