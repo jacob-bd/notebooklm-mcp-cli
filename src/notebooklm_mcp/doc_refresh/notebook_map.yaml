@@ -553,8 +553,8 @@ notebooks:
   C010_standards:
     notebook_id: c5b928c8-9913-4f6e-bbac-d1c3e00720b1
     notebook_url: https://notebooklm.google.com/notebook/c5b928c8-9913-4f6e-bbac-d1c3e00720b1
-    last_sync: '2026-01-11'
-    tier: extended
+    last_sync: '2026-01-12'
+    tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 2af7af78-7119-4fd4-a2c1-39b9a37402a3
@@ -577,6 +577,27 @@ notebooks:
       protocols/tier3_documentation_spec.md:
         source_id: 9950b276-2794-46a9-95f9-00d0c076b148
         updated_at: '2026-01-11T23:00:00.000000Z'
+      docs/standards/OVERVIEW.md:
+        source_id: 7bcdba2f-064b-4631-a8e0-5d5b4b7a155f
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/QUICKSTART.md:
+        source_id: 7af397d3-a63a-4be3-8858-cd6f4b8c6ec6
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/ARCHITECTURE.md:
+        source_id: 83bf3bbf-5679-4e9e-a49a-7e3929f5878d
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/CODE_TOUR.md:
+        source_id: 3743688e-785e-42ad-8482-a1712eee3366
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/OPERATIONS.md:
+        source_id: 87086757-811f-4106-aae7-e89dac385bb8
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/SECURITY_AND_PRIVACY.md:
+        source_id: 42cdc450-ecd6-414a-a4c8-cb76cab1bb87
+        updated_at: '2026-01-12T06:00:00.000000Z'
+      docs/standards/OPEN_QUESTIONS.md:
+        source_id: 2e609780-5e1b-4e51-906c-cd400f552218
+        updated_at: '2026-01-12T06:00:00.000000Z'
   P051_mcp-servers:
     notebook_id: cf6aa09f-9e61-4eec-9656-de94f7948e19
     notebook_url: https://notebooklm.google.com/notebook/cf6aa09f-9e61-4eec-9656-de94f7948e19
