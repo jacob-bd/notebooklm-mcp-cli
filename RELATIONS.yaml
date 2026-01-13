@@ -1,0 +1,26 @@
+version: 2
+repo: C021_notebooklm-mcp
+
+owns:
+  - "NotebookLM MCP Server (programmatic access to notebooklm.google.com)"
+  - "Reverse-engineered NotebookLM internal APIs (batchexecute protocol)"
+  - "Auth token caching and extraction (cookies, CSRF, session)"
+  - "31 MCP tools for notebook/source/studio operations"
+  - "Doc-refresh Ralph loop for syncing canonical docs to NotebookLM"
+  - "PROJECT_PRIMER generator (primer_gen module)"
+  - "notebook_map.yaml tracking for doc sync state"
+
+must_not_own:
+  - "NotebookLM service itself (Google owns that)"
+  - "Workspace governance rules or protocols (belongs to C010_standards)"
+  - "Source document authoring (documents live in their source repos)"
+  - "Credential storage (uses C001_mission-control vault for API keys)"
+  - "Memory infrastructure or SADB pipeline (belongs to C002/C003)"
+
+depends_on:
+  - repo: C010_standards
+    reason: "Betty Protocol, README repo card standard, workspace conventions"
+  - repo: C001_mission-control
+    reason: "Credential vault for any API keys needed"
+  - repo: C017_brain-on-tap
+    reason: "Primary test target for doc-refresh; has active NotebookLM notebook"

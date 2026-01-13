@@ -848,3 +848,119 @@ config:
   notebook_title_template: '{repo_name} Documentation Hub'
   hash_algorithm: sha256
   hash_length: 12
+
+# PROJECT_PRIMER.md tracking for LLM Projects
+# See protocols/project_primer_protocol.md in C010_standards
+primers:
+  C010_standards:
+    enabled: true
+    tier: kitted
+    repo_sha: 6eff996
+    generated_at: '2026-01-12T19:19:59Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:e448a5911ac9'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C001_mission-control:
+    enabled: true
+    tier: kitted
+    repo_sha: 65a1f29
+    generated_at: '2026-01-12T19:20:07Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:cc39d1c6faa7'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C003_sadb_canonical:
+    enabled: true
+    tier: kitted
+    repo_sha: 3f2f45d
+    generated_at: '2026-01-12T19:20:07Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:e1baea52dad3'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C018_terminal-insights:
+    enabled: true
+    tier: kitted
+    repo_sha: 761f538
+    generated_at: '2026-01-12T19:20:07Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:87be4e0a5d46'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C017_brain-on-tap:
+    enabled: true
+    tier: kitted
+    repo_sha: d25dbc4
+    generated_at: '2026-01-12T16:07:37Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:58f4d2295865'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C019_docs-site:
+    enabled: true
+    tier: complex
+    repo_sha: 6e9e7a7
+    generated_at: '2026-01-12T21:52:13Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:3eb27bfe96e3'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  C021_notebooklm-mcp:
+    enabled: true
+    tier: kitted
+    repo_sha: 337cf4b
+    generated_at: '2026-01-12T21:52:13Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:63243804daa7'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
+  P110_knowledge-synthesis-tool:
+    enabled: true
+    tier: complex
+    repo_sha: 6b430c5
+    generated_at: '2026-01-12T21:52:14Z'
+    primer_path: PROJECT_PRIMER.md
+    primer_hash: 'sha256:2ce9cf8b8a85'
+    platforms:
+      chatgpt:
+        status: pending
+      claude_projects:
+        status: pending
+      gemini:
+        status: not_started
