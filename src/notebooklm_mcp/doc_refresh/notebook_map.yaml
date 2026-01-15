@@ -3,14 +3,14 @@ notebooks:
   C017_brain-on-tap:
     notebook_id: c0b11752-c427-4191-ac73-5dc27b879750
     notebook_url: https://notebooklm.google.com/notebook/c0b11752-c427-4191-ac73-5dc27b879750
-    last_sync: '2026-01-11'
+    last_sync: '2026-01-15'
     tier: kitted
     doc_hashes: {}
     artifacts:
       mind_map: 6488bd6b-5c52-48b6-a5d1-741eb39253a7
       briefing_doc: b232d82c-f227-4d26-9329-7e20c2eabf0a
       study_guide: 8f7542dc-9025-4466-89d3-c256b66702ee
-      audio_overview: e1fbccf8-e3f3-4a4c-97dc-d6a4df8369d1
+      audio_overview: 06adc943-ad87-49f7-90e5-2f86043e5596  # Regenerated 2026-01-15 with fresh Tier 3 docs
       infographic: 263aa082-e4ba-424b-b17b-92c3c9714605
       flashcards: 893ae288-32f5-4f81-8589-466f2151fd4d
       quiz: 457fa0f5-0bf8-4fc5-9f20-8ab7fc0e145a
@@ -33,33 +33,26 @@ notebooks:
         source_id: 7ea5747a-a6ba-4062-bbfd-dd06cd3bac1c
         updated_at: '2026-01-10T17:32:46.483533Z'
       docs/brain_on_tap/OVERVIEW.md:
-        hash: fce19df22fea
-        source_id: ebd7f435-6371-44ee-a6a6-e90cf38c8762
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 5ec0e8dd-b790-4870-b85b-5c7529efdb36
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/QUICKSTART.md:
-        hash: 9324b6ed23d1
-        source_id: ea152549-da1f-49cc-ab24-68044f11d077
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 1dfdc68a-90de-49d9-b613-94de54a118c6
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/ARCHITECTURE.md:
-        hash: 7c64477a115a
-        source_id: 69f0fc7e-78ae-4f5d-baea-093232a15721
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 2c8b6e1a-3d2f-4176-82dc-075de32b5531
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/CODE_TOUR.md:
-        hash: 8b6abf29c806
-        source_id: d1f3c9cf-7dc6-4573-970f-fb204302a3fa
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 7f401029-499a-497a-a0dc-700606c73e05
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/OPERATIONS.md:
-        hash: 676c0d10cbf8
-        source_id: 50da6ec0-09e9-4358-8df4-963cfd5ab931
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 3c21ddd7-f670-4c7f-9785-217b5a6e9baf
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/SECURITY_AND_PRIVACY.md:
-        hash: 38a267b7d5f2
-        source_id: d39fc531-3e2f-470f-b314-e75ffe42215a
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 5157bd4a-1244-40a0-b097-6da2fc242696
+        updated_at: '2026-01-15T08:49:00.000000Z'
       docs/brain_on_tap/OPEN_QUESTIONS.md:
-        hash: 9715d3f647b3
-        source_id: 1393885c-12c4-49bd-a750-f6ca575d7275
-        updated_at: '2026-01-10T17:32:46.483533Z'
+        source_id: 5927f6ee-15e1-4c8c-be1e-6195d19cf401
+        updated_at: '2026-01-15T08:49:00.000000Z'
       20_receipts/visual_regression_20260111.md:
         source_id: 996f51bb-1b6b-47c1-b88c-2463da3d6130
         updated_at: '2026-01-11T22:00:00.000000Z'
