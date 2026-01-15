@@ -1,0 +1,104 @@
+{
+  "timestamp": "20260115T215244Z",
+  "repo_id": "C012_round-table",
+  "notebook_name": "C012_round-table",
+  "notebook_id": "b5ced442-e0d4-4fe3-9ccc-e78a9a388a6c",
+  "notebook_url": "https://notebooklm.google.com/notebook/b5ced442-e0d4-4fe3-9ccc-e78a9a388a6c",
+  "files_synced": [
+    {
+      "path": "README.md",
+      "hash": "4b52f119d2b1",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "88a064b8-835e-478b-aae0-97ba773ab086"
+    },
+    {
+      "path": "CLAUDE.md",
+      "hash": "aec02a64c3a2",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "42c31810-b011-4371-a15e-8cb5ea812b2d"
+    },
+    {
+      "path": "PROJECT_PRIMER.md",
+      "hash": "13e29128417f",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "4f6873b5-063d-4768-92f3-b0375c4588e7"
+    },
+    {
+      "path": "RELATIONS.yaml",
+      "hash": "d64d87458e4f",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "dc1da290-f8ae-4c31-abc4-c46ff50a2442"
+    },
+    {
+      "path": "docs/architecture.md",
+      "hash": "b66e438f5932",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "fb22a5b0-1aec-4636-a0de-ecf32ca0480d"
+    },
+    {
+      "path": "docs/concepts.md",
+      "hash": "d45553a7fab9",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "e685608c-6cf6-4bc4-8d10-d5e7a5d086ab"
+    },
+    {
+      "path": "docs/user_guide.md",
+      "hash": "efe5b21bc8d8",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "e4a3e3a3-5f3d-4944-8744-9e45703f5eda"
+    },
+    {
+      "path": "10_docs/Logic_Modes_Engine_PRD_v0.1.md",
+      "hash": "7ec90a2a2225",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "936250d8-0e5b-40c4-84b8-6debcdb2c57a"
+    },
+    {
+      "path": "10_docs/Roundtable_Implementation_Plan_v0.1.md",
+      "hash": "605144fc44b8",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "ad0cc670-b9ba-4290-8504-32fc3e91a97f"
+    },
+    {
+      "path": "10_docs/Roundtable_Prompt_Pack_v0.1.md",
+      "hash": "cd3b2fcf1620",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "d5dc849d-f3b7-4ae6-9901-45f804e164fa"
+    },
+    {
+      "path": "10_docs/claims_api_quickstart.md",
+      "hash": "3868302da23f",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "afee9f8b-b3f9-469d-b2c7-dd5cd995cc64"
+    },
+    {
+      "path": "10_docs/upstream_map.md",
+      "hash": "a8d598a2d518",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "10a0a51c-61ce-479a-978a-8fc01a4cebea"
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "added": 0,
+    "replaced": 0,
+    "skipped": 12,
+    "failed": 0
+  },
+  "audio_overview": {
+    "requested": true,
+    "focus": ""
+  }
+}

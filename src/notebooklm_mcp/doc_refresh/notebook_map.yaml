@@ -1205,58 +1205,58 @@ notebooks:
         source_id: 76ea6e73-d737-4bbd-a1c6-95663d132a46
         updated_at: '2026-01-11T08:00:00.000000Z'
   C012_round-table:
-    notebook_id: 6057f1d9-14ec-4809-beea-4a5d4c80deb5
-    notebook_url: https://notebooklm.google.com/notebook/6057f1d9-14ec-4809-beea-4a5d4c80deb5
+    notebook_id: b5ced442-e0d4-4fe3-9ccc-e78a9a388a6c
+    notebook_url: https://notebooklm.google.com/notebook/b5ced442-e0d4-4fe3-9ccc-e78a9a388a6c
     last_sync: '2026-01-15'
     docs:
       README.md:
-        hash: 4b52f119d2b1
-        source_id: eb405658-e848-4c06-baa7-57a72d4b3671
-        updated_at: '2026-01-15T21:35:40.228554+00:00'
+        hash: 9ecc17c66690
+        source_id: c0d5fb8b-ff69-4193-816d-37d1808ed76c
+        updated_at: '2026-01-15T21:59:11.003903+00:00'
       CLAUDE.md:
-        hash: aec02a64c3a2
-        source_id: 82b1a705-654f-4491-a422-050629383f86
-        updated_at: '2026-01-15T21:35:40.228558+00:00'
+        hash: ba5ffabd9faf
+        source_id: 945ae11f-0652-40d8-8505-eb84e85efcbf
+        updated_at: '2026-01-15T21:59:11.003910+00:00'
       PROJECT_PRIMER.md:
-        hash: 13e29128417f
-        source_id: 9137ec37-1567-4fbd-8879-9cb8e2239548
-        updated_at: '2026-01-15T21:35:40.228559+00:00'
+        hash: 065a2cc05dc0
+        source_id: b184d7f4-ac2c-4cbe-b5dd-2ecacaa2a62b
+        updated_at: '2026-01-15T21:59:11.003913+00:00'
       RELATIONS.yaml:
         hash: d64d87458e4f
-        source_id: a29636b1-505c-4a87-9318-0801057c017c
-        updated_at: '2026-01-15T21:35:40.228561+00:00'
+        source_id: dc1da290-f8ae-4c31-abc4-c46ff50a2442
+        updated_at: '2026-01-15T21:59:11.003915+00:00'
       docs/architecture.md:
         hash: b66e438f5932
-        source_id: ee6a4f55-8208-40f6-82ab-174135a67582
-        updated_at: '2026-01-15T21:35:40.228561+00:00'
+        source_id: fb22a5b0-1aec-4636-a0de-ecf32ca0480d
+        updated_at: '2026-01-15T21:59:11.003921+00:00'
       docs/concepts.md:
         hash: d45553a7fab9
-        source_id: 27e09494-2f4d-42e1-9835-9f629ba885dc
-        updated_at: '2026-01-15T21:35:40.228562+00:00'
+        source_id: e685608c-6cf6-4bc4-8d10-d5e7a5d086ab
+        updated_at: '2026-01-15T21:59:11.003923+00:00'
       docs/user_guide.md:
         hash: efe5b21bc8d8
-        source_id: e2ddcd16-1074-41d5-9ab8-4edf3dc43138
-        updated_at: '2026-01-15T21:35:40.228563+00:00'
+        source_id: e4a3e3a3-5f3d-4944-8744-9e45703f5eda
+        updated_at: '2026-01-15T21:59:11.003925+00:00'
       10_docs/Logic_Modes_Engine_PRD_v0.1.md:
         hash: 7ec90a2a2225
-        source_id: a022e7d4-ae04-475b-86f3-c8fa877a00bf
-        updated_at: '2026-01-15T21:35:40.228564+00:00'
+        source_id: 936250d8-0e5b-40c4-84b8-6debcdb2c57a
+        updated_at: '2026-01-15T21:59:11.003926+00:00'
       10_docs/Roundtable_Implementation_Plan_v0.1.md:
-        hash: 605144fc44b8
-        source_id: 12dd07ae-2f23-4717-8023-16cc7f28f62c
-        updated_at: '2026-01-15T21:35:40.228565+00:00'
+        hash: 997cc98f95f5
+        source_id: 3cdf25b3-b8d9-468f-9a88-e1e00f57351f
+        updated_at: '2026-01-15T21:59:11.003928+00:00'
       10_docs/Roundtable_Prompt_Pack_v0.1.md:
-        hash: cd3b2fcf1620
-        source_id: 9a0a41dc-4e53-44f8-9c85-a05d1b5ec686
-        updated_at: '2026-01-15T21:35:40.228566+00:00'
+        hash: 5909b17430de
+        source_id: c98c5cda-7d02-40ad-86d4-1620eba3b618
+        updated_at: '2026-01-15T21:59:11.003929+00:00'
       10_docs/claims_api_quickstart.md:
         hash: 3868302da23f
-        source_id: b74e034a-8d9b-4187-a372-889cd6cd7a99
-        updated_at: '2026-01-15T21:35:40.228567+00:00'
+        source_id: afee9f8b-b3f9-469d-b2c7-dd5cd995cc64
+        updated_at: '2026-01-15T21:59:11.003931+00:00'
       10_docs/upstream_map.md:
         hash: a8d598a2d518
-        source_id: e15c62ee-4add-49d8-afa7-a091a56595b5
-        updated_at: '2026-01-15T21:35:40.228567+00:00'
+        source_id: 10a0a51c-61ce-479a-978a-8fc01a4cebea
+        updated_at: '2026-01-15T21:59:11.003932+00:00'
 sync_log: []
 config:
   auto_create_notebook: true

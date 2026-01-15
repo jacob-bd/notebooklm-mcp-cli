@@ -76,6 +76,15 @@ def list_notebooks() -> None:
         print(f"  [{nb.id[:8]}...] {nb.title} ({nb.source_count} sources)")
 
 
+def find_notebook_by_id(client: NotebookLMClient, notebook_id: str):
+    """Find existing notebook by ID."""
+    notebooks = client.list_notebooks()
+    for nb in notebooks:
+        if nb.id == notebook_id:
+            return nb
+    return None
+
+
 def find_notebook_by_name(client: NotebookLMClient, name: str):
     """Find existing notebook by exact name match."""
     notebooks = client.list_notebooks()
@@ -189,12 +198,25 @@ def sync_files(
     existing_entry = notebook_map.get("notebooks", {}).get(repo_id) if repo_id else None
     mapped_notebook_id = existing_entry.get("notebook_id") if existing_entry else None
 
-    # Check if notebook exists - use exact name match
-    notebook = find_notebook_by_name(client, notebook_name)
+    # Priority: 1) Use mapped notebook_id, 2) Search by name, 3) Create new
+    notebook = None
 
-    if notebook:
-        print(f"Found existing notebook: {notebook_name} ({notebook.source_count} sources)")
-    else:
+    if mapped_notebook_id:
+        # Try to find the notebook we used before (by ID, regardless of current name)
+        notebook = find_notebook_by_id(client, mapped_notebook_id)
+        if notebook:
+            print(f"Found mapped notebook: {notebook.title} ({notebook.source_count} sources)")
+            if notebook.title != notebook_name:
+                print(f"  Note: Notebook name differs from repo name (using existing)")
+
+    if not notebook:
+        # Fall back to searching by exact name
+        notebook = find_notebook_by_name(client, notebook_name)
+        if notebook:
+            print(f"Found notebook by name: {notebook_name} ({notebook.source_count} sources)")
+
+    if not notebook:
+        # Create new notebook
         print(f"Creating new notebook: {notebook_name}")
         notebook = client.create_notebook(notebook_name)
         if not notebook:
