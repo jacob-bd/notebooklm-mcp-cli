@@ -22,6 +22,102 @@ from . import constants
 logger = logging.getLogger("notebooklm_mcp.api")
 logger.setLevel(logging.WARNING)  # Suppress internal API logs by default
 
+# RPC ID to method name mapping for debug logging
+RPC_NAMES = {
+    "wXbhsf": "list_notebooks",
+    "rLM1Ne": "get_notebook",
+    "CCqFvf": "create_notebook",
+    "s0tc2d": "rename_notebook",
+    "WWINqb": "delete_notebook",
+    "izAoDd": "add_source",
+    "hizoJc": "get_source",
+    "yR9Yof": "check_freshness",
+    "FLmJqe": "sync_drive",
+    "tGMBJ": "delete_source",
+    "hPTbtc": "get_conversations",
+    "hT54vc": "preferences",
+    "ozz5Z": "subscription",
+    "ZwVcOc": "settings",
+    "VfAZjd": "get_summary",
+    "tr032e": "get_source_guide",
+    "Ljjv0c": "start_fast_research",
+    "QA9ei": "start_deep_research",
+    "e3bVqc": "poll_research",
+    "LBwxtb": "import_research",
+    "R7cb6c": "create_studio",
+    "gArtLc": "poll_studio",
+    "V5N4be": "delete_studio",
+    "yyryJe": "generate_mind_map",
+    "CYK0Xb": "save_mind_map",
+    "cFji9": "list_mind_maps",
+    "AH0mwd": "delete_mind_map",
+}
+
+
+def _format_debug_json(data: Any, max_length: int = 2000) -> str:
+    """Format data as pretty-printed JSON for debug logging."""
+    try:
+        formatted = json.dumps(data, indent=2, ensure_ascii=False)
+        if len(formatted) > max_length:
+            return formatted[:max_length] + "\n  ... (truncated)"
+        return formatted
+    except (TypeError, ValueError):
+        result = str(data)
+        if len(result) > max_length:
+            return result[:max_length] + "... (truncated)"
+        return result
+
+
+def _decode_request_body(body: str) -> dict[str, Any]:
+    """Decode URL-encoded request body and parse JSON structures."""
+    result = {}
+    try:
+        # Parse the URL-encoded body
+        parsed = urllib.parse.parse_qs(body.rstrip("&"))
+
+        # Decode f.req (the main request data)
+        if "f.req" in parsed:
+            f_req_raw = parsed["f.req"][0]
+            try:
+                f_req = json.loads(f_req_raw)
+                result["f.req"] = f_req
+                # Extract the inner params if available
+                if isinstance(f_req, list) and len(f_req) > 0:
+                    inner = f_req[0]
+                    if isinstance(inner, list) and len(inner) > 0:
+                        rpc_call = inner[0]
+                        if isinstance(rpc_call, list) and len(rpc_call) >= 2:
+                            result["rpc_id"] = rpc_call[0]
+                            # Parse the params JSON string
+                            params_str = rpc_call[1]
+                            if isinstance(params_str, str):
+                                try:
+                                    result["params"] = json.loads(params_str)
+                                except json.JSONDecodeError:
+                                    result["params"] = params_str
+            except json.JSONDecodeError:
+                result["f.req"] = f_req_raw
+
+        # Include CSRF token reference (don't log actual value)
+        if "at" in parsed:
+            result["at"] = "(csrf_token)"
+
+    except Exception:
+        result["raw"] = body[:500] if len(body) > 500 else body
+
+    return result
+
+
+def _parse_url_params(url: str) -> dict[str, Any]:
+    """Parse URL query parameters for debug display."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(parsed.query)
+        # Flatten single-value lists
+        return {k: v[0] if len(v) == 1 else v for k, v in params.items()}
+    except Exception:
+        return {}
+
 
 class AuthenticationError(Exception):
     """Raised when authentication fails (HTTP 401/403 or RPC Error 16)."""
@@ -479,31 +575,57 @@ class NotebookLMClient:
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)
 
-        # Debug logging
+        # Enhanced debug logging
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"RPC Call: {rpc_id}")
-            logger.debug(f"URL: {url}")
-            logger.debug(f"Request Body: {body[:500]}..." if len(body) > 500 else f"Request Body: {body}")
+            method_name = RPC_NAMES.get(rpc_id, "unknown")
+            logger.debug("=" * 70)
+            logger.debug(f"RPC Call: {rpc_id} ({method_name})")
+            logger.debug("-" * 70)
+
+            # Parse and display URL params
+            url_params = _parse_url_params(url)
+            logger.debug("URL Parameters:")
+            for key, value in url_params.items():
+                logger.debug(f"  {key}: {value}")
+
+            # Decode and display request body
+            logger.debug("-" * 70)
+            logger.debug("Request Params:")
+            decoded_body = _decode_request_body(body)
+            if "params" in decoded_body:
+                logger.debug(_format_debug_json(decoded_body["params"]))
+            elif "f.req" in decoded_body:
+                logger.debug(_format_debug_json(decoded_body["f.req"]))
+            else:
+                logger.debug(_format_debug_json(decoded_body))
 
         try:
             if timeout:
                 response = client.post(url, content=body, timeout=timeout)
             else:
                 response = client.post(url, content=body)
-            response.raise_for_status()
-            
-            # Debug logging for response
+
+            # Log response before raise_for_status (so we can see error responses)
             if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("-" * 70)
                 logger.debug(f"Response Status: {response.status_code}")
-                logger.debug(f"Response Body: {response.text[:1000]}..." if len(response.text) > 1000 else f"Response Body: {response.text}")
-            
+                if response.status_code >= 400:
+                    logger.debug("Error Response Body:")
+                    logger.debug(response.text[:2000] if len(response.text) > 2000 else response.text)
+                    logger.debug("=" * 70)
+
+            response.raise_for_status()
+
             # Check for RPC-level errors (soft auth failure)
             parsed = self._parse_response(response.text)
             result = self._extract_rpc_result(parsed, rpc_id)
-            
-            # Debug logging for extracted result
+
+            # Enhanced debug logging for extracted result
             if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Extracted Result: {str(result)[:500]}..." if len(str(result)) > 500 else f"Extracted Result: {result}")
+                logger.debug("-" * 70)
+                logger.debug("Response Data:")
+                logger.debug(_format_debug_json(result))
+                logger.debug("=" * 70)
             
             return result
 
