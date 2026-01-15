@@ -5,6 +5,7 @@ Internal API. See CLAUDE.md for full documentation.
 """
 
 import json
+import logging
 import os
 import re
 import urllib.parse
@@ -16,6 +17,10 @@ from typing import Any
 import httpx
 
 from . import constants
+
+# Configure logger (API internals only logged at DEBUG level, usually disabled)
+logger = logging.getLogger("notebooklm_mcp.api")
+logger.setLevel(logging.WARNING)  # Suppress internal API logs by default
 
 
 class AuthenticationError(Exception):
@@ -474,6 +479,12 @@ class NotebookLMClient:
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)
 
+        # Debug logging
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"RPC Call: {rpc_id}")
+            logger.debug(f"URL: {url}")
+            logger.debug(f"Request Body: {body[:500]}..." if len(body) > 500 else f"Request Body: {body}")
+
         try:
             if timeout:
                 response = client.post(url, content=body, timeout=timeout)
@@ -481,9 +492,20 @@ class NotebookLMClient:
                 response = client.post(url, content=body)
             response.raise_for_status()
             
+            # Debug logging for response
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Response Status: {response.status_code}")
+                logger.debug(f"Response Body: {response.text[:1000]}..." if len(response.text) > 1000 else f"Response Body: {response.text}")
+            
             # Check for RPC-level errors (soft auth failure)
             parsed = self._parse_response(response.text)
-            return self._extract_rpc_result(parsed, rpc_id)
+            result = self._extract_rpc_result(parsed, rpc_id)
+            
+            # Debug logging for extracted result
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Extracted Result: {str(result)[:500]}..." if len(str(result)) > 500 else f"Extracted Result: {result}")
+            
+            return result
 
         except (httpx.HTTPStatusError, AuthenticationError) as e:
             # Check for auth failures (401/403 HTTP or RPC Error 16)

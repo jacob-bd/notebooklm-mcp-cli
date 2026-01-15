@@ -1,11 +1,22 @@
 """NotebookLM MCP Server."""
 
+import argparse
+import functools
+import json
+import logging
+import os
 from typing import Any
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from .api_client import NotebookLMClient, extract_cookies_from_chrome_export, parse_timestamp
 from . import constants
+from . import __version__
+
+# MCP request/response logger
+mcp_logger = logging.getLogger("notebooklm_mcp.mcp")
 
 # Initialize MCP server
 mcp = FastMCP(
@@ -17,8 +28,44 @@ mcp = FastMCP(
 **Studio:** After creating audio/video/infographic/slides, poll studio_status for completion.""",
 )
 
+# Health check endpoint for load balancers and monitoring
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    """Health check endpoint for load balancers and monitoring."""
+    return JSONResponse({
+        "status": "healthy",
+        "service": "notebooklm-mcp",
+        "version": __version__,
+    })
+
 # Global state
 _client: NotebookLMClient | None = None
+
+
+def logged_tool():
+    """Decorator that combines @mcp.tool() with MCP request/response logging."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            tool_name = func.__name__
+            if mcp_logger.isEnabledFor(logging.DEBUG):
+                # Log request
+                params = {k: v for k, v in kwargs.items() if v is not None}
+                mcp_logger.debug(f"MCP Request: {tool_name}({json.dumps(params, default=str)})")
+            
+            result = func(*args, **kwargs)
+            
+            if mcp_logger.isEnabledFor(logging.DEBUG):
+                # Log response (truncate if too long)
+                result_str = json.dumps(result, default=str)
+                if len(result_str) > 1000:
+                    result_str = result_str[:1000] + "..."
+                mcp_logger.debug(f"MCP Response: {tool_name} -> {result_str}")
+            
+            return result
+        # Apply the MCP tool decorator
+        return mcp.tool()(wrapper)
+    return decorator
 
 
 def get_client() -> NotebookLMClient:
@@ -61,7 +108,7 @@ def get_client() -> NotebookLMClient:
     return _client
 
 
-@mcp.tool()
+@logged_tool()
 def refresh_auth() -> dict[str, Any]:
     """Reload auth tokens from disk or run headless re-authentication.
     
@@ -107,7 +154,7 @@ def refresh_auth() -> dict[str, Any]:
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
-@mcp.tool()
+@logged_tool()
 def notebook_list(max_results: int = 100) -> dict[str, Any]:
     """List all notebooks.
 
@@ -149,7 +196,7 @@ def notebook_list(max_results: int = 100) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_create(title: str = "") -> dict[str, Any]:
     """Create a new notebook.
 
@@ -174,7 +221,7 @@ def notebook_create(title: str = "") -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_get(notebook_id: str) -> dict[str, Any]:
     """Get notebook details with sources.
 
@@ -208,7 +255,7 @@ def notebook_get(notebook_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_describe(notebook_id: str) -> dict[str, Any]:
     """Get AI-generated notebook summary with suggested topics.
 
@@ -229,7 +276,7 @@ def notebook_describe(notebook_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def source_describe(source_id: str) -> dict[str, Any]:
     """Get AI-generated source summary with keyword chips.
 
@@ -250,7 +297,7 @@ def source_describe(source_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def source_get_content(source_id: str) -> dict[str, Any]:
     """Get raw text content of a source (no AI processing).
 
@@ -274,7 +321,7 @@ def source_get_content(source_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
     """Add URL (website or YouTube) as source.
 
@@ -296,7 +343,7 @@ def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_add_text(
     notebook_id: str,
     text: str,
@@ -323,7 +370,7 @@ def notebook_add_text(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_add_drive(
     notebook_id: str,
     document_id: str,
@@ -372,7 +419,7 @@ def notebook_add_drive(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_query(
     notebook_id: str,
     query: str,
@@ -418,7 +465,7 @@ def notebook_query(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_delete(
     notebook_id: str,
     confirm: bool = False,
@@ -452,7 +499,7 @@ def notebook_delete(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def notebook_rename(
     notebook_id: str,
     new_title: str,
@@ -480,7 +527,7 @@ def notebook_rename(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def chat_configure(
     notebook_id: str,
     goal: str = "default",
@@ -510,7 +557,7 @@ def chat_configure(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def source_list_drive(notebook_id: str) -> dict[str, Any]:
     """List sources with types and Drive freshness status.
 
@@ -564,7 +611,7 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def source_sync_drive(
     source_ids: list[str],
     confirm: bool = False,
@@ -636,7 +683,7 @@ def source_sync_drive(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def source_delete(
     source_id: str,
     confirm: bool = False,
@@ -670,7 +717,7 @@ def source_delete(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def research_start(
     query: str,
     source: str = "web",
@@ -777,7 +824,7 @@ def _compact_research_result(result: dict) -> dict:
     return result
 
 
-@mcp.tool()
+@logged_tool()
 def research_status(
     notebook_id: str,
     poll_interval: int = 30,
@@ -847,7 +894,7 @@ def research_status(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def research_import(
     notebook_id: str,
     task_id: str,
@@ -957,7 +1004,7 @@ def research_import(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def audio_overview_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1051,7 +1098,7 @@ def audio_overview_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def video_overview_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1145,7 +1192,7 @@ def video_overview_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def studio_status(notebook_id: str) -> dict[str, Any]:
     """Check studio content generation status and get URLs.
 
@@ -1190,7 +1237,7 @@ def studio_status(notebook_id: str) -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def studio_delete(
     notebook_id: str,
     artifact_id: str,
@@ -1227,7 +1274,7 @@ def studio_delete(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def infographic_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1321,7 +1368,7 @@ def infographic_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def slide_deck_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1415,7 +1462,7 @@ def slide_deck_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def report_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1480,7 +1527,7 @@ def report_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def flashcards_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1545,7 +1592,7 @@ def flashcards_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def quiz_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1614,7 +1661,7 @@ def quiz_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def data_table_create(
     notebook_id: str,
     description: str,
@@ -1673,7 +1720,7 @@ def data_table_create(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool()
+@logged_tool()
 def mind_map_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
@@ -1762,7 +1809,7 @@ ESSENTIAL_COOKIES = [
 ]
 
 
-@mcp.tool()
+@logged_tool()
 def save_auth_tokens(
     cookies: str,
     csrf_token: str = "",
@@ -1861,8 +1908,117 @@ def save_auth_tokens(
 
 
 def main():
-    """Run the MCP server."""
-    mcp.run()
+    """Run the MCP server.
+    
+    Supports multiple transports:
+    - stdio (default): For desktop apps like Claude Desktop
+    - http: Streamable HTTP for network access
+    - sse: Legacy SSE transport (backwards compatibility)
+    
+    Configuration via CLI args or environment variables.
+    """
+    parser = argparse.ArgumentParser(
+        description="NotebookLM MCP Server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Environment Variables:
+  NOTEBOOKLM_MCP_TRANSPORT     Transport type (stdio, http, sse)
+  NOTEBOOKLM_MCP_HOST          Host to bind (default: 127.0.0.1)
+  NOTEBOOKLM_MCP_PORT          Port to listen on (default: 8000)
+  NOTEBOOKLM_MCP_PATH          MCP endpoint path (default: /mcp)
+  NOTEBOOKLM_MCP_STATELESS     Enable stateless mode for scaling (true/false)
+  NOTEBOOKLM_MCP_DEBUG         Enable MCP request/response logging (true/false)
+
+Examples:
+  notebooklm-mcp                              # Default stdio transport
+  notebooklm-mcp --transport http             # HTTP on localhost:8000
+  notebooklm-mcp --transport http --port 3000 # HTTP on custom port
+  notebooklm-mcp --transport http --host 0.0.0.0  # Bind to all interfaces
+  notebooklm-mcp --debug                      # Enable MCP request/response logging
+
+        """
+    )
+    
+    parser.add_argument(
+        "--transport", "-t",
+        choices=["stdio", "http", "sse"],
+        default=os.environ.get("NOTEBOOKLM_MCP_TRANSPORT", "stdio"),
+        help="Transport protocol (default: stdio)"
+    )
+    parser.add_argument(
+        "--host", "-H",
+        default=os.environ.get("NOTEBOOKLM_MCP_HOST", "127.0.0.1"),
+        help="Host to bind for HTTP/SSE (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", "-p",
+        type=int,
+        default=int(os.environ.get("NOTEBOOKLM_MCP_PORT", "8000")),
+        help="Port for HTTP/SSE transport (default: 8000)"
+    )
+    parser.add_argument(
+        "--path",
+        default=os.environ.get("NOTEBOOKLM_MCP_PATH", "/mcp"),
+        help="MCP endpoint path for HTTP (default: /mcp)"
+    )
+    parser.add_argument(
+        "--stateless",
+        action="store_true",
+        default=os.environ.get("NOTEBOOKLM_MCP_STATELESS", "").lower() == "true",
+        help="Enable stateless mode for horizontal scaling"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=os.environ.get("NOTEBOOKLM_MCP_DEBUG", "").lower() == "true",
+        help="Enable debug logging (logs MCP tool requests/responses)"
+    )
+    args = parser.parse_args()
+    
+    # Configure logging - only MCP request/response logger
+    if args.debug:
+        logging.basicConfig(
+            level=logging.WARNING,  # Suppress most logs
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        # Enable MCP request/response logging only
+        mcp_logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        ))
+        mcp_logger.addHandler(handler)
+        print("Debug logging: ENABLED (MCP requests/responses only)")
+    
+    if args.transport == "http":
+        print(f"Starting NotebookLM MCP server (HTTP) on http://{args.host}:{args.port}{args.path}")
+        print(f"Health check: http://{args.host}:{args.port}/health")
+        if args.stateless:
+            print("Stateless mode: ENABLED (suitable for horizontal scaling)")
+        mcp.run(
+            transport="http",
+            host=args.host,
+            port=args.port,
+            path=args.path,
+            stateless_http=args.stateless,
+        )
+    elif args.transport == "sse":
+        print(f"Starting NotebookLM MCP server (SSE) on http://{args.host}:{args.port}/sse")
+        print(f"Health check: http://{args.host}:{args.port}/health")
+        if args.stateless:
+            print("Stateless mode: ENABLED (suitable for horizontal scaling)")
+        mcp.run(
+            transport="sse",
+            host=args.host,
+            port=args.port,
+            stateless_http=args.stateless,
+        )
+    else:
+        # Default: stdio transport (no message - stdio should be silent)
+        mcp.run()
+    
     return 0
 
 

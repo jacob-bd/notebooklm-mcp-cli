@@ -56,3 +56,4 @@ CLAUDE.local.md
 .auto-claude/
 .worktrees/
 .claude/
+run*
