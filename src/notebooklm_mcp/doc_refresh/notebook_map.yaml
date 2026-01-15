@@ -59,7 +59,7 @@ notebooks:
   C021_notebooklm-mcp:
     notebook_id: e371f5f0-5a2c-4cc3-83fa-0369f1a91751
     notebook_url: https://notebooklm.google.com/notebook/e371f5f0-5a2c-4cc3-83fa-0369f1a91751
-    last_sync: '2026-01-11'
+    last_sync: '2026-01-15'
     tier: kitted
     doc_hashes: {}
     artifacts:
@@ -73,49 +73,38 @@ notebooks:
       explainer_video: 6521ac41-4353-4a26-877a-ea40bace7fbf  # whiteboard style
     docs:
       README.md:
-        hash: cd3d9f8bf20d
-        source_id: 99a809e3-5b9c-4555-979a-7b6f7edbdc15
-        updated_at: '2026-01-10T17:58:44.293902Z'
-      CLAUDE.md:
-        hash: 4729581c4c63
-        source_id: 52279e79-f8ab-45a4-b586-c48a6f13f187
-        updated_at: '2026-01-10T17:58:44.293902Z'
+        source_id: dbef912b-c712-418b-90d9-8dfaad729a03
+        updated_at: '2026-01-15T09:00:00.000000Z'
       CHANGELOG.md:
-        hash: ee0d19e84522
-        source_id: 718ce82f-b83a-4257-bcd9-06d6e6ca0f45
-        updated_at: '2026-01-10T18:23:35.135904Z'
+        source_id: 1dcbc720-87ca-4811-b0af-89796b65fe25
+        updated_at: '2026-01-15T09:00:00.000000Z'
       META.yaml:
-        hash: 62b03fc6b0f5
-        source_id: f0654ec3-8f95-4e8e-be49-1978da82e2f5
-        updated_at: '2026-01-10T18:23:35.135904Z'
+        source_id: bf22f989-9ca8-4076-82fb-cea753600ecf
+        updated_at: '2026-01-15T09:00:00.000000Z'
+      CLAUDE.md:
+        source_id: b5bc7c7c-c907-438c-a965-3b38cccc0a23
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/OVERVIEW.md:
-        hash: 0f5a6774bded
-        source_id: ef9bc3c0-53ec-4132-85ea-29a01efb946e
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 1f76e9fe-42cd-42f1-a190-af7e8bf524b9
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/QUICKSTART.md:
-        hash: 1b78f823be63
-        source_id: e7937363-44cb-43fb-a401-8e25ed83720f
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 2db3607a-a251-41b9-a281-a1d743220c36
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/ARCHITECTURE.md:
-        hash: 36fa63b0e520
-        source_id: 5514eed5-3759-466d-9918-f59d979aaf38
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 7e3b0731-7940-4f00-9cfc-305c74bfab28
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/CODE_TOUR.md:
-        hash: fc76a8dfcd10
-        source_id: d6c257cb-4f69-4449-a3c9-f19b9cf3e4f9
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 28cc2444-b5b7-4859-b56f-a915585387c0
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/OPERATIONS.md:
-        hash: aeea6252d74b
-        source_id: 2ef6fed0-55d1-4426-951a-ab15aa93e33b
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 7b8a5076-fcff-4bce-bc4b-6d2b0bf96eed
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/SECURITY_AND_PRIVACY.md:
-        hash: 002bea791c85
-        source_id: 52bc8934-3e6c-4dab-878e-5cafbeac181c
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 37f0cd9e-aecc-4519-be5f-f3e9fbb68b5f
+        updated_at: '2026-01-15T09:00:00.000000Z'
       docs/notebooklm_mcp/OPEN_QUESTIONS.md:
-        hash: b6abda481371
-        source_id: 619befb0-7b18-4476-9489-0ca7eb65db51
-        updated_at: '2026-01-10T23:30:00.000000Z'
+        source_id: 86135e06-25d5-423b-a99f-2e6185def531
+        updated_at: '2026-01-15T09:00:00.000000Z'
   C001_mission-control:
     notebook_id: 8cf7f836-fe14-43ad-9efd-9815e481982d
     notebook_url: https://notebooklm.google.com/notebook/8cf7f836-fe14-43ad-9efd-9815e481982d
