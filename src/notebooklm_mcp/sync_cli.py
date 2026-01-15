@@ -147,7 +147,7 @@ def write_receipt(
         "summary": {
             "total": len(files_synced),
             "added": sum(1 for f in files_synced if f["action"] == "added"),
-            "updated": sum(1 for f in files_synced if f["action"] == "updated"),
+            "replaced": sum(1 for f in files_synced if f["action"] == "replaced"),
             "skipped": sum(1 for f in files_synced if f["action"] == "skipped"),
             "failed": sum(1 for f in files_synced if f["action"] == "failed"),
         },
@@ -161,33 +161,36 @@ def write_receipt(
     return receipt_path
 
 
+def prompt_for_artifacts(notebook_name: str, changes_made: int) -> bool:
+    """Prompt user before generating artifacts."""
+    if changes_made == 0:
+        print("\nNo changes were made to the notebook.")
+        response = input("Generate audio overview anyway? [y/N]: ").strip().lower()
+    else:
+        print(f"\n{changes_made} document(s) were updated in the notebook.")
+        response = input("Generate audio overview with updated sources? [y/N]: ").strip().lower()
+
+    return response in ("y", "yes")
+
+
 def sync_files(
     notebook_name: str,
     files: list[Path],
     repo_id: str | None = None,
     create_audio: bool = False,
     audio_focus: str = "",
+    interactive: bool = True,
 ) -> None:
-    """Sync files to a NotebookLM notebook with idempotence."""
+    """Sync files to a NotebookLM notebook with idempotence and replacement."""
     client = get_client()
     notebook_map = load_notebook_map()
 
     # Check if notebook exists in map for this repo
     existing_entry = notebook_map.get("notebooks", {}).get(repo_id) if repo_id else None
+    mapped_notebook_id = existing_entry.get("notebook_id") if existing_entry else None
 
-    # Check if notebook exists
-    notebook = None
-    if existing_entry and existing_entry.get("notebook_id"):
-        # Try to use existing notebook from map
-        notebook_id = existing_entry["notebook_id"]
-        notebooks = client.list_notebooks()
-        for nb in notebooks:
-            if nb.id == notebook_id:
-                notebook = nb
-                break
-
-    if not notebook:
-        notebook = find_notebook_by_name(client, notebook_name)
+    # Check if notebook exists - use exact name match
+    notebook = find_notebook_by_name(client, notebook_name)
 
     if notebook:
         print(f"Found existing notebook: {notebook_name} ({notebook.source_count} sources)")
@@ -199,14 +202,20 @@ def sync_files(
             sys.exit(1)
         print(f"Created notebook: {notebook.id}")
 
-    # Get existing doc hashes from map for idempotence
+    # Only use existing doc hashes for idempotence if we're using the SAME notebook
+    # This prevents accidentally deleting sources from a different notebook
     existing_docs = {}
-    if existing_entry:
+    same_notebook = mapped_notebook_id == notebook.id
+    if existing_entry and same_notebook:
         existing_docs = existing_entry.get("docs", {})
+        print(f"Using existing doc hashes from notebook_map (same notebook)")
+    elif existing_entry and not same_notebook:
+        print(f"Note: notebook_map has different notebook_id - starting fresh (no replacements)")
 
     # Process each file
     files_synced = []
     source_ids = []
+    changes_made = 0
 
     for file_path in files:
         if not file_path.exists():
@@ -232,49 +241,70 @@ def sync_files(
 
         # Check if file is unchanged (idempotence)
         existing_doc = existing_docs.get(rel_path, {})
+        old_source_id = existing_doc.get("source_id")
+
         if existing_doc.get("hash") == current_hash:
             files_synced.append({
                 "path": rel_path,
                 "hash": current_hash,
                 "action": "skipped",
                 "reason": "unchanged",
-                "source_id": existing_doc.get("source_id"),
+                "source_id": old_source_id,
             })
-            if existing_doc.get("source_id"):
-                source_ids.append(existing_doc["source_id"])
+            if old_source_id:
+                source_ids.append(old_source_id)
             print(f"  Skipping (unchanged): {rel_path}")
             continue
 
-        # File is new or changed - add it
-        action = "updated" if rel_path in existing_docs else "added"
-        print(f"  {'Updating' if action == 'updated' else 'Adding'}: {rel_path} ({len(content):,} chars)...", end=" ")
+        # File is new or changed
+        if old_source_id:
+            # Replace: delete old source first
+            print(f"  Replacing: {rel_path} ({len(content):,} chars)...", end=" ")
+            delete_ok = client.delete_source(old_source_id)
+            if not delete_ok:
+                print("DELETE FAILED")
+                files_synced.append({
+                    "path": rel_path,
+                    "hash": current_hash,
+                    "action": "failed",
+                    "reason": "delete_failed",
+                })
+                continue
+        else:
+            # New file
+            print(f"  Adding: {rel_path} ({len(content):,} chars)...", end=" ")
 
+        # Add the (new or replacement) source
         result = client.add_text_source(notebook.id, content, title=file_path.name)
 
         if result:
             source_ids.append(result["id"])
+            action = "replaced" if old_source_id else "added"
             files_synced.append({
                 "path": rel_path,
                 "hash": current_hash,
                 "action": action,
                 "source_id": result["id"],
+                "old_source_id": old_source_id if old_source_id else None,
             })
+            changes_made += 1
             print("OK")
         else:
             files_synced.append({
                 "path": rel_path,
                 "hash": current_hash,
                 "action": "failed",
+                "reason": "add_failed",
             })
             print("FAILED")
 
     # Summary
     added = sum(1 for f in files_synced if f["action"] == "added")
-    updated = sum(1 for f in files_synced if f["action"] == "updated")
+    replaced = sum(1 for f in files_synced if f["action"] == "replaced")
     skipped = sum(1 for f in files_synced if f["action"] == "skipped")
     failed = sum(1 for f in files_synced if f["action"] == "failed")
 
-    print(f"\nSync complete: {added} added, {updated} updated, {skipped} skipped, {failed} failed")
+    print(f"\nSync complete: {added} added, {replaced} replaced, {skipped} skipped, {failed} failed")
 
     # Update notebook map
     if repo_id:
@@ -294,7 +324,7 @@ def sync_files(
 
         # Update doc entries
         for f in files_synced:
-            if f["action"] in ("added", "updated", "skipped") and f.get("source_id"):
+            if f["action"] in ("added", "replaced", "skipped") and f.get("source_id"):
                 entry["docs"][f["path"]] = {
                     "hash": f.get("hash"),
                     "source_id": f["source_id"],
@@ -304,8 +334,15 @@ def sync_files(
         save_notebook_map(notebook_map)
         print("Updated notebook_map.yaml")
 
-    # Create audio overview if requested
+    # Handle audio overview with prompt
+    should_generate_audio = False
     if create_audio and source_ids:
+        if interactive:
+            should_generate_audio = prompt_for_artifacts(notebook_name, changes_made)
+        else:
+            should_generate_audio = True  # Non-interactive mode: just do it
+
+    if should_generate_audio:
         print("\nGenerating Audio Overview (this may take several minutes)...")
         audio_result = client.create_audio_overview(
             notebook.id,
@@ -326,7 +363,7 @@ def sync_files(
         notebook_name=notebook_name,
         notebook_id=notebook.id,
         files_synced=files_synced,
-        audio_requested=create_audio,
+        audio_requested=should_generate_audio,
         audio_focus=audio_focus,
     )
     print(f"Receipt: {receipt_path}")
@@ -346,16 +383,19 @@ Examples:
     notebooklm-sync --list
 
     # Sync specific files to a notebook
-    notebooklm-sync "C012 Roundtable" docs/*.md
+    notebooklm-sync "C012_round-table" docs/*.md
 
-    # Sync with audio overview
-    notebooklm-sync "C012 Roundtable" docs/*.md --audio
+    # Sync with audio overview (will prompt before generating)
+    notebooklm-sync "C012_round-table" docs/*.md --audio
 
-    # Auto-sync Tier 3 docs from a repo
+    # Auto-sync Tier 3 docs from a repo (notebook name = repo name)
     notebooklm-sync --repo C012_round-table --tier3
 
-    # Full auto-sync with audio
+    # Full auto-sync with audio prompt
     notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
+
+    # Non-interactive mode (no prompts)
+    notebooklm-sync --repo C012_round-table --tier3 --audio --yes
         """,
     )
 
@@ -367,7 +407,7 @@ Examples:
     parser.add_argument(
         "--repo",
         metavar="REPO_ID",
-        help="Repository ID (e.g., C012_round-table). Enables idempotence via notebook_map.yaml",
+        help="Repository ID (e.g., C012_round-table). Notebook name will match repo name exactly.",
     )
     parser.add_argument(
         "--tier3",
@@ -377,7 +417,7 @@ Examples:
     parser.add_argument(
         "notebook_name",
         nargs="?",
-        help="Name of the notebook (creates if doesn't exist). Auto-generated if --repo is used.",
+        help="Name of the notebook (creates if doesn't exist). Ignored if --repo is used.",
     )
     parser.add_argument(
         "files",
@@ -388,12 +428,17 @@ Examples:
     parser.add_argument(
         "--audio",
         action="store_true",
-        help="Generate Audio Overview after adding sources",
+        help="Generate Audio Overview after syncing (will prompt for confirmation)",
     )
     parser.add_argument(
         "--focus",
         default="",
         help="Focus prompt for Audio Overview (e.g., 'Explain the architecture')",
+    )
+    parser.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        help="Non-interactive mode: skip prompts and proceed with audio generation",
     )
 
     args = parser.parse_args()
@@ -413,9 +458,8 @@ Examples:
             print(f"Error: Repository not found at {repo_path}", file=sys.stderr)
             sys.exit(1)
 
-        # Auto-generate notebook name if not provided
-        if not notebook_name:
-            notebook_name = f"{repo_id} Documentation"
+        # Notebook name MUST match repo name exactly
+        notebook_name = repo_id
 
         # Auto-discover Tier 3 docs if requested
         if args.tier3:
@@ -449,6 +493,7 @@ Examples:
         repo_id=repo_id,
         create_audio=args.audio,
         audio_focus=args.focus,
+        interactive=not args.yes,
     )
 
 

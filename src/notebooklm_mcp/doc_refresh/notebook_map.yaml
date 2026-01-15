@@ -106,9 +106,9 @@ notebooks:
         source_id: 86135e06-25d5-423b-a99f-2e6185def531
         updated_at: '2026-01-15T09:00:00.000000Z'
   C001_mission-control:
-    notebook_id: 8cf7f836-fe14-43ad-9efd-9815e481982d
-    notebook_url: https://notebooklm.google.com/notebook/8cf7f836-fe14-43ad-9efd-9815e481982d
-    last_sync: '2026-01-11'
+    notebook_id: eff26155-1234-4581-a614-366f76bb9da8
+    notebook_url: https://notebooklm.google.com/notebook/eff26155-1234-4581-a614-366f76bb9da8
+    last_sync: '2026-01-15'
     tier: kitted
     doc_hashes: {}
     artifacts:
@@ -122,56 +122,208 @@ notebooks:
       explainer_video: 3b403128-da21-4361-bda2-bfbb976a131c
     docs:
       README.md:
-        hash: 74e3450b5eb0
-        source_id: 99c2a4a7-270f-4ab6-b9ae-bd661bc7296a
-        updated_at: '2026-01-10T18:54:03.327405Z'
+        hash: db6d6fb5844c
+        source_id: 85d91c07-ca96-47c5-83e5-060864b6c6e0
+        updated_at: '2026-01-15T21:47:38.243658+00:00'
       META.yaml:
         hash: e0ddf2946fb0
         source_id: dda1de23-35a8-42f7-b023-932c044734a7
         updated_at: '2026-01-10T18:54:03.327405Z'
       CLAUDE.md:
-        hash: 535510d9ae18
-        source_id: b0c45ad0-0c8c-49e3-81bd-ed088eab1a3f
-        updated_at: '2026-01-10T18:54:03.327405Z'
+        hash: e51f11f2869c
+        source_id: fcb58526-3718-4a8e-8451-7635e5c608c6
+        updated_at: '2026-01-15T21:47:38.243663+00:00'
       CHANGELOG.md:
         hash: 6d830d089898
         source_id: f824683d-7cf1-4e6b-92a9-19aa60b99ac1
         updated_at: '2026-01-10T22:06:00.216060Z'
       docs/mission_control/OVERVIEW.md:
-        hash: 02595db78734
-        source_id: 14740082-94ee-43a8-a596-d0ba521b0135
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: 905c47186c66
+        source_id: 69a652cb-d56b-4314-900b-5ca204367a42
+        updated_at: '2026-01-15T21:47:38.243679+00:00'
       docs/mission_control/QUICKSTART.md:
-        hash: 0f09560cdec2
-        source_id: 1bc85d74-70ef-4118-8043-1a293c65f1eb
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: cd21f4333225
+        source_id: fafbe752-26b4-4b15-8387-21f7c7b46ecc
+        updated_at: '2026-01-15T21:47:38.243680+00:00'
       docs/mission_control/ARCHITECTURE.md:
-        hash: 12b0d6487d8b
-        source_id: 200567fc-5830-4a8f-9005-ed641adfdc43
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: 58ef0d551a22
+        source_id: 962ab6e9-f277-4346-8b6f-c7b872476d4d
+        updated_at: '2026-01-15T21:47:38.243671+00:00'
       docs/mission_control/CODE_TOUR.md:
-        hash: 8e5734e05f29
-        source_id: f6822bf0-c930-48b4-9343-cea9f198624c
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: a3bef87f2c7d
+        source_id: 4139ba6d-95bf-4600-abfc-edbb9cfb80b1
+        updated_at: '2026-01-15T21:47:38.243672+00:00'
       docs/mission_control/OPERATIONS.md:
-        hash: 5f41f01ea565
-        source_id: f57c5357-c8da-49c9-b0db-9516b450a959
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: 375331b84576
+        source_id: 6dc4020d-7506-46fe-9dbf-258ededd333d
+        updated_at: '2026-01-15T21:47:38.243677+00:00'
       docs/mission_control/SECURITY_AND_PRIVACY.md:
-        hash: 67543c81fae6
-        source_id: cbd21e4c-4af9-4b9f-95e6-1f33cafdc195
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: 8199edf52774
+        source_id: 9d758eea-555a-440a-a6af-1425db1e6954
+        updated_at: '2026-01-15T21:47:38.243681+00:00'
       docs/mission_control/OPEN_QUESTIONS.md:
-        hash: 62eb5810b6a3
-        source_id: 344ef7db-f380-477a-a556-d0b86d8c95ce
-        updated_at: '2026-01-10T22:30:00.000000Z'
+        hash: 47a229a07cc5
+        source_id: 7284f35a-5acf-41a5-8c8b-e39eea450447
+        updated_at: '2026-01-15T21:47:38.243674+00:00'
       20_receipts/visual_regression_20260111.md:
         source_id: cc5a1953-2489-4fa2-a5a7-eb2de852cad4
         updated_at: '2026-01-11T22:00:00.000000Z'
+      PROJECT_PRIMER.md:
+        hash: 0b5aeb8942c8
+        source_id: ddf253d5-17ff-4884-96e3-3b68c5c4d6f2
+        updated_at: '2026-01-15T21:47:38.243665+00:00'
+      RELATIONS.yaml:
+        hash: be6d774adc75
+        source_id: 765f1724-ab95-43a5-99ad-1927f479b860
+        updated_at: '2026-01-15T21:47:38.243666+00:00'
+      docs/DECISIONS.md:
+        hash: 3df0be31a95b
+        source_id: a2426375-5665-4e7f-afa9-688bdd099d93
+        updated_at: '2026-01-15T21:47:38.243668+00:00'
+      docs/FEED_MAP.md:
+        hash: ed7836e2109c
+        source_id: a84e5f76-bcf3-42f0-90cf-5319c7b0a5c3
+        updated_at: '2026-01-15T21:47:38.243668+00:00'
+      docs/FOLLOWUP.md:
+        hash: 3229008a8a91
+        source_id: f201fe21-618d-4989-aec3-f46f7060f829
+        updated_at: '2026-01-15T21:47:38.243670+00:00'
+      10_docs/ADR-001-ELECTRON-BUNDLING-EXTERNAL-CONFIG.md:
+        hash: dc4b0be79c7b
+        source_id: 3018af32-15ed-4b78-94b6-fe9617f19591
+        updated_at: '2026-01-15T21:47:38.243682+00:00'
+      10_docs/AGENTS.md:
+        hash: aeb279f8490a
+        source_id: 40d0f631-1a2e-447f-9f60-88d735fc717a
+        updated_at: '2026-01-15T21:47:38.243683+00:00'
+      10_docs/AGENTS_REGISTRY.md:
+        hash: 5b4594645c70
+        source_id: 2bc8e702-67b4-4922-a8a2-083d7073810c
+        updated_at: '2026-01-15T21:47:38.243683+00:00'
+      10_docs/AGENT_BRIEFING.md:
+        hash: 012fc928e784
+        source_id: ecbff27b-5846-4c40-86ae-aa25b4a52a24
+        updated_at: '2026-01-15T21:47:38.243684+00:00'
+      10_docs/ARCHITECTURE.md:
+        hash: 49024cb7d90c
+        source_id: 58a5065f-fafe-4ac1-bca5-1a86649024df
+        updated_at: '2026-01-15T21:47:38.243685+00:00'
+      10_docs/CLOUD_CLAUDE_TIMELINE_TASK.md:
+        hash: caf95f0713c6
+        source_id: 8c36c23a-b082-4074-888d-5935023f9277
+        updated_at: '2026-01-15T21:47:38.243686+00:00'
+      10_docs/CLOUD_MODELS_QUICK_REFERENCE.md:
+        hash: 5148a8690cc3
+        source_id: 3bdf0946-4f99-4f18-b4a1-c8d18a8302f8
+        updated_at: '2026-01-15T21:47:38.243687+00:00'
+      10_docs/CLOUD_MODELS_SETUP.md:
+        hash: 50d3acea2f61
+        source_id: 7e1c6691-050e-432f-8767-6b627721bdea
+        updated_at: '2026-01-15T21:47:38.243688+00:00'
+      10_docs/EMERGENCY_PLAN_PHANTOM_LEADS.md:
+        hash: 74ed07d1e643
+        source_id: bf437852-6deb-4ba9-a27f-3c591bf28a28
+        updated_at: '2026-01-15T21:47:38.243689+00:00'
+      10_docs/FUTURE_CLAUDE_CREDENTIAL_ACCESS.md:
+        hash: eb06f5054217
+        source_id: b5c0f257-9f09-44b9-a1c6-44be4edaa8d9
+        updated_at: '2026-01-15T21:47:38.243690+00:00'
+      10_docs/HANDOFF_INSTRUCTIONS.md:
+        hash: ea2e799610fd
+        source_id: 0d8b373c-60f7-410e-9c45-f17b8780c791
+        updated_at: '2026-01-15T21:47:38.243691+00:00'
+      10_docs/HOUSTON_AGENT_SPEC.md:
+        hash: 412cedafa77c
+        source_id: 0e490af6-231d-4487-bc9b-ef145ca190c4
+        updated_at: '2026-01-15T21:47:38.243692+00:00'
+      10_docs/HOUSTON_DJ_CLAUDE_GUIDE.md:
+        hash: 40e265504d77
+        source_id: 1d9f7677-5a56-41d9-8ee3-760e1559744f
+        updated_at: '2026-01-15T21:47:38.243692+00:00'
+      10_docs/HOUSTON_SPEC.md:
+        hash: 1e2499d0298f
+        source_id: c6b99211-e2b7-4247-bc3d-0d1b48888520
+        updated_at: '2026-01-15T21:47:38.243693+00:00'
+      10_docs/MCP_INTEGRATION_QUICKSTART.md:
+        hash: 2d52a32d8bb4
+        source_id: 202d8ebe-636b-464e-ab7f-590701d8059e
+        updated_at: '2026-01-15T21:47:38.243694+00:00'
+      10_docs/META_YAML_SYSTEM.md:
+        hash: 109af2963f28
+        source_id: 61562388-63d3-4550-99cb-b2812ada5261
+        updated_at: '2026-01-15T21:47:38.243695+00:00'
+      10_docs/MISSION_CONTROL_DATA_SOURCES.md:
+        hash: f4366a51b0f6
+        source_id: a88f6451-4b3f-4883-ad33-bb239099ed6a
+        updated_at: '2026-01-15T21:47:38.243695+00:00'
+      10_docs/OLLAMA_DUAL_MODEL_GUIDE.md:
+        hash: e59cde6b1dba
+        source_id: 5c1b31c2-3844-4e81-ba64-acf85614390b
+        updated_at: '2026-01-15T21:47:38.243696+00:00'
+      10_docs/QUICK_REFERENCE.md:
+        hash: b69a73b8ee95
+        source_id: 709b804e-8adf-4701-b082-6b3779580f88
+        updated_at: '2026-01-15T21:47:38.243697+00:00'
+      10_docs/QUICK_START.md:
+        hash: 6439eca32768
+        source_id: f0274a6c-0076-4aeb-8a60-da930abeaf10
+        updated_at: '2026-01-15T21:47:38.243698+00:00'
+      10_docs/SECRET_SCANNER_API_PLAN.md:
+        hash: 840bd3a3573a
+        source_id: 69d231a4-0e5f-41ab-a727-147aa2703631
+        updated_at: '2026-01-15T21:47:38.243698+00:00'
+      10_docs/TECHNICAL_ARCHITECTURE.md:
+        hash: 37a362b79ff2
+        source_id: 03e9ae9a-3265-4ff9-8a94-d3516d4e8654
+        updated_at: '2026-01-15T21:47:38.243699+00:00'
+      10_docs/TROUBLESHOOTING.md:
+        hash: 364a9ab023e1
+        source_id: 43638944-f7e1-4950-bf40-2e11a97fb402
+        updated_at: '2026-01-15T21:47:38.243700+00:00'
+      10_docs/cloud_models.md:
+        hash: 0d670722182e
+        source_id: 6b4d12ca-20dd-4374-b7c8-b885b8f98de7
+        updated_at: '2026-01-15T21:47:38.243701+00:00'
+      10_docs/mission-control-frontend-overview.md:
+        hash: 70e3428381b4
+        source_id: 71a1ae0a-b760-4ae2-b834-5c0cf0bb1fe7
+        updated_at: '2026-01-15T21:47:38.243702+00:00'
+      10_docs/agents/orpheus_requirements.md:
+        hash: f1296f8ee93c
+        source_id: 75217ff4-391a-411f-824d-7d5ca998a3fc
+        updated_at: '2026-01-15T21:47:38.243703+00:00'
+      10_docs/architecture/memory-architecture-plan.md:
+        hash: 8401b8e9013b
+        source_id: 344118f7-afaf-4eb9-8471-f19c4d1b0a3b
+        updated_at: '2026-01-15T21:47:38.243704+00:00'
+      10_docs/_archive/HOUSTON_SPEC.md:
+        hash: 1e2499d0298f
+        source_id: c6332b79-e986-4d5d-9ab9-87c6790d4657
+        updated_at: '2026-01-15T21:47:38.243705+00:00'
+      10_docs/_archive/HYBRID_SETUP_STATUS.md:
+        hash: 06d882d7800e
+        source_id: 078b25f9-9e38-40da-9b71-be4fd77dee38
+        updated_at: '2026-01-15T21:47:38.243706+00:00'
+      10_docs/_archive/MISSION_CONTROL_IDEAS.md:
+        hash: 8a96ed574c4a
+        source_id: 841e7be2-ac9c-40ed-8b6c-cdf12d7bb7b6
+        updated_at: '2026-01-15T21:47:38.243707+00:00'
+      10_docs/_archive/README.md:
+        hash: 9452c511dc23
+        source_id: 803d49ca-c261-45de-bd8a-fd691bb22930
+        updated_at: '2026-01-15T21:47:38.243708+00:00'
+      10_docs/_archive/SECRET_SCANNER_API_PLAN.md:
+        hash: 840bd3a3573a
+        source_id: 86268a15-537e-4c7c-bd70-2760feb01c5d
+        updated_at: '2026-01-15T21:47:38.243709+00:00'
+      10_docs/_archive/TECHNICAL_ARCHITECTURE.md:
+        hash: 9b1e301d9726
+        source_id: c8bc3120-705a-436f-b0bf-d8596565a181
+        updated_at: '2026-01-15T21:47:38.243710+00:00'
   C003_sadb_canonical:
-    notebook_id: 2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
-    notebook_url: https://notebooklm.google.com/notebook/2d7d8c06-b2d5-4f09-acec-cfc355bf4b5b
-    last_sync: '2026-01-11'
+    notebook_id: 27c663b0-b24d-48d3-8967-8b81798d3ccd
+    notebook_url: https://notebooklm.google.com/notebook/27c663b0-b24d-48d3-8967-8b81798d3ccd
+    last_sync: '2026-01-15'
     tier: kitted
     doc_hashes: {}
     artifacts:
@@ -185,9 +337,9 @@ notebooks:
       explainer_video: 2aec5bff-782d-4e98-ba1d-fbc05ba0d152
     docs:
       README.md:
-        hash: db77c86bf581
-        source_id: 882c7c89-1c77-4873-886b-f1edd9cd9d6c
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        hash: 333dbeb5955c
+        source_id: b06a6bba-8fe1-46a3-80ca-b1faa51f223a
+        updated_at: '2026-01-15T21:46:08.110018+00:00'
       CHANGELOG.md:
         hash: 0f6ee933f835
         source_id: 3ac97768-e6a7-4c10-8321-f421d89215a0
@@ -197,37 +349,265 @@ notebooks:
         source_id: 219d96b0-f73d-469e-9caa-5fbcabb37b64
         updated_at: '2026-01-10T18:31:44.523833Z'
       CLAUDE.md:
-        hash: d519da0cb05f
-        source_id: b1b2fd33-9070-4a0e-be1f-b3d999b5e480
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        hash: 1aab2c10c5dd
+        source_id: 50b66caf-c5b6-4c60-b9eb-10fa4ffc1992
+        updated_at: '2026-01-15T21:46:08.110022+00:00'
       docs/sadb_canonical/OVERVIEW.md:
         hash: 83cfcc4bc8e7
         source_id: 9d895d0a-3f6e-4729-8bfb-a9e81a37b812
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110055+00:00'
       docs/sadb_canonical/QUICKSTART.md:
         hash: 7c727369f5c1
         source_id: 41b9bc57-c0ec-430e-9886-859032b56f9b
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110056+00:00'
       docs/sadb_canonical/ARCHITECTURE.md:
         hash: 042b95a4d8db
         source_id: e4074a52-b8ae-4995-b7da-7cdc35b18970
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110051+00:00'
       docs/sadb_canonical/CODE_TOUR.md:
         hash: 2361363b932f
         source_id: c207be8c-58fc-47ea-b1a9-d9b231e77fd3
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110052+00:00'
       docs/sadb_canonical/OPERATIONS.md:
         hash: c84f15ef142d
         source_id: 3956a15a-e614-4f37-8c26-fa0d9accbcce
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110054+00:00'
       docs/sadb_canonical/SECURITY_AND_PRIVACY.md:
         hash: 05322456e3dc
         source_id: 4bff7c68-c7d7-4758-9e7e-58e945faaa21
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110057+00:00'
       docs/sadb_canonical/OPEN_QUESTIONS.md:
         hash: c3b1c472fbc7
         source_id: 20dea237-d0c7-491b-b28c-f6eca592fc2d
-        updated_at: '2026-01-10T22:13:26.464954Z'
+        updated_at: '2026-01-15T21:46:08.110053+00:00'
+      PROJECT_PRIMER.md:
+        hash: 73809968c722
+        source_id: 33116cec-6abe-42e8-a966-7ba245d240c8
+        updated_at: '2026-01-15T21:46:08.110024+00:00'
+      RELATIONS.yaml:
+        hash: 6eb28c48a87b
+        source_id: e9f7788e-2d3b-4fd6-b207-ef692201fbef
+        updated_at: '2026-01-15T21:46:08.110025+00:00'
+      docs/EMOTION_ENCODING_CONTRACT.md:
+        hash: e92cb37d32d0
+        source_id: 7abb6f8b-612e-4bdd-ad52-2e8492874c48
+        updated_at: '2026-01-15T21:46:08.110027+00:00'
+      docs/FEED_CHECKLIST_CANONICAL_EXTRACTION.md:
+        hash: 79bd40cf5fce
+        source_id: 5b2acacb-e0dc-4d51-bae8-0a6e0a130f9c
+        updated_at: '2026-01-15T21:46:08.110028+00:00'
+      docs/HOT_RUNNER_ROADMAP.md:
+        hash: ad7c5068710f
+        source_id: 37969338-2992-4ad6-9818-5bbc698b65e3
+        updated_at: '2026-01-15T21:46:08.110029+00:00'
+      docs/HOT_RUNNER_USER_GUIDE.md:
+        hash: 6a6361adf64b
+        source_id: 0ad4d669-781c-4242-88dd-1f147014848b
+        updated_at: '2026-01-15T21:46:08.110030+00:00'
+      docs/HOT_RUNNER_V1_3_SPEC.md:
+        hash: cd1163fa8150
+        source_id: 8b95d887-3da7-42df-8c2f-33cfd3915c53
+        updated_at: '2026-01-15T21:46:08.110031+00:00'
+      docs/HOT_RUNNER_V1_PLAN.md:
+        hash: 5bc792b421cb
+        source_id: f221aad2-8705-41b0-bb81-75a2a722d6ce
+        updated_at: '2026-01-15T21:46:08.110032+00:00'
+      docs/PIPELINE_CANONICAL_MAP.md:
+        hash: c9f7a0cb27a9
+        source_id: 6b91dce0-1e85-4f75-9d85-e1b2e5c2789b
+        updated_at: '2026-01-15T21:46:08.110033+00:00'
+      docs/PIPELINE_INDEX.md:
+        hash: 7c506109026f
+        source_id: 7af9c4b1-2222-4947-a629-5f65538ca4c5
+        updated_at: '2026-01-15T21:46:08.110034+00:00'
+      docs/PIPELINE_RECEIPTS_INDEX_20260114.md:
+        hash: 3a977ecb6d7b
+        source_id: c30bcba6-b30e-4140-a499-b3681105172d
+        updated_at: '2026-01-15T21:46:08.110035+00:00'
+      docs/PIPELINE_RECENT_CHANGES_20260113.md:
+        hash: a5c7beb249af
+        source_id: 3fe4872d-653b-46d1-94e4-b5f878a8ef47
+        updated_at: '2026-01-15T21:46:08.110036+00:00'
+      docs/PIPELINE_UNIFICATION_PLAN.md:
+        hash: e852f4dd5f5b
+        source_id: 774f3445-e722-45b8-87b7-15385b70c4e2
+        updated_at: '2026-01-15T21:46:08.110037+00:00'
+      docs/REPO_HANDBOOK.md:
+        hash: d13187b0df1c
+        source_id: cf5001f7-0190-41c8-85bd-582f2a359d9e
+        updated_at: '2026-01-15T21:46:08.110038+00:00'
+      docs/REPO_OVERVIEW.md:
+        hash: b2a07beda408
+        source_id: 6bffff05-be59-498f-9103-5e2529f6af2d
+        updated_at: '2026-01-15T21:46:08.110039+00:00'
+      docs/UNIFIED_MULTI_FEED_RUNBOOK.md:
+        hash: fec197b240b3
+        source_id: 02584ce9-2996-4e54-a1f8-0e4a8780a516
+        updated_at: '2026-01-15T21:46:08.110040+00:00'
+      docs/UNIFIED_PIPELINE_RUNBOOK.md:
+        hash: d3ca587d05d0
+        source_id: 38f9ae68-b9a6-4e45-8542-f3c83115816d
+        updated_at: '2026-01-15T21:46:08.110041+00:00'
+      docs/pipeline/GATES.md:
+        hash: 842920c0bbbd
+        source_id: 4807bc1c-391f-4ba6-8599-c2839990b7da
+        updated_at: '2026-01-15T21:46:08.110042+00:00'
+      docs/p190_legacy/INTEGRATION_PLAN.md:
+        hash: 97549bb3f05d
+        source_id: 4ce7d56c-c28d-4849-8afe-994aebb54974
+        updated_at: '2026-01-15T21:46:08.110043+00:00'
+      docs/p190_legacy/M2_EXTRACTION_GUIDE.md:
+        hash: 2fd3feae1c19
+        source_id: 2434ac08-b6b2-49c7-8612-e541c3dafe4f
+        updated_at: '2026-01-15T21:46:08.110045+00:00'
+      docs/p190_legacy/MERGE_INSTRUCTIONS.md:
+        hash: 2a9964ab1db6
+        source_id: 8e3491d8-4d78-428c-b931-be1ca0676241
+        updated_at: '2026-01-15T21:46:08.110046+00:00'
+      docs/p190_legacy/PIPELINE_COMPARISON_C003_VS_P190.md:
+        hash: 92c6d7a2998a
+        source_id: 6882c546-4866-4c3d-bd22-975527808162
+        updated_at: '2026-01-15T21:46:08.110046+00:00'
+      docs/p190_legacy/PIPELINE_COMPARISON_C003_VS_P190_20251209.md:
+        hash: 6adf8c52dc62
+        source_id: 451172fc-4770-4ff2-ab60-bab595e06b24
+        updated_at: '2026-01-15T21:46:08.110047+00:00'
+      docs/p190_legacy/QA_JOBS_OVERVIEW.md:
+        hash: 5f4f2d1dbab8
+        source_id: 99577455-8441-455f-9bf3-74515a33dc64
+        updated_at: '2026-01-15T21:46:08.110048+00:00'
+      docs/_archive_20251229/SADB_PIPELINE_OVERVIEW.md:
+        hash: b8e5c9307ffc
+        source_id: 2ec662a3-3428-4c11-990b-95b73031bed1
+        updated_at: '2026-01-15T21:46:08.110049+00:00'
+      docs/_archive_20251229/docs_pipeline_PIPELINE_OVERVIEW.md:
+        hash: a4f1685abd0d
+        source_id: e592a58f-45b9-4362-9a81-cf4b016606b7
+        updated_at: '2026-01-15T21:46:08.110050+00:00'
+      docs/data_contracts/facts.md:
+        hash: 3a6080c06585
+        source_id: d22bac56-a9f7-43e8-ad6f-a846b868d2c2
+        updated_at: '2026-01-15T21:46:08.110057+00:00'
+      docs/data_contracts/pipeline_diagram.md:
+        hash: d25c05891365
+        source_id: 46a1a4d5-1867-4ad4-af9a-774b805cd760
+        updated_at: '2026-01-15T21:46:08.110058+00:00'
+      docs/archived/CHATGPT_MCP_BLOCKED_20251205.md:
+        hash: c9a630f31594
+        source_id: 37594f00-380d-40cd-b48f-412e0cb7227f
+        updated_at: '2026-01-15T21:46:08.110059+00:00'
+      docs/archived/PHASE4_PROMPT_20251126.md:
+        hash: 44f7926039a3
+        source_id: 22ac88d9-2cb1-4a0a-b1a0-5496b6fe791c
+        updated_at: '2026-01-15T21:46:08.110060+00:00'
+      docs/archived/PHASE4_SESSION_NOTES_20251126.md:
+        hash: 99507cbfbd98
+        source_id: f49a592a-e125-421c-aaa2-0df968d78cf7
+        updated_at: '2026-01-15T21:46:08.110061+00:00'
+      10_docs/ARCHITECTURE.md:
+        hash: 9dbbbec90baf
+        source_id: 48d6375a-fab4-4a37-88f4-385ebd8712d2
+        updated_at: '2026-01-15T21:46:08.110062+00:00'
+      10_docs/BETTY_SADB_ORIENTATION.md:
+        hash: 49693d2556d2
+        source_id: 35b387be-0e71-40f3-a2e1-7f12e8976d92
+        updated_at: '2026-01-15T21:46:08.110063+00:00'
+      10_docs/GATES.md:
+        hash: 8472acf07499
+        source_id: 98b002aa-3d4e-4e0f-8d7f-e5cbadb86e55
+        updated_at: '2026-01-15T21:46:08.110064+00:00'
+      10_docs/GLOSSARY.md:
+        hash: 928999e81907
+        source_id: 28038be4-0602-443e-9682-5e9780761504
+        updated_at: '2026-01-15T21:46:08.110065+00:00'
+      10_docs/HDBSCAN_KMEANS_FALLBACK.md:
+        hash: af4f24ef06d7
+        source_id: 6284a952-e6cf-44d6-abc7-d50a5841d06a
+        updated_at: '2026-01-15T21:46:08.110067+00:00'
+      10_docs/INGEST_FLOW_ORIENTATION.md:
+        hash: d8288772d960
+        source_id: 6ad7e2e5-3af5-4056-b2bf-67ad5fbfe723
+        updated_at: '2026-01-15T21:46:08.110068+00:00'
+      10_docs/INGEST_QUICK_REFERENCE.md:
+        hash: 7871de0362f3
+        source_id: e147714d-9e04-4b4c-861b-2225e9a5652a
+        updated_at: '2026-01-15T21:46:08.110068+00:00'
+      10_docs/J1_EXTRACTION_RECOVERY_NOTES.md:
+        hash: 4cc28a9eac2b
+        source_id: 2d448a9c-6c0a-4cea-87d4-b7ef5f3f62f8
+        updated_at: '2026-01-15T21:46:08.110069+00:00'
+      10_docs/PARKING_LOT.md:
+        hash: 3348efd17a82
+        source_id: 0136e5f9-999b-4e25-9005-42c28aae3f78
+        updated_at: '2026-01-15T21:46:08.110070+00:00'
+      10_docs/PIPELINE_OVERVIEW.md:
+        hash: e710a8de19d0
+        source_id: 8cf03e82-e957-41aa-9fa2-e47503826150
+        updated_at: '2026-01-15T21:46:08.110071+00:00'
+      10_docs/POLICY_SEMANTICS_V0.md:
+        hash: 8f7650a71784
+        source_id: f41d60db-d4ae-4bfc-a36c-7c695d4b33ca
+        updated_at: '2026-01-15T21:46:08.110072+00:00'
+      10_docs/REHYDRATE.md:
+        hash: b43b80d4cbf0
+        source_id: c2e41794-0ea1-47af-a8ea-0d9597bc3c26
+        updated_at: '2026-01-15T21:46:08.110073+00:00'
+      10_docs/RUNBOOK_S0_S1_S2.md:
+        hash: 56a5b040fb5c
+        source_id: 2c99fcd1-e16b-42f7-a4d7-b91dbe9b7317
+        updated_at: '2026-01-15T21:46:08.110074+00:00'
+      10_docs/STAGE_B1_BRAIDED_TIMELINE_CONTRACT.md:
+        hash: df772cbfd00a
+        source_id: 5fa7e166-c182-444b-9bd3-10dfac069cef
+        updated_at: '2026-01-15T21:46:08.110075+00:00'
+      10_docs/STAGE_CHECKLIST.md:
+        hash: 408c096e06e1
+        source_id: 730fe216-b364-4939-8731-b12fe5dbd760
+        updated_at: '2026-01-15T21:46:08.110076+00:00'
+      10_docs/STAGE_DEFS.md:
+        hash: dcdd109bbdc8
+        source_id: 3816da99-aa53-4db4-9bb9-e3a23074dbac
+        updated_at: '2026-01-15T21:46:08.110077+00:00'
+      10_docs/STAGE_J1_FACT_CANDIDATES_CONTRACT.md:
+        hash: d82a54568cfc
+        source_id: 0b2cbfee-029d-4696-9a18-ded8e5d198f9
+        updated_at: '2026-01-15T21:46:08.110078+00:00'
+      10_docs/STAGE_M1_QA_CONTRACT.md:
+        hash: 0f14d077f6df
+        source_id: c3928078-ea4f-48ed-815c-610ae475f947
+        updated_at: '2026-01-15T21:46:08.110079+00:00'
+      10_docs/STAGE_S0_CONTRACT.md:
+        hash: da0bd58c6a88
+        source_id: ba7763e6-394c-472e-b88d-2f054cf1c99c
+        updated_at: '2026-01-15T21:46:08.110081+00:00'
+      10_docs/STAGE_S1_CONTRACT.md:
+        hash: df0d00d0cf9c
+        source_id: 67eed7bb-c916-400e-b62f-7fc9266cd54a
+        updated_at: '2026-01-15T21:46:08.110081+00:00'
+      10_docs/STAGE_S2_CONTRACT.md:
+        hash: d7d171eb8508
+        source_id: 191c1800-b8e4-4f03-a1db-91cf2ae91ca6
+        updated_at: '2026-01-15T21:46:08.110082+00:00'
+      10_docs/STAGE_U1_SEGMENTS_CONTRACT.md:
+        hash: ed13216728c0
+        source_id: d77721d8-18c3-401f-95d4-76108064dbb7
+        updated_at: '2026-01-15T21:46:08.110083+00:00'
+      10_docs/TRUTH_SEMANTICS_V0.md:
+        hash: c4eb98e9e8f9
+        source_id: d3477332-a114-4a69-8159-8f14511b5dd8
+        updated_at: '2026-01-15T21:46:08.110084+00:00'
+      10_docs/WSL_GPU.md:
+        hash: 2ed7f4508a89
+        source_id: b74b65db-5126-4320-bd03-a99a622c9979
+        updated_at: '2026-01-15T21:46:08.110085+00:00'
+      10_docs/XPASTE_CROSS_AGENT_ATTRIBUTION.md:
+        hash: 7963eccbf163
+        source_id: f9b865da-47f6-4099-a790-6d33f6d84da8
+        updated_at: '2026-01-15T21:46:08.110086+00:00'
+      10_docs/Research Claude/SADB_MCP_Cognitive_Mirror_Research_Report.md:
+        hash: 7676c244b816
+        source_id: 9de635e0-c192-472c-b062-6b0a2c59de9c
+        updated_at: '2026-01-15T21:46:08.110087+00:00'
   C018_terminal-insights:
     notebook_id: 53aace5c-a2ec-4463-8ec0-281ab99b6dfe
     notebook_url: https://notebooklm.google.com/notebook/53aace5c-a2ec-4463-8ec0-281ab99b6dfe

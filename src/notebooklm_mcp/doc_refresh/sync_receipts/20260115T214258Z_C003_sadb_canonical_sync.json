@@ -1,0 +1,482 @@
+{
+  "timestamp": "20260115T214258Z",
+  "repo_id": "C003_sadb_canonical",
+  "notebook_name": "C003_sadb_canonical",
+  "notebook_id": "27c663b0-b24d-48d3-8967-8b81798d3ccd",
+  "notebook_url": "https://notebooklm.google.com/notebook/27c663b0-b24d-48d3-8967-8b81798d3ccd",
+  "files_synced": [
+    {
+      "path": "README.md",
+      "hash": "333dbeb5955c",
+      "action": "replaced",
+      "source_id": "b06a6bba-8fe1-46a3-80ca-b1faa51f223a",
+      "old_source_id": "882c7c89-1c77-4873-886b-f1edd9cd9d6c"
+    },
+    {
+      "path": "CLAUDE.md",
+      "hash": "1aab2c10c5dd",
+      "action": "replaced",
+      "source_id": "50b66caf-c5b6-4c60-b9eb-10fa4ffc1992",
+      "old_source_id": "b1b2fd33-9070-4a0e-be1f-b3d999b5e480"
+    },
+    {
+      "path": "PROJECT_PRIMER.md",
+      "hash": "73809968c722",
+      "action": "added",
+      "source_id": "33116cec-6abe-42e8-a966-7ba245d240c8",
+      "old_source_id": null
+    },
+    {
+      "path": "RELATIONS.yaml",
+      "hash": "6eb28c48a87b",
+      "action": "added",
+      "source_id": "e9f7788e-2d3b-4fd6-b207-ef692201fbef",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/EMOTION_ENCODING_CONTRACT.md",
+      "hash": "e92cb37d32d0",
+      "action": "added",
+      "source_id": "7abb6f8b-612e-4bdd-ad52-2e8492874c48",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/FEED_CHECKLIST_CANONICAL_EXTRACTION.md",
+      "hash": "79bd40cf5fce",
+      "action": "added",
+      "source_id": "5b2acacb-e0dc-4d51-bae8-0a6e0a130f9c",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/HOT_RUNNER_ROADMAP.md",
+      "hash": "ad7c5068710f",
+      "action": "added",
+      "source_id": "37969338-2992-4ad6-9818-5bbc698b65e3",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/HOT_RUNNER_USER_GUIDE.md",
+      "hash": "6a6361adf64b",
+      "action": "added",
+      "source_id": "0ad4d669-781c-4242-88dd-1f147014848b",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/HOT_RUNNER_V1_3_SPEC.md",
+      "hash": "cd1163fa8150",
+      "action": "added",
+      "source_id": "8b95d887-3da7-42df-8c2f-33cfd3915c53",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/HOT_RUNNER_V1_PLAN.md",
+      "hash": "5bc792b421cb",
+      "action": "added",
+      "source_id": "f221aad2-8705-41b0-bb81-75a2a722d6ce",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/PIPELINE_CANONICAL_MAP.md",
+      "hash": "c9f7a0cb27a9",
+      "action": "added",
+      "source_id": "6b91dce0-1e85-4f75-9d85-e1b2e5c2789b",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/PIPELINE_INDEX.md",
+      "hash": "7c506109026f",
+      "action": "added",
+      "source_id": "7af9c4b1-2222-4947-a629-5f65538ca4c5",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/PIPELINE_RECEIPTS_INDEX_20260114.md",
+      "hash": "3a977ecb6d7b",
+      "action": "added",
+      "source_id": "c30bcba6-b30e-4140-a499-b3681105172d",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/PIPELINE_RECENT_CHANGES_20260113.md",
+      "hash": "a5c7beb249af",
+      "action": "added",
+      "source_id": "3fe4872d-653b-46d1-94e4-b5f878a8ef47",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/PIPELINE_UNIFICATION_PLAN.md",
+      "hash": "e852f4dd5f5b",
+      "action": "added",
+      "source_id": "774f3445-e722-45b8-87b7-15385b70c4e2",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/REPO_HANDBOOK.md",
+      "hash": "d13187b0df1c",
+      "action": "added",
+      "source_id": "cf5001f7-0190-41c8-85bd-582f2a359d9e",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/REPO_OVERVIEW.md",
+      "hash": "b2a07beda408",
+      "action": "added",
+      "source_id": "6bffff05-be59-498f-9103-5e2529f6af2d",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/UNIFIED_MULTI_FEED_RUNBOOK.md",
+      "hash": "fec197b240b3",
+      "action": "added",
+      "source_id": "02584ce9-2996-4e54-a1f8-0e4a8780a516",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/UNIFIED_PIPELINE_RUNBOOK.md",
+      "hash": "d3ca587d05d0",
+      "action": "added",
+      "source_id": "38f9ae68-b9a6-4e45-8542-f3c83115816d",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/pipeline/GATES.md",
+      "hash": "842920c0bbbd",
+      "action": "added",
+      "source_id": "4807bc1c-391f-4ba6-8599-c2839990b7da",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/INTEGRATION_PLAN.md",
+      "hash": "97549bb3f05d",
+      "action": "added",
+      "source_id": "4ce7d56c-c28d-4849-8afe-994aebb54974",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/M2_EXTRACTION_GUIDE.md",
+      "hash": "2fd3feae1c19",
+      "action": "added",
+      "source_id": "2434ac08-b6b2-49c7-8612-e541c3dafe4f",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/MERGE_INSTRUCTIONS.md",
+      "hash": "2a9964ab1db6",
+      "action": "added",
+      "source_id": "8e3491d8-4d78-428c-b931-be1ca0676241",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/PIPELINE_COMPARISON_C003_VS_P190.md",
+      "hash": "92c6d7a2998a",
+      "action": "added",
+      "source_id": "6882c546-4866-4c3d-bd22-975527808162",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/PIPELINE_COMPARISON_C003_VS_P190_20251209.md",
+      "hash": "6adf8c52dc62",
+      "action": "added",
+      "source_id": "451172fc-4770-4ff2-ab60-bab595e06b24",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/p190_legacy/QA_JOBS_OVERVIEW.md",
+      "hash": "5f4f2d1dbab8",
+      "action": "added",
+      "source_id": "99577455-8441-455f-9bf3-74515a33dc64",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/_archive_20251229/SADB_PIPELINE_OVERVIEW.md",
+      "hash": "b8e5c9307ffc",
+      "action": "added",
+      "source_id": "2ec662a3-3428-4c11-990b-95b73031bed1",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/_archive_20251229/docs_pipeline_PIPELINE_OVERVIEW.md",
+      "hash": "a4f1685abd0d",
+      "action": "added",
+      "source_id": "e592a58f-45b9-4362-9a81-cf4b016606b7",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/sadb_canonical/ARCHITECTURE.md",
+      "hash": "042b95a4d8db",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "e4074a52-b8ae-4995-b7da-7cdc35b18970"
+    },
+    {
+      "path": "docs/sadb_canonical/CODE_TOUR.md",
+      "hash": "2361363b932f",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "c207be8c-58fc-47ea-b1a9-d9b231e77fd3"
+    },
+    {
+      "path": "docs/sadb_canonical/OPEN_QUESTIONS.md",
+      "hash": "c3b1c472fbc7",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "20dea237-d0c7-491b-b28c-f6eca592fc2d"
+    },
+    {
+      "path": "docs/sadb_canonical/OPERATIONS.md",
+      "hash": "c84f15ef142d",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "3956a15a-e614-4f37-8c26-fa0d9accbcce"
+    },
+    {
+      "path": "docs/sadb_canonical/OVERVIEW.md",
+      "hash": "83cfcc4bc8e7",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "9d895d0a-3f6e-4729-8bfb-a9e81a37b812"
+    },
+    {
+      "path": "docs/sadb_canonical/QUICKSTART.md",
+      "hash": "7c727369f5c1",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "41b9bc57-c0ec-430e-9886-859032b56f9b"
+    },
+    {
+      "path": "docs/sadb_canonical/SECURITY_AND_PRIVACY.md",
+      "hash": "05322456e3dc",
+      "action": "skipped",
+      "reason": "unchanged",
+      "source_id": "4bff7c68-c7d7-4758-9e7e-58e945faaa21"
+    },
+    {
+      "path": "docs/data_contracts/facts.md",
+      "hash": "3a6080c06585",
+      "action": "added",
+      "source_id": "d22bac56-a9f7-43e8-ad6f-a846b868d2c2",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/data_contracts/pipeline_diagram.md",
+      "hash": "d25c05891365",
+      "action": "added",
+      "source_id": "46a1a4d5-1867-4ad4-af9a-774b805cd760",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/archived/CHATGPT_MCP_BLOCKED_20251205.md",
+      "hash": "c9a630f31594",
+      "action": "added",
+      "source_id": "37594f00-380d-40cd-b48f-412e0cb7227f",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/archived/PHASE4_PROMPT_20251126.md",
+      "hash": "44f7926039a3",
+      "action": "added",
+      "source_id": "22ac88d9-2cb1-4a0a-b1a0-5496b6fe791c",
+      "old_source_id": null
+    },
+    {
+      "path": "docs/archived/PHASE4_SESSION_NOTES_20251126.md",
+      "hash": "99507cbfbd98",
+      "action": "added",
+      "source_id": "f49a592a-e125-421c-aaa2-0df968d78cf7",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/ARCHITECTURE.md",
+      "hash": "9dbbbec90baf",
+      "action": "added",
+      "source_id": "48d6375a-fab4-4a37-88f4-385ebd8712d2",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/BETTY_SADB_ORIENTATION.md",
+      "hash": "49693d2556d2",
+      "action": "added",
+      "source_id": "35b387be-0e71-40f3-a2e1-7f12e8976d92",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/GATES.md",
+      "hash": "8472acf07499",
+      "action": "added",
+      "source_id": "98b002aa-3d4e-4e0f-8d7f-e5cbadb86e55",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/GLOSSARY.md",
+      "hash": "928999e81907",
+      "action": "added",
+      "source_id": "28038be4-0602-443e-9682-5e9780761504",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/HDBSCAN_KMEANS_FALLBACK.md",
+      "hash": "af4f24ef06d7",
+      "action": "added",
+      "source_id": "6284a952-e6cf-44d6-abc7-d50a5841d06a",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/INGEST_FLOW_ORIENTATION.md",
+      "hash": "d8288772d960",
+      "action": "added",
+      "source_id": "6ad7e2e5-3af5-4056-b2bf-67ad5fbfe723",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/INGEST_QUICK_REFERENCE.md",
+      "hash": "7871de0362f3",
+      "action": "added",
+      "source_id": "e147714d-9e04-4b4c-861b-2225e9a5652a",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/J1_EXTRACTION_RECOVERY_NOTES.md",
+      "hash": "4cc28a9eac2b",
+      "action": "added",
+      "source_id": "2d448a9c-6c0a-4cea-87d4-b7ef5f3f62f8",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/PARKING_LOT.md",
+      "hash": "3348efd17a82",
+      "action": "added",
+      "source_id": "0136e5f9-999b-4e25-9005-42c28aae3f78",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/PIPELINE_OVERVIEW.md",
+      "hash": "e710a8de19d0",
+      "action": "added",
+      "source_id": "8cf03e82-e957-41aa-9fa2-e47503826150",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/POLICY_SEMANTICS_V0.md",
+      "hash": "8f7650a71784",
+      "action": "added",
+      "source_id": "f41d60db-d4ae-4bfc-a36c-7c695d4b33ca",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/REHYDRATE.md",
+      "hash": "b43b80d4cbf0",
+      "action": "added",
+      "source_id": "c2e41794-0ea1-47af-a8ea-0d9597bc3c26",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/RUNBOOK_S0_S1_S2.md",
+      "hash": "56a5b040fb5c",
+      "action": "added",
+      "source_id": "2c99fcd1-e16b-42f7-a4d7-b91dbe9b7317",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_B1_BRAIDED_TIMELINE_CONTRACT.md",
+      "hash": "df772cbfd00a",
+      "action": "added",
+      "source_id": "5fa7e166-c182-444b-9bd3-10dfac069cef",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_CHECKLIST.md",
+      "hash": "408c096e06e1",
+      "action": "added",
+      "source_id": "730fe216-b364-4939-8731-b12fe5dbd760",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_DEFS.md",
+      "hash": "dcdd109bbdc8",
+      "action": "added",
+      "source_id": "3816da99-aa53-4db4-9bb9-e3a23074dbac",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_J1_FACT_CANDIDATES_CONTRACT.md",
+      "hash": "d82a54568cfc",
+      "action": "added",
+      "source_id": "0b2cbfee-029d-4696-9a18-ded8e5d198f9",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_M1_QA_CONTRACT.md",
+      "hash": "0f14d077f6df",
+      "action": "added",
+      "source_id": "c3928078-ea4f-48ed-815c-610ae475f947",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_S0_CONTRACT.md",
+      "hash": "da0bd58c6a88",
+      "action": "added",
+      "source_id": "ba7763e6-394c-472e-b88d-2f054cf1c99c",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_S1_CONTRACT.md",
+      "hash": "df0d00d0cf9c",
+      "action": "added",
+      "source_id": "67eed7bb-c916-400e-b62f-7fc9266cd54a",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_S2_CONTRACT.md",
+      "hash": "d7d171eb8508",
+      "action": "added",
+      "source_id": "191c1800-b8e4-4f03-a1db-91cf2ae91ca6",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/STAGE_U1_SEGMENTS_CONTRACT.md",
+      "hash": "ed13216728c0",
+      "action": "added",
+      "source_id": "d77721d8-18c3-401f-95d4-76108064dbb7",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/TRUTH_SEMANTICS_V0.md",
+      "hash": "c4eb98e9e8f9",
+      "action": "added",
+      "source_id": "d3477332-a114-4a69-8159-8f14511b5dd8",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/WSL_GPU.md",
+      "hash": "2ed7f4508a89",
+      "action": "added",
+      "source_id": "b74b65db-5126-4320-bd03-a99a622c9979",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/XPASTE_CROSS_AGENT_ATTRIBUTION.md",
+      "hash": "7963eccbf163",
+      "action": "added",
+      "source_id": "f9b865da-47f6-4099-a790-6d33f6d84da8",
+      "old_source_id": null
+    },
+    {
+      "path": "10_docs/Research Claude/SADB_MCP_Cognitive_Mirror_Research_Report.md",
+      "hash": "7676c244b816",
+      "action": "added",
+      "source_id": "9de635e0-c192-472c-b062-6b0a2c59de9c",
+      "old_source_id": null
+    }
+  ],
+  "summary": {
+    "total": 66,
+    "added": 57,
+    "replaced": 2,
+    "skipped": 7,
+    "failed": 0
+  },
+  "audio_overview": {
+    "requested": false,
+    "focus": null
+  }
+}
