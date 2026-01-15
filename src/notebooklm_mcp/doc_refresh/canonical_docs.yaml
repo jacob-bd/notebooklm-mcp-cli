@@ -229,8 +229,8 @@ repo_overrides:
     # Has additional docs like TABS.md, ILLUSTRATION_BRIEF.md that are repo-specific
 
   C021_notebooklm-mcp:
-    tier3_root: "docs"
-    # Uses flat docs/ structure
+    tier3_root: "docs/notebooklm_mcp"
+    # Tier 3 docs live in docs/notebooklm_mcp/
 
   # Template for adding new repos:
   # RepoName:
