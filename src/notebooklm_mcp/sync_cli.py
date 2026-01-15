@@ -5,15 +5,27 @@ notebooklm-sync: Deterministic CLI for syncing docs to NotebookLM.
 Usage:
     notebooklm-sync "My Notebook" file1.md file2.md
     notebooklm-sync "My Notebook" docs/*.md --audio
-    notebooklm-sync --list  # List existing notebooks
+    notebooklm-sync --repo C012_round-table --tier3 --audio
+    notebooklm-sync --list
 """
 
 import argparse
+import hashlib
+import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 from .auth import load_cached_tokens
 from .api_client import NotebookLMClient
+
+# Paths
+NOTEBOOK_MAP_PATH = Path(__file__).parent / "doc_refresh" / "notebook_map.yaml"
+RECEIPTS_DIR = Path(__file__).parent / "doc_refresh" / "sync_receipts"
+WORKSPACE_ROOT = Path.home() / "SyncedProjects"
 
 
 def get_client() -> NotebookLMClient:
@@ -29,6 +41,25 @@ def get_client() -> NotebookLMClient:
         csrf_token=tokens.csrf_token,
         session_id=tokens.session_id,
     )
+
+
+def load_notebook_map() -> dict:
+    """Load the notebook map YAML."""
+    if NOTEBOOK_MAP_PATH.exists():
+        return yaml.safe_load(NOTEBOOK_MAP_PATH.read_text()) or {}
+    return {"workspace_root": str(WORKSPACE_ROOT), "notebooks": {}, "sync_log": [], "config": {}}
+
+
+def save_notebook_map(data: dict) -> None:
+    """Save the notebook map YAML."""
+    NOTEBOOK_MAP_PATH.parent.mkdir(parents=True, exist_ok=True)
+    NOTEBOOK_MAP_PATH.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+
+
+def compute_file_hash(file_path: Path, length: int = 12) -> str:
+    """Compute SHA256 hash of file content."""
+    content = file_path.read_bytes()
+    return hashlib.sha256(content).hexdigest()[:length]
 
 
 def list_notebooks() -> None:
@@ -54,17 +85,109 @@ def find_notebook_by_name(client: NotebookLMClient, name: str):
     return None
 
 
+def discover_tier3_docs(repo_path: Path) -> list[Path]:
+    """Auto-discover Tier 3 documentation files in a repo.
+
+    Tier 3 docs include:
+    - README.md, CLAUDE.md, PROJECT_PRIMER.md (root)
+    - docs/*.md (Tier 3 docs folder)
+    - 10_docs/*.md and 10_docs/**/*.md (Betty Protocol docs)
+    """
+    docs = []
+
+    # Root-level docs
+    for name in ["README.md", "CLAUDE.md", "PROJECT_PRIMER.md", "RELATIONS.yaml"]:
+        path = repo_path / name
+        if path.exists():
+            docs.append(path)
+
+    # docs/ folder (standard Tier 3)
+    docs_folder = repo_path / "docs"
+    if docs_folder.exists():
+        docs.extend(sorted(docs_folder.glob("*.md")))
+        # Also check subdirectories
+        for subdir in docs_folder.iterdir():
+            if subdir.is_dir():
+                docs.extend(sorted(subdir.glob("*.md")))
+
+    # 10_docs/ folder (Betty Protocol)
+    betty_docs = repo_path / "10_docs"
+    if betty_docs.exists():
+        docs.extend(sorted(betty_docs.glob("*.md")))
+        # Also check subdirectories
+        for subdir in betty_docs.iterdir():
+            if subdir.is_dir():
+                docs.extend(sorted(subdir.glob("*.md")))
+
+    return docs
+
+
+def write_receipt(
+    repo_id: str | None,
+    notebook_name: str,
+    notebook_id: str,
+    files_synced: list[dict],
+    audio_requested: bool,
+    audio_focus: str,
+) -> Path:
+    """Write a JSON receipt for this sync run."""
+    RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    receipt_name = f"{timestamp}_{repo_id or 'manual'}_sync.json"
+    receipt_path = RECEIPTS_DIR / receipt_name
+
+    receipt = {
+        "timestamp": timestamp,
+        "repo_id": repo_id,
+        "notebook_name": notebook_name,
+        "notebook_id": notebook_id,
+        "notebook_url": f"https://notebooklm.google.com/notebook/{notebook_id}",
+        "files_synced": files_synced,
+        "summary": {
+            "total": len(files_synced),
+            "added": sum(1 for f in files_synced if f["action"] == "added"),
+            "updated": sum(1 for f in files_synced if f["action"] == "updated"),
+            "skipped": sum(1 for f in files_synced if f["action"] == "skipped"),
+            "failed": sum(1 for f in files_synced if f["action"] == "failed"),
+        },
+        "audio_overview": {
+            "requested": audio_requested,
+            "focus": audio_focus if audio_requested else None,
+        },
+    }
+
+    receipt_path.write_text(json.dumps(receipt, indent=2))
+    return receipt_path
+
+
 def sync_files(
     notebook_name: str,
     files: list[Path],
+    repo_id: str | None = None,
     create_audio: bool = False,
     audio_focus: str = "",
 ) -> None:
-    """Sync files to a NotebookLM notebook."""
+    """Sync files to a NotebookLM notebook with idempotence."""
     client = get_client()
+    notebook_map = load_notebook_map()
+
+    # Check if notebook exists in map for this repo
+    existing_entry = notebook_map.get("notebooks", {}).get(repo_id) if repo_id else None
 
     # Check if notebook exists
-    notebook = find_notebook_by_name(client, notebook_name)
+    notebook = None
+    if existing_entry and existing_entry.get("notebook_id"):
+        # Try to use existing notebook from map
+        notebook_id = existing_entry["notebook_id"]
+        notebooks = client.list_notebooks()
+        for nb in notebooks:
+            if nb.id == notebook_id:
+                notebook = nb
+                break
+
+    if not notebook:
+        notebook = find_notebook_by_name(client, notebook_name)
 
     if notebook:
         print(f"Found existing notebook: {notebook_name} ({notebook.source_count} sources)")
@@ -76,26 +199,110 @@ def sync_files(
             sys.exit(1)
         print(f"Created notebook: {notebook.id}")
 
-    # Add each file as a text source
+    # Get existing doc hashes from map for idempotence
+    existing_docs = {}
+    if existing_entry:
+        existing_docs = existing_entry.get("docs", {})
+
+    # Process each file
+    files_synced = []
     source_ids = []
+
     for file_path in files:
         if not file_path.exists():
+            files_synced.append({
+                "path": str(file_path),
+                "action": "skipped",
+                "reason": "not_found",
+            })
             print(f"  Skipping (not found): {file_path}")
             continue
 
         content = file_path.read_text(encoding="utf-8")
-        title = file_path.name
+        current_hash = compute_file_hash(file_path)
 
-        print(f"  Adding: {title} ({len(content):,} chars)...", end=" ")
-        result = client.add_text_source(notebook.id, content, title=title)
+        # Determine relative path for storage
+        if repo_id:
+            try:
+                rel_path = str(file_path.relative_to(WORKSPACE_ROOT / repo_id))
+            except ValueError:
+                rel_path = file_path.name
+        else:
+            rel_path = file_path.name
+
+        # Check if file is unchanged (idempotence)
+        existing_doc = existing_docs.get(rel_path, {})
+        if existing_doc.get("hash") == current_hash:
+            files_synced.append({
+                "path": rel_path,
+                "hash": current_hash,
+                "action": "skipped",
+                "reason": "unchanged",
+                "source_id": existing_doc.get("source_id"),
+            })
+            if existing_doc.get("source_id"):
+                source_ids.append(existing_doc["source_id"])
+            print(f"  Skipping (unchanged): {rel_path}")
+            continue
+
+        # File is new or changed - add it
+        action = "updated" if rel_path in existing_docs else "added"
+        print(f"  {'Updating' if action == 'updated' else 'Adding'}: {rel_path} ({len(content):,} chars)...", end=" ")
+
+        result = client.add_text_source(notebook.id, content, title=file_path.name)
 
         if result:
             source_ids.append(result["id"])
+            files_synced.append({
+                "path": rel_path,
+                "hash": current_hash,
+                "action": action,
+                "source_id": result["id"],
+            })
             print("OK")
         else:
+            files_synced.append({
+                "path": rel_path,
+                "hash": current_hash,
+                "action": "failed",
+            })
             print("FAILED")
 
-    print(f"\nAdded {len(source_ids)}/{len(files)} sources to notebook.")
+    # Summary
+    added = sum(1 for f in files_synced if f["action"] == "added")
+    updated = sum(1 for f in files_synced if f["action"] == "updated")
+    skipped = sum(1 for f in files_synced if f["action"] == "skipped")
+    failed = sum(1 for f in files_synced if f["action"] == "failed")
+
+    print(f"\nSync complete: {added} added, {updated} updated, {skipped} skipped, {failed} failed")
+
+    # Update notebook map
+    if repo_id:
+        if "notebooks" not in notebook_map:
+            notebook_map["notebooks"] = {}
+
+        if repo_id not in notebook_map["notebooks"]:
+            notebook_map["notebooks"][repo_id] = {}
+
+        entry = notebook_map["notebooks"][repo_id]
+        entry["notebook_id"] = notebook.id
+        entry["notebook_url"] = f"https://notebooklm.google.com/notebook/{notebook.id}"
+        entry["last_sync"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if "docs" not in entry:
+            entry["docs"] = {}
+
+        # Update doc entries
+        for f in files_synced:
+            if f["action"] in ("added", "updated", "skipped") and f.get("source_id"):
+                entry["docs"][f["path"]] = {
+                    "hash": f.get("hash"),
+                    "source_id": f["source_id"],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+        save_notebook_map(notebook_map)
+        print("Updated notebook_map.yaml")
 
     # Create audio overview if requested
     if create_audio and source_ids:
@@ -110,9 +317,19 @@ def sync_files(
 
         if audio_result:
             print("Audio Overview generation started!")
-            print(f"Check NotebookLM for progress: https://notebooklm.google.com/notebook/{notebook.id}")
         else:
             print("Failed to start Audio Overview generation.", file=sys.stderr)
+
+    # Write receipt
+    receipt_path = write_receipt(
+        repo_id=repo_id,
+        notebook_name=notebook_name,
+        notebook_id=notebook.id,
+        files_synced=files_synced,
+        audio_requested=create_audio,
+        audio_focus=audio_focus,
+    )
+    print(f"Receipt: {receipt_path}")
 
     print(f"\nNotebook URL: https://notebooklm.google.com/notebook/{notebook.id}")
 
@@ -121,21 +338,24 @@ def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
         prog="notebooklm-sync",
-        description="Sync documentation files to NotebookLM",
+        description="Sync documentation files to NotebookLM (deterministic, with receipts)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
     # List existing notebooks
     notebooklm-sync --list
 
-    # Sync markdown files to a notebook
+    # Sync specific files to a notebook
     notebooklm-sync "C012 Roundtable" docs/*.md
 
-    # Sync and generate audio overview
+    # Sync with audio overview
     notebooklm-sync "C012 Roundtable" docs/*.md --audio
 
-    # Sync with custom audio focus
-    notebooklm-sync "Project Docs" *.md --audio --focus "Explain the architecture"
+    # Auto-sync Tier 3 docs from a repo
+    notebooklm-sync --repo C012_round-table --tier3
+
+    # Full auto-sync with audio
+    notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
         """,
     )
 
@@ -145,9 +365,19 @@ Examples:
         help="List existing notebooks and exit",
     )
     parser.add_argument(
+        "--repo",
+        metavar="REPO_ID",
+        help="Repository ID (e.g., C012_round-table). Enables idempotence via notebook_map.yaml",
+    )
+    parser.add_argument(
+        "--tier3",
+        action="store_true",
+        help="Auto-discover Tier 3 docs (README, CLAUDE, docs/*.md, 10_docs/**/*.md)",
+    )
+    parser.add_argument(
         "notebook_name",
         nargs="?",
-        help="Name of the notebook (creates if doesn't exist)",
+        help="Name of the notebook (creates if doesn't exist). Auto-generated if --repo is used.",
     )
     parser.add_argument(
         "files",
@@ -172,17 +402,38 @@ Examples:
         list_notebooks()
         return
 
-    if not args.notebook_name:
+    # Handle --repo mode
+    repo_id = args.repo
+    files = list(args.files) if args.files else []
+    notebook_name = args.notebook_name
+
+    if repo_id:
+        repo_path = WORKSPACE_ROOT / repo_id
+        if not repo_path.exists():
+            print(f"Error: Repository not found at {repo_path}", file=sys.stderr)
+            sys.exit(1)
+
+        # Auto-generate notebook name if not provided
+        if not notebook_name:
+            notebook_name = f"{repo_id} Documentation"
+
+        # Auto-discover Tier 3 docs if requested
+        if args.tier3:
+            discovered = discover_tier3_docs(repo_path)
+            print(f"Discovered {len(discovered)} Tier 3 docs in {repo_id}")
+            files = discovered
+
+    if not notebook_name:
         parser.print_help()
         sys.exit(1)
 
-    if not args.files:
-        print("Error: No files specified.", file=sys.stderr)
+    if not files:
+        print("Error: No files specified. Use --tier3 with --repo or provide file paths.", file=sys.stderr)
         sys.exit(1)
 
     # Expand glob patterns (shell may not expand them on all platforms)
     expanded_files = []
-    for f in args.files:
+    for f in files:
         if "*" in str(f):
             expanded_files.extend(Path(".").glob(str(f)))
         else:
@@ -193,8 +444,9 @@ Examples:
         sys.exit(1)
 
     sync_files(
-        args.notebook_name,
+        notebook_name,
         expanded_files,
+        repo_id=repo_id,
         create_audio=args.audio,
         audio_focus=args.focus,
     )

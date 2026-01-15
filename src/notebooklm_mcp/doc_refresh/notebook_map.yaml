@@ -10,11 +10,11 @@ notebooks:
       mind_map: 6488bd6b-5c52-48b6-a5d1-741eb39253a7
       briefing_doc: b232d82c-f227-4d26-9329-7e20c2eabf0a
       study_guide: 8f7542dc-9025-4466-89d3-c256b66702ee
-      audio_overview: 06adc943-ad87-49f7-90e5-2f86043e5596  # Regenerated 2026-01-15 with fresh Tier 3 docs
+      audio_overview: 06adc943-ad87-49f7-90e5-2f86043e5596
       infographic: 263aa082-e4ba-424b-b17b-92c3c9714605
       flashcards: 893ae288-32f5-4f81-8589-466f2151fd4d
       quiz: 457fa0f5-0bf8-4fc5-9f20-8ab7fc0e145a
-      explainer_video: 100c48aa-2498-40e7-b252-84479cb7bd71  # paper_craft style
+      explainer_video: 100c48aa-2498-40e7-b252-84479cb7bd71
     docs:
       README.md:
         hash: 53167b2b89cc
@@ -66,11 +66,11 @@ notebooks:
       mind_map: 1908b490-6eb0-4efc-8d88-d4b37a83f27e
       briefing_doc: 4bb4754b-5f7f-4504-bbaa-1073929f8d15
       study_guide: d52db140-c2dd-44ef-8ac5-ea5a084425a0
-      audio_overview: bcc8befb-c61d-4b0e-9ee4-1ec3d4bb571b  # Regenerated 2026-01-15 with refreshed Tier 3 docs
+      audio_overview: bcc8befb-c61d-4b0e-9ee4-1ec3d4bb571b
       infographic: 9752f416-40ad-40c7-a800-30ec5e2e224d
       flashcards: 5adddb3d-9bb2-4381-8f91-a0aa6e226664
       quiz: f472ae96-fecd-4e7f-8c32-0a278e5700b6
-      explainer_video: 6521ac41-4353-4a26-877a-ea40bace7fbf  # whiteboard style
+      explainer_video: 6521ac41-4353-4a26-877a-ea40bace7fbf
     docs:
       README.md:
         source_id: dbef912b-c712-418b-90d9-8dfaad729a03
@@ -119,7 +119,7 @@ notebooks:
       infographic: ce9257db-2ca5-4764-8e3c-788b85132a23
       flashcards: eb63b6e0-a5f6-4fa5-aec0-ebadb04cf982
       quiz: 8178c485-46cb-4402-ab99-8f6863c111ff
-      explainer_video: 3b403128-da21-4361-bda2-bfbb976a131c  # classic style
+      explainer_video: 3b403128-da21-4361-bda2-bfbb976a131c
     docs:
       README.md:
         hash: 74e3450b5eb0
@@ -182,7 +182,7 @@ notebooks:
       infographic: f04e058a-ea57-4834-a526-83740339f0bf
       flashcards: 7df3c168-3f30-4264-a2f4-22f403f05f4b
       quiz: 00164b95-cdf0-4db6-8624-2d4b779e2656
-      explainer_video: 2aec5bff-782d-4e98-ba1d-fbc05ba0d152  # kawaii style
+      explainer_video: 2aec5bff-782d-4e98-ba1d-fbc05ba0d152
     docs:
       README.md:
         hash: db77c86bf581
@@ -242,7 +242,7 @@ notebooks:
       infographic: 0c767e74-7252-4215-9989-9b1f03a48118
       flashcards: a836b0fc-4905-45a4-8949-1cd16b51530b
       quiz: 0ab550ef-dd2e-4269-9880-1093793d28eb
-      explainer_video: 981c8130-4684-4146-a802-54b3d6b7742e  # anime style
+      explainer_video: 981c8130-4684-4146-a802-54b3d6b7742e
     docs:
       README.md:
         hash: 47a2c1bfa15a
@@ -302,11 +302,11 @@ notebooks:
       mind_map: 4e1cf594-cd96-4140-9f02-09d9b6f5c11a
       briefing_doc: ea344ba8-649b-4525-ae5c-c218547e44ea
       study_guide: 865802f1-5e22-48b6-af22-16a6502d4d64
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
       flashcards: 806c5ad6-9ebd-4d83-b68f-0eb7c16e5d07
       quiz: 42069e9f-7f11-42ca-851e-47a299e85030
-      explainer_video: b0d034bc-639f-4ddc-adfc-92f3813a4b27  # watercolor style
+      explainer_video: b0d034bc-639f-4ddc-adfc-92f3813a4b27
     docs:
       README.md:
         hash: f43ef311c763
@@ -366,11 +366,11 @@ notebooks:
       mind_map: f721bba1-6b18-40cd-afae-3da1c2922c61
       briefing_doc: 2d2940f1-788a-4d40-99cd-4180b4995ec6
       study_guide: e2bb259f-a52a-43ce-ad13-0848eaf8f0b7
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
       flashcards: 0bcd53c6-112c-46d5-b885-700715704c51
       quiz: ccab263a-caff-4485-9f50-c84e3083e6ed
-      explainer_video: 838b88c8-6fe7-47e7-8d6c-ce20bf058899  # heritage style
+      explainer_video: 838b88c8-6fe7-47e7-8d6c-ce20bf058899
     docs:
       README.md:
         hash: 3c5170fb43eb
@@ -424,10 +424,10 @@ notebooks:
       mind_map: 299160c0-bac2-4bbb-9689-e067dad8bf94
       briefing_doc: dd86a944-b874-45f4-9d5d-4e810d0960fe
       study_guide: 7b8efc27-0819-431a-92ee-21bea51f1e4a
-      audio_overview: null  # Rate limited - regenerate later
+      audio_overview: null
       flashcards: b24c42ab-d646-40f3-a9ed-4d591156b31f
       quiz: 29696119-e936-4762-b257-be199dd2c0ef
-      infographic: null  # Rate limited - regenerate later
+      infographic: null
     docs:
       README.md:
         hash: 4d6908f60a55
@@ -477,9 +477,9 @@ notebooks:
       study_guide: 9c0d056d-9bff-48e2-b6c4-24a58ab96704
       flashcards: 6fc34528-294d-4ce6-a8c0-7b83a76eb2db
       quiz: fdb8bf2d-9463-4581-8bc5-0fd7c6c4dd58
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
-      explainer_video: 0c048b0a-e5bb-44ef-aed4-862b82f21f38  # retro_print style
+      audio_overview: null
+      infographic: null
+      explainer_video: 0c048b0a-e5bb-44ef-aed4-862b82f21f38
     docs:
       README.md:
         hash: c11f06ee230b
@@ -545,13 +545,13 @@ notebooks:
     tier: kitted
     doc_hashes: {}
     artifacts:
-      mind_map: 9831190a-8214-4dda-93ac-3fd7a5a02a13  # Regenerated with full sources
-      briefing_doc: 71078cc3-ce59-4eee-9198-a99baa0895fa  # Regenerated with full sources
-      study_guide: 4996d1c1-100d-4831-ab19-2836ecef7996  # Regenerated with full sources
-      flashcards: 813fc6ee-73b9-4ea2-a455-d3c2d6eca355  # Regenerated with full sources
-      quiz: 3eaddeb8-9fc3-43b8-b3cc-9fec440ff9bf  # Regenerated with full sources
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      mind_map: 9831190a-8214-4dda-93ac-3fd7a5a02a13
+      briefing_doc: 71078cc3-ce59-4eee-9198-a99baa0895fa
+      study_guide: 4996d1c1-100d-4831-ab19-2836ecef7996
+      flashcards: 813fc6ee-73b9-4ea2-a455-d3c2d6eca355
+      quiz: 3eaddeb8-9fc3-43b8-b3cc-9fec440ff9bf
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         hash: 08d71d061e48
@@ -606,8 +606,8 @@ notebooks:
       study_guide: da5ddd15-c070-4d1e-ba22-d5bb05e79ca9
       flashcards: 1daeabd7-88aa-4521-958b-859688ac6510
       quiz: de1a4db3-c3de-4706-bdc5-3edd84463238
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         hash: 3bec88bbd52e
@@ -625,8 +625,8 @@ notebooks:
       study_guide: 819484a3-a83d-435a-878f-1176af757abd
       flashcards: 565e5d6c-c17c-4394-a679-6e0a0def1283
       quiz: 522fb2d1-7c6a-4a3b-9d5c-46f5a49aab7e
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         source_id: b3396efc-4fe1-4c06-8c15-8ca8c89df2f5
@@ -646,11 +646,11 @@ notebooks:
     artifacts:
       mind_map: 2af7af78-7119-4fd4-a2c1-39b9a37402a3
       briefing_doc: 72e58661-c4a8-454e-a8ab-64a9f7b950aa
-      study_guide: 806cddae-ba57-4818-9efd-36147384672b  # Regenerated 2026-01-12 with tier3_documentation_spec.md
+      study_guide: 806cddae-ba57-4818-9efd-36147384672b
       flashcards: 45db8ad1-e817-478f-b1a7-595422e3fafb
       quiz: 9b11be56-c414-4a89-a81d-6a66c276a9e7
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         source_id: 07ebaa3b-4ab1-4e5d-8c22-3ef8d7aa12c4
@@ -697,9 +697,9 @@ notebooks:
       study_guide: 21b11189-6b2b-4095-a2b0-d75e39fe205c
       flashcards: bffb2ed7-8b57-4f7e-afaf-e14f17decd34
       quiz: fcfe4954-cf51-4b0a-b96f-78f3f7059579
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
-      explainer_video: bd15ce17-c7ed-435d-ae66-fecbeb8e6948  # auto_select style
+      audio_overview: null
+      infographic: null
+      explainer_video: bd15ce17-c7ed-435d-ae66-fecbeb8e6948
     docs:
       README.md:
         source_id: a40320e4-0eb4-4a65-84fa-92b64107a42b
@@ -734,8 +734,8 @@ notebooks:
       study_guide: eee9eddb-5e94-4cac-941d-141bd2e48c43
       flashcards: 27561be4-b885-4e9a-bb98-9fec995394eb
       quiz: 69304caa-0e74-45af-93ae-41641e0c1bc5
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         source_id: 2a6e5075-150a-4d95-83cd-957179f58f6a
@@ -770,8 +770,8 @@ notebooks:
       study_guide: a7d3eb70-4e95-41c9-9641-8e2d80c2429d
       flashcards: 7528f42e-2a4c-4bd8-b0cf-d7f557797609
       quiz: 892a0422-af38-4370-aafa-8c037ac51e1c
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         source_id: ce4ab67f-84e9-41f3-89f0-54d91da6ae4c
@@ -806,8 +806,8 @@ notebooks:
       study_guide: 1cceaf33-e5ca-4ebc-a1bf-edc023d31537
       flashcards: c15fa16a-d5d4-408a-9f2e-adf64d3c57a5
       quiz: 0f1a28e2-ced3-4b56-a418-336214383dfc
-      audio_overview: null  # Rate limited - regenerate later
-      infographic: null  # Rate limited - regenerate later
+      audio_overview: null
+      infographic: null
     docs:
       README.md:
         source_id: 1d8075e5-d966-4817-bcc4-d02e829f5bd1
@@ -824,15 +824,65 @@ notebooks:
       rules_now.md:
         source_id: 76ea6e73-d737-4bbd-a1c6-95663d132a46
         updated_at: '2026-01-11T08:00:00.000000Z'
+  C012_round-table:
+    notebook_id: 6057f1d9-14ec-4809-beea-4a5d4c80deb5
+    notebook_url: https://notebooklm.google.com/notebook/6057f1d9-14ec-4809-beea-4a5d4c80deb5
+    last_sync: '2026-01-15'
+    docs:
+      README.md:
+        hash: 4b52f119d2b1
+        source_id: eb405658-e848-4c06-baa7-57a72d4b3671
+        updated_at: '2026-01-15T21:35:40.228554+00:00'
+      CLAUDE.md:
+        hash: aec02a64c3a2
+        source_id: 82b1a705-654f-4491-a422-050629383f86
+        updated_at: '2026-01-15T21:35:40.228558+00:00'
+      PROJECT_PRIMER.md:
+        hash: 13e29128417f
+        source_id: 9137ec37-1567-4fbd-8879-9cb8e2239548
+        updated_at: '2026-01-15T21:35:40.228559+00:00'
+      RELATIONS.yaml:
+        hash: d64d87458e4f
+        source_id: a29636b1-505c-4a87-9318-0801057c017c
+        updated_at: '2026-01-15T21:35:40.228561+00:00'
+      docs/architecture.md:
+        hash: b66e438f5932
+        source_id: ee6a4f55-8208-40f6-82ab-174135a67582
+        updated_at: '2026-01-15T21:35:40.228561+00:00'
+      docs/concepts.md:
+        hash: d45553a7fab9
+        source_id: 27e09494-2f4d-42e1-9835-9f629ba885dc
+        updated_at: '2026-01-15T21:35:40.228562+00:00'
+      docs/user_guide.md:
+        hash: efe5b21bc8d8
+        source_id: e2ddcd16-1074-41d5-9ab8-4edf3dc43138
+        updated_at: '2026-01-15T21:35:40.228563+00:00'
+      10_docs/Logic_Modes_Engine_PRD_v0.1.md:
+        hash: 7ec90a2a2225
+        source_id: a022e7d4-ae04-475b-86f3-c8fa877a00bf
+        updated_at: '2026-01-15T21:35:40.228564+00:00'
+      10_docs/Roundtable_Implementation_Plan_v0.1.md:
+        hash: 605144fc44b8
+        source_id: 12dd07ae-2f23-4717-8023-16cc7f28f62c
+        updated_at: '2026-01-15T21:35:40.228565+00:00'
+      10_docs/Roundtable_Prompt_Pack_v0.1.md:
+        hash: cd3b2fcf1620
+        source_id: 9a0a41dc-4e53-44f8-9c85-a05d1b5ec686
+        updated_at: '2026-01-15T21:35:40.228566+00:00'
+      10_docs/claims_api_quickstart.md:
+        hash: 3868302da23f
+        source_id: b74e034a-8d9b-4187-a372-889cd6cd7a99
+        updated_at: '2026-01-15T21:35:40.228567+00:00'
+      10_docs/upstream_map.md:
+        hash: a8d598a2d518
+        source_id: e15c62ee-4add-49d8-afa7-a091a56595b5
+        updated_at: '2026-01-15T21:35:40.228567+00:00'
 sync_log: []
 config:
   auto_create_notebook: true
   notebook_title_template: '{repo_name} Documentation Hub'
   hash_algorithm: sha256
   hash_length: 12
-
-# PROJECT_PRIMER.md tracking for LLM Projects
-# See protocols/project_primer_protocol.md in C010_standards
 primers:
   C010_standards:
     enabled: true
@@ -840,7 +890,7 @@ primers:
     repo_sha: 6eff996
     generated_at: '2026-01-12T19:19:59Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:e448a5911ac9'
+    primer_hash: sha256:e448a5911ac9
     platforms:
       chatgpt:
         status: pending
@@ -854,7 +904,7 @@ primers:
     repo_sha: 65a1f29
     generated_at: '2026-01-12T19:20:07Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:cc39d1c6faa7'
+    primer_hash: sha256:cc39d1c6faa7
     platforms:
       chatgpt:
         status: pending
@@ -868,7 +918,7 @@ primers:
     repo_sha: 3f2f45d
     generated_at: '2026-01-12T19:20:07Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:e1baea52dad3'
+    primer_hash: sha256:e1baea52dad3
     platforms:
       chatgpt:
         status: pending
@@ -882,7 +932,7 @@ primers:
     repo_sha: 761f538
     generated_at: '2026-01-12T19:20:07Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:87be4e0a5d46'
+    primer_hash: sha256:87be4e0a5d46
     platforms:
       chatgpt:
         status: pending
@@ -896,7 +946,7 @@ primers:
     repo_sha: d25dbc4
     generated_at: '2026-01-12T16:07:37Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:58f4d2295865'
+    primer_hash: sha256:58f4d2295865
     platforms:
       chatgpt:
         status: pending
@@ -910,7 +960,7 @@ primers:
     repo_sha: 6e9e7a7
     generated_at: '2026-01-12T21:52:13Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:3eb27bfe96e3'
+    primer_hash: sha256:3eb27bfe96e3
     platforms:
       chatgpt:
         status: pending
@@ -924,7 +974,7 @@ primers:
     repo_sha: 337cf4b
     generated_at: '2026-01-12T21:52:13Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:63243804daa7'
+    primer_hash: sha256:63243804daa7
     platforms:
       chatgpt:
         status: pending
@@ -938,7 +988,7 @@ primers:
     repo_sha: 6b430c5
     generated_at: '2026-01-12T21:52:14Z'
     primer_path: PROJECT_PRIMER.md
-    primer_hash: 'sha256:2ce9cf8b8a85'
+    primer_hash: sha256:2ce9cf8b8a85
     platforms:
       chatgpt:
         status: pending
