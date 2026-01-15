@@ -36,6 +36,7 @@ dev = [
 [project.scripts]
 notebooklm-mcp = "notebooklm_mcp.server:main"
 notebooklm-mcp-auth = "notebooklm_mcp.auth_cli:main"
+notebooklm-sync = "notebooklm_mcp.sync_cli:main"
 generate-project-primer = "notebooklm_mcp.primer_gen.cli:main"
 
 [tool.hatch.build.targets.wheel]
