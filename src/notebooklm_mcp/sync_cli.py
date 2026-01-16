@@ -22,9 +22,10 @@ import yaml
 from .auth import load_cached_tokens
 from .api_client import NotebookLMClient
 
-# Paths
-NOTEBOOK_MAP_PATH = Path(__file__).parent / "doc_refresh" / "notebook_map.yaml"
-RECEIPTS_DIR = Path(__file__).parent / "doc_refresh" / "sync_receipts"
+# Paths - use central config directory for consistent access regardless of install method
+CONFIG_DIR = Path.home() / ".config" / "notebooklm-mcp"
+NOTEBOOK_MAP_PATH = CONFIG_DIR / "notebook_map.yaml"
+RECEIPTS_DIR = CONFIG_DIR / "sync_receipts"
 WORKSPACE_ROOT = Path.home() / "SyncedProjects"
 
 
