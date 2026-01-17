@@ -1,0 +1,26 @@
+# Line ending normalization
+# Ensure consistent line endings across platforms
+
+# Shell scripts
+*.sh text eol=lf
+*.command text eol=lf
+
+# Python
+*.py text eol=lf
+
+# YAML/JSON configs
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# PowerShell can use CRLF on Windows
+*.ps1 text
+
+# Binary files
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.gif binary
