@@ -115,6 +115,9 @@ pipx uninstall notebooklm-mcp-server
 
 # Remove cached auth tokens (optional)
 rm -rf ~/.notebooklm-mcp
+
+# Remove sync config and receipts (optional)
+rm -rf ~/.config/notebooklm-mcp
 ```
 
 Also remove from your AI tools:
@@ -325,6 +328,46 @@ Simply chat with your AI tool (Claude Code, Cursor, Gemini CLI) using natural la
 - "Check the status of my audio overview generation"
 
 **Pro tip:** After creating studio content (audio, video, reports, etc.), poll the status to get download URLs when generation completes.
+
+## Using notebooklm-sync CLI
+
+The `notebooklm-sync` command provides deterministic document syncing with receipts and idempotence tracking.
+
+### Features
+
+- **Idempotence**: Uses SHA256 hashes to skip unchanged files
+- **Tier 3 auto-discovery**: Finds README.md, CLAUDE.md, docs/*.md automatically
+- **Sync receipts**: JSON audit trail in `~/.config/notebooklm-mcp/sync_receipts/`
+- **Audio generation**: Optional podcast creation after sync
+
+### Usage Examples
+
+```bash
+# List existing notebooks
+notebooklm-sync --list
+
+# Sync Tier 3 docs from a repo (auto-discovers docs)
+notebooklm-sync --repo C012_round-table --tier3
+
+# Sync with audio overview generation
+notebooklm-sync --repo C012_round-table --tier3 --audio
+
+# Non-interactive mode (skip confirmation prompts)
+notebooklm-sync --repo C012_round-table --tier3 --audio --yes
+
+# Sync specific files to a named notebook
+notebooklm-sync "My Research" docs/*.md
+
+# With custom audio focus
+notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
+```
+
+### Configuration Files
+
+| Path | Purpose |
+|------|---------|
+| `~/.config/notebooklm-mcp/notebook_map.yaml` | Repo-to-notebook mappings |
+| `~/.config/notebooklm-mcp/sync_receipts/` | JSON audit trail for each sync |
 
 ## Authentication Lifecycle
 

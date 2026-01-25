@@ -96,12 +96,46 @@ src/notebooklm_mcp/
 ├── server.py        # FastMCP server with tool definitions
 ├── api_client.py    # Internal API client (reverse-engineered)
 ├── auth.py          # Token caching and validation
-└── auth_cli.py      # CLI for Chrome-based auth (notebooklm-mcp-auth)
+├── auth_cli.py      # CLI for Chrome-based auth (notebooklm-mcp-auth)
+└── sync_cli.py      # CLI for deterministic doc sync (notebooklm-sync)
 ```
 
 **Executables:**
 - `notebooklm-mcp` - The MCP server
 - `notebooklm-mcp-auth` - CLI for extracting tokens (requires closing Chrome)
+- `notebooklm-sync` - CLI for deterministic doc syncing with receipts
+
+### notebooklm-sync CLI
+
+Deterministic document syncing tool with idempotence and audit trails.
+
+**Config paths:**
+- `~/.config/notebooklm-mcp/notebook_map.yaml` - Repo-to-notebook mappings with source IDs
+- `~/.config/notebooklm-mcp/sync_receipts/` - JSON audit trail for each sync run
+
+**Usage modes:**
+
+```bash
+# List notebooks
+notebooklm-sync --list
+
+# Tier 3 auto-discovery (README, CLAUDE, docs/*.md, 10_docs/**/*.md)
+notebooklm-sync --repo C012_round-table --tier3
+
+# With audio overview generation
+notebooklm-sync --repo C012_round-table --tier3 --audio
+
+# Non-interactive (skip prompts)
+notebooklm-sync --repo C012_round-table --tier3 --audio --yes
+
+# Custom focus for audio
+notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
+```
+
+**Key features:**
+- **Idempotence**: SHA256 hashes skip unchanged files
+- **Cross-notebook safety**: Uses mapped notebook_id to prevent accidental source deletion
+- **Receipts**: JSON audit trail with timestamps, actions, and source IDs
 
 ## MCP Tools Provided
 
@@ -177,6 +211,9 @@ When `notebook_list()` returns 0 notebooks (auth dead):
 | video_overview fails "No sources" | API quirk | Retry the request |
 | Mind maps missing from studio_status | Stored separately | Use `mind_map_list()` |
 | Rate limit errors | Free tier: ~50 queries/day | Wait or upgrade to Plus |
+| Sync deletes wrong sources | notebook_map has stale notebook_id | Delete entry from `notebook_map.yaml` |
+| Sync receipts not found | Config dir issue | Check `~/.config/notebooklm-mcp/sync_receipts/` |
+| Tier 3 discovery missing files | Non-standard structure | Use explicit file paths instead |
 
 ## Documentation
 
