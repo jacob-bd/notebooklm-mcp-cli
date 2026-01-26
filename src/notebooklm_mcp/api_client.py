@@ -1731,7 +1731,8 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_POLL_RESEARCH, params)
         url = self._build_url(self.RPC_POLL_RESEARCH, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        # Use explicit timeout to prevent hanging on slow network/API issues
+        response = client.post(url, content=body, timeout=45.0)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)

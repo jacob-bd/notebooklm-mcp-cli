@@ -862,16 +862,40 @@ def research_status(
         client = get_client()
         start_time = time.time()
         polls = 0
+        
+        # Safety: Maximum number of polls to prevent infinite loops
+        # Even with max_wait=0, limit to a reasonable number
+        max_polls = max(100, int(max_wait / poll_interval) * 2) if max_wait > 0 else 1
 
         while True:
             polls += 1
+            
+            # Safety check: Prevent infinite polling
+            if polls > max_polls:
+                return {
+                    "status": "error",
+                    "error": f"Polling limit reached ({max_polls} attempts). Research may have failed or task_id is invalid.",
+                    "polls_made": polls,
+                    "wait_time_seconds": round(time.time() - start_time, 1),
+                }
+            
             result = client.poll_research(notebook_id, target_task_id=task_id)
 
             if not result:
-                # If specific task requested but not found, keep waiting (it might appear)
+                # If specific task requested but not found, check timeout before continuing
                 if task_id:
-                     time.sleep(poll_interval)
-                     continue
+                    elapsed = time.time() - start_time
+                    # Check if we should stop waiting (respect max_wait even when task not found)
+                    if max_wait == 0 or elapsed >= max_wait:
+                        return {
+                            "status": "error",
+                            "error": f"Task {task_id} not found after {round(elapsed, 1)}s. It may not exist or already completed.",
+                            "polls_made": polls,
+                            "wait_time_seconds": round(elapsed, 1),
+                        }
+                    # Wait and retry
+                    time.sleep(poll_interval)
+                    continue
                 return {"status": "error", "error": "Failed to poll research status"}
 
             # If completed or no research found, return immediately
