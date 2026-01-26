@@ -4,9 +4,11 @@
 Internal API. See CLAUDE.md for full documentation.
 """
 
+import asyncio
 import json
 import logging
 import os
+import random
 import re
 import urllib.parse
 from dataclasses import dataclass
@@ -338,23 +340,47 @@ class NotebookLMClient:
         """
         self.cookies = cookies
         self.csrf_token = csrf_token
-        self._client: httpx.Client | None = None
+        self._client: httpx.AsyncClient | None = None
         self._session_id = session_id
 
         # Conversation cache for follow-up queries
         # Key: conversation_id, Value: list of ConversationTurn objects
         self._conversation_cache: dict[str, list[ConversationTurn]] = {}
+        self._cache_lock: asyncio.Lock = asyncio.Lock()
 
         # Request counter for _reqid parameter (required for query endpoint)
-        import random
         self._reqid_counter = random.randint(100000, 999999)
+        self._reqid_lock: asyncio.Lock = asyncio.Lock()
 
-        # Only refresh CSRF token if not provided - tokens actually last hours/days, not minutes
-        # The retry logic in _call_rpc() handles expired tokens gracefully
-        if not self.csrf_token:
-            self._refresh_auth_tokens()
+        # Initialization tracking
+        self._initialized: bool = False
+        self._init_lock: asyncio.Lock = asyncio.Lock()
 
-    def _refresh_auth_tokens(self) -> None:
+        # Auth refresh lock to prevent concurrent refresh attempts
+        self._auth_lock: asyncio.Lock = asyncio.Lock()
+
+        # Client initialization lock to prevent race conditions
+        self._client_lock: asyncio.Lock = asyncio.Lock()
+
+    async def _ensure_initialized(self) -> None:
+        """Ensure client is initialized with valid auth tokens.
+
+        Call this once after creating the client to trigger async token refresh if needed.
+        """
+        async with self._init_lock:
+            if self._initialized:
+                return
+            if not self.csrf_token:
+                await self._refresh_auth_tokens()
+            self._initialized = True
+
+    async def close(self) -> None:
+        """Close the HTTP client and release resources."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    async def _refresh_auth_tokens(self) -> None:
         """
         Refresh CSRF token and session ID by fetching the NotebookLM homepage.
 
@@ -370,9 +396,9 @@ class NotebookLMClient:
         # Must use browser-like headers for page fetch
         headers = {**self._PAGE_FETCH_HEADERS, "Cookie": cookie_header}
 
-        # Use a temporary client for the page fetch
-        with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as client:
-            response = client.get(f"{self.BASE_URL}/")
+        # Use a temporary async client for the page fetch
+        async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=15.0) as client:
+            response = await client.get(f"{self.BASE_URL}/")
 
             # Check if redirected to login (cookies expired)
             if "accounts.google.com" in str(response.url):
@@ -440,24 +466,30 @@ class NotebookLMClient:
             # Silently fail - caching is an optimization, not critical
             pass
 
-    def _get_client(self) -> httpx.Client:
-        """Get or create HTTP client."""
-        if self._client is None:
-            # Build cookie string
-            cookie_str = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create async HTTP client with thread-safe initialization."""
+        async with self._client_lock:
+            if self._client is None:
+                # Build cookie string
+                cookie_str = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
 
-            self._client = httpx.Client(
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                    "Origin": self.BASE_URL,
-                    "Referer": f"{self.BASE_URL}/",
-                    "Cookie": cookie_str,
-                    "X-Same-Domain": "1",
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                },
-                timeout=30.0,
-            )
-        return self._client
+                self._client = httpx.AsyncClient(
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                        "Origin": self.BASE_URL,
+                        "Referer": f"{self.BASE_URL}/",
+                        "Cookie": cookie_str,
+                        "X-Same-Domain": "1",
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                    },
+                    timeout=30.0,
+                    limits=httpx.Limits(
+                        max_connections=100,
+                        max_keepalive_connections=20,
+                        keepalive_expiry=30.0,
+                    ),
+                )
+            return self._client
 
     def _build_request_body(self, rpc_id: str, params: Any) -> str:
         """Build the batchexecute request body."""
@@ -560,7 +592,7 @@ class NotebookLMClient:
                             return result_str
         return None
 
-    def _call_rpc(
+    async def _call_rpc(
         self,
         rpc_id: str,
         params: Any,
@@ -576,7 +608,7 @@ class NotebookLMClient:
         2. Reload cookies from disk (handles external re-authentication)
         3. Run headless auth (auto-refresh if Chrome profile has saved login)
         """
-        client = self._get_client()
+        client = await self._get_client()
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)
 
@@ -606,9 +638,9 @@ class NotebookLMClient:
 
         try:
             if timeout:
-                response = client.post(url, content=body, timeout=timeout)
+                response = await client.post(url, content=body, timeout=timeout)
             else:
-                response = client.post(url, content=body)
+                response = await client.post(url, content=body)
 
             # Log response before raise_for_status (so we can see error responses)
             if logger.isEnabledFor(logging.DEBUG):
@@ -631,34 +663,36 @@ class NotebookLMClient:
                 logger.debug("Response Data:")
                 logger.debug(_format_debug_json(result))
                 logger.debug("=" * 70)
-            
+
             return result
 
         except (httpx.HTTPStatusError, AuthenticationError) as e:
             # Check for auth failures (401/403 HTTP or RPC Error 16)
             is_http_auth = isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (401, 403)
             is_rpc_auth = isinstance(e, AuthenticationError)
-            
+
             if not (is_http_auth or is_rpc_auth):
                 # Not an auth error, re-raise immediately
                 raise
-            
+
             # Layer 1: Refresh CSRF/session tokens (first retry only)
             if not _retry:
                 try:
-                    self._refresh_auth_tokens()
+                    await self._refresh_auth_tokens()
+                    await self.close()
                     self._client = None
-                    return self._call_rpc(rpc_id, params, path, timeout, _retry=True)
+                    return await self._call_rpc(rpc_id, params, path, timeout, _retry=True)
                 except ValueError:
                     # CSRF refresh failed (cookies expired) - continue to layer 2
                     pass
-            
+
             # Layer 2 & 3: Reload from disk or run headless auth (deep retry)
             if not _deep_retry:
                 if self._try_reload_or_headless_auth():
+                    await self.close()
                     self._client = None
-                    return self._call_rpc(rpc_id, params, path, timeout, _retry=True, _deep_retry=True)
-            
+                    return await self._call_rpc(rpc_id, params, path, timeout, _retry=True, _deep_retry=True)
+
             # All recovery attempts failed
             raise AuthenticationError(
                 "Authentication expired. Run 'notebooklm-mcp-auth' in your terminal to re-authenticate."
@@ -730,45 +764,48 @@ class NotebookLMClient:
 
         return history if history else None
 
-    def _cache_conversation_turn(
+    async def _cache_conversation_turn(
         self, conversation_id: str, query: str, answer: str
     ) -> None:
         """Cache a conversation turn for future follow-up queries.
     """
-        if conversation_id not in self._conversation_cache:
-            self._conversation_cache[conversation_id] = []
+        async with self._cache_lock:
+            if conversation_id not in self._conversation_cache:
+                self._conversation_cache[conversation_id] = []
 
-        turn_number = len(self._conversation_cache[conversation_id]) + 1
-        turn = ConversationTurn(query=query, answer=answer, turn_number=turn_number)
-        self._conversation_cache[conversation_id].append(turn)
+            turn_number = len(self._conversation_cache[conversation_id]) + 1
+            turn = ConversationTurn(query=query, answer=answer, turn_number=turn_number)
+            self._conversation_cache[conversation_id].append(turn)
 
-    def clear_conversation(self, conversation_id: str) -> bool:
+    async def clear_conversation(self, conversation_id: str) -> bool:
         """Clear the conversation cache for a specific conversation.
     """
-        if conversation_id in self._conversation_cache:
-            del self._conversation_cache[conversation_id]
-            return True
-        return False
+        async with self._cache_lock:
+            if conversation_id in self._conversation_cache:
+                del self._conversation_cache[conversation_id]
+                return True
+            return False
 
-    def get_conversation_history(self, conversation_id: str) -> list[dict] | None:
+    async def get_conversation_history(self, conversation_id: str) -> list[dict] | None:
         """Get the conversation history for a specific conversation.
     """
-        turns = self._conversation_cache.get(conversation_id)
-        if not turns:
-            return None
+        async with self._cache_lock:
+            turns = self._conversation_cache.get(conversation_id)
+            if not turns:
+                return None
 
-        return [
-            {"turn": t.turn_number, "query": t.query, "answer": t.answer}
-            for t in turns
-        ]
+            return [
+                {"turn": t.turn_number, "query": t.query, "answer": t.answer}
+                for t in turns
+            ]
 
     # =========================================================================
     # Notebook Operations
     # =========================================================================
 
-    def list_notebooks(self, debug: bool = False) -> list[Notebook]:
+    async def list_notebooks(self, debug: bool = False) -> list[Notebook]:
         """List all notebooks."""
-        client = self._get_client()
+        client = await self._get_client()
 
         # [null, 1, null, [2]] - params for list notebooks
         params = [None, 1, None, [2]]
@@ -779,7 +816,7 @@ class NotebookLMClient:
             print(f"[DEBUG] URL: {url}")
             print(f"[DEBUG] Body: {body[:200]}...")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         if debug:
@@ -868,17 +905,17 @@ class NotebookLMClient:
 
         return notebooks
 
-    def get_notebook(self, notebook_id: str) -> dict | None:
+    async def get_notebook(self, notebook_id: str) -> dict | None:
         """Get notebook details."""
-        return self._call_rpc(
+        return await self._call_rpc(
             self.RPC_GET_NOTEBOOK,
             [notebook_id, None, [2], None, 0],
             f"/notebook/{notebook_id}",
         )
 
-    def get_notebook_summary(self, notebook_id: str) -> dict[str, Any]:
+    async def get_notebook_summary(self, notebook_id: str) -> dict[str, Any]:
         """Get AI-generated summary and suggested topics for a notebook."""
-        result = self._call_rpc(
+        result = await self._call_rpc(
             self.RPC_GET_SUMMARY, [notebook_id, [2]], f"/notebook/{notebook_id}"
         )
         summary = ""
@@ -904,9 +941,9 @@ class NotebookLMClient:
             "suggested_topics": suggested_topics,
         }
 
-    def get_source_guide(self, source_id: str) -> dict[str, Any]:
+    async def get_source_guide(self, source_id: str) -> dict[str, Any]:
         """Get AI-generated summary and keywords for a source."""
-        result = self._call_rpc(self.RPC_GET_SOURCE_GUIDE, [[[[source_id]]]], "/")
+        result = await self._call_rpc(self.RPC_GET_SOURCE_GUIDE, [[[[source_id]]]], "/")
         summary = ""
         keywords = []
 
@@ -926,7 +963,7 @@ class NotebookLMClient:
             "keywords": keywords,
         }
 
-    def get_source_fulltext(self, source_id: str) -> dict[str, Any]:
+    async def get_source_fulltext(self, source_id: str) -> dict[str, Any]:
         """Get the full text content of a source.
 
         Returns the raw text content that was indexed from the source,
@@ -940,7 +977,7 @@ class NotebookLMClient:
         """
         # The hizoJc RPC returns source details including full text
         params = [[source_id], [2], [2]]
-        result = self._call_rpc(self.RPC_GET_SOURCE, params, "/")
+        result = await self._call_rpc(self.RPC_GET_SOURCE, params, "/")
 
         content = ""
         title = ""
@@ -1011,10 +1048,10 @@ class NotebookLMClient:
                 texts.extend(self._extract_all_text(item))
         return texts
 
-    def create_notebook(self, title: str = "") -> Notebook | None:
+    async def create_notebook(self, title: str = "") -> Notebook | None:
         """Create a new notebook."""
         params = [title, None, None, [2], [1, None, None, None, None, None, None, None, None, None, [1]]]
-        result = self._call_rpc(self.RPC_CREATE_NOTEBOOK, params)
+        result = await self._call_rpc(self.RPC_CREATE_NOTEBOOK, params)
         if result and isinstance(result, list) and len(result) >= 3:
             notebook_id = result[2]
             if notebook_id:
@@ -1026,13 +1063,13 @@ class NotebookLMClient:
                 )
         return None
 
-    def rename_notebook(self, notebook_id: str, new_title: str) -> bool:
+    async def rename_notebook(self, notebook_id: str, new_title: str) -> bool:
         """Rename a notebook."""
         params = [notebook_id, [[None, None, None, [None, new_title]]]]
-        result = self._call_rpc(self.RPC_RENAME_NOTEBOOK, params, f"/notebook/{notebook_id}")
+        result = await self._call_rpc(self.RPC_RENAME_NOTEBOOK, params, f"/notebook/{notebook_id}")
         return result is not None
 
-    def configure_chat(
+    async def configure_chat(
         self,
         notebook_id: str,
         goal: str = "default",
@@ -1059,7 +1096,7 @@ class NotebookLMClient:
 
         chat_settings = [goal_setting, [length_code]]
         params = [notebook_id, [[None, None, None, None, None, None, None, chat_settings]]]
-        result = self._call_rpc(self.RPC_RENAME_NOTEBOOK, params, f"/notebook/{notebook_id}")
+        result = await self._call_rpc(self.RPC_RENAME_NOTEBOOK, params, f"/notebook/{notebook_id}")
 
         if result:
             # Response format: [title, null, id, emoji, null, metadata, null, [[goal_code, prompt?], [length_code]]]
@@ -1078,7 +1115,7 @@ class NotebookLMClient:
             "error": "Failed to configure chat settings",
         }
 
-    def delete_notebook(self, notebook_id: str) -> bool:
+    async def delete_notebook(self, notebook_id: str) -> bool:
         """Delete a notebook permanently.
 
         WARNING: This action is IRREVERSIBLE. The notebook and all its sources,
@@ -1090,13 +1127,13 @@ class NotebookLMClient:
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
+        client = await self._get_client()
 
         params = [[notebook_id], [2]]
         body = self._build_request_body(self.RPC_DELETE_NOTEBOOK, params)
         url = self._build_url(self.RPC_DELETE_NOTEBOOK)
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1104,16 +1141,16 @@ class NotebookLMClient:
 
         return result is not None
 
-    def check_source_freshness(self, source_id: str) -> bool | None:
+    async def check_source_freshness(self, source_id: str) -> bool | None:
         """Check if a Drive source is fresh (up-to-date with Google Drive).
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         params = [None, [source_id], [2]]
         body = self._build_request_body(self.RPC_CHECK_FRESHNESS, params)
         url = self._build_url(self.RPC_CHECK_FRESHNESS)
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1126,17 +1163,17 @@ class NotebookLMClient:
                 return inner[1]  # true = fresh, false = stale
         return None
 
-    def sync_drive_source(self, source_id: str) -> dict | None:
+    async def sync_drive_source(self, source_id: str) -> dict | None:
         """Sync a Drive source with the latest content from Google Drive.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Sync params: [null, ["source_id"], [2]]
         params = [None, [source_id], [2]]
         body = self._build_request_body(self.RPC_SYNC_DRIVE, params)
         url = self._build_url(self.RPC_SYNC_DRIVE)
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1164,7 +1201,7 @@ class NotebookLMClient:
                 }
         return None
 
-    def delete_source(self, source_id: str) -> bool:
+    async def delete_source(self, source_id: str) -> bool:
         """Delete a source from a notebook permanently.
 
         WARNING: This action is IRREVERSIBLE. The source will be permanently
@@ -1176,7 +1213,7 @@ class NotebookLMClient:
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Delete source params: [[["source_id"]], [2]]
         # Note: Extra nesting compared to delete_notebook
@@ -1184,7 +1221,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_DELETE_SOURCE, params)
         url = self._build_url(self.RPC_DELETE_SOURCE)
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1193,10 +1230,10 @@ class NotebookLMClient:
         # Response is typically [] on success
         return result is not None
 
-    def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict]:
+    async def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict]:
         """Get all sources from a notebook with their type information.
     """
-        result = self.get_notebook(notebook_id)
+        result = await self.get_notebook(notebook_id)
 
         sources = []
         # The notebook data is wrapped in an outer array
@@ -1249,10 +1286,10 @@ class NotebookLMClient:
         return sources
 
 
-    def add_url_source(self, notebook_id: str, url: str) -> dict | None:
+    async def add_url_source(self, notebook_id: str, url: str) -> dict | None:
         """Add a URL (website or YouTube) as a source to a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # URL position differs for YouTube vs regular websites:
         # - YouTube: position 7
@@ -1277,7 +1314,7 @@ class NotebookLMClient:
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+            response = await client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
             response.raise_for_status()
         except httpx.TimeoutException:
             # Large pages may take longer than the timeout but still succeed on backend
@@ -1298,10 +1335,10 @@ class NotebookLMClient:
                 return {"id": source_id, "title": source_title}
         return None
 
-    def add_text_source(self, notebook_id: str, text: str, title: str = "Pasted Text") -> dict | None:
+    async def add_text_source(self, notebook_id: str, text: str, title: str = "Pasted Text") -> dict | None:
         """Add pasted text as a source to a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Text source params structure:
         source_data = [None, [title, text], None, 2, None, None, None, None, None, None, 1]
@@ -1316,7 +1353,7 @@ class NotebookLMClient:
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+            response = await client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
             response.raise_for_status()
         except httpx.TimeoutException:
             return {
@@ -1336,7 +1373,7 @@ class NotebookLMClient:
                 return {"id": source_id, "title": source_title}
         return None
 
-    def add_drive_source(
+    async def add_drive_source(
         self,
         notebook_id: str,
         document_id: str,
@@ -1345,7 +1382,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Add a Google Drive document as a source to a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Drive source params structure (verified from network capture):
         source_data = [
@@ -1372,7 +1409,7 @@ class NotebookLMClient:
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+            response = await client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
             response.raise_for_status()
         except httpx.TimeoutException:
             # Large files may take longer than the timeout but still succeed on backend
@@ -1393,7 +1430,7 @@ class NotebookLMClient:
                 return {"id": source_id, "title": source_title}
         return None
 
-    def query(
+    async def query(
         self,
         notebook_id: str,
         query_text: str,
@@ -1425,11 +1462,11 @@ class NotebookLMClient:
         """
         import uuid
 
-        client = self._get_client()
+        client = await self._get_client()
 
         # If no source_ids provided, get them from the notebook
         if source_ids is None:
-            notebook_data = self.get_notebook(notebook_id)
+            notebook_data = await self.get_notebook(notebook_id)
             source_ids = self._extract_source_ids_from_notebook(notebook_data)
 
         # Determine if this is a new conversation or follow-up
@@ -1468,11 +1505,14 @@ class NotebookLMClient:
         # Add trailing & to match NotebookLM's format
         body = "&".join(body_parts) + "&"
 
-        self._reqid_counter += 100000  # Increment counter
+        async with self._reqid_lock:
+            self._reqid_counter += 100000  # Increment counter
+            reqid = self._reqid_counter
+
         url_params = {
             "bl": os.environ.get("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_20260108.06_p0"),
             "hl": "en",
-            "_reqid": str(self._reqid_counter),
+            "_reqid": str(reqid),
             "rt": "c",
         }
         if self._session_id:
@@ -1481,7 +1521,7 @@ class NotebookLMClient:
         query_string = urllib.parse.urlencode(url_params)
         url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}?{query_string}"
 
-        response = client.post(url, content=body, timeout=timeout)
+        response = await client.post(url, content=body, timeout=timeout)
         response.raise_for_status()
 
         # Parse streaming response
@@ -1489,11 +1529,12 @@ class NotebookLMClient:
 
         # Cache this turn for future follow-ups (only if we got an answer)
         if answer_text:
-            self._cache_conversation_turn(conversation_id, query_text, answer_text)
+            await self._cache_conversation_turn(conversation_id, query_text, answer_text)
 
         # Calculate turn number
-        turns = self._conversation_cache.get(conversation_id, [])
-        turn_number = len(turns)
+        async with self._cache_lock:
+            turns = self._conversation_cache.get(conversation_id, [])
+            turn_number = len(turns)
 
         return {
             "answer": answer_text,
@@ -1654,7 +1695,7 @@ class NotebookLMClient:
 
         return None, False
 
-    def start_research(
+    async def start_research(
         self,
         notebook_id: str,
         query: str,
@@ -1679,7 +1720,7 @@ class NotebookLMClient:
         # Map to internal constants
         source_type = self.RESEARCH_SOURCE_WEB if source_lower == "web" else self.RESEARCH_SOURCE_DRIVE
 
-        client = self._get_client()
+        client = await self._get_client()
 
         if mode_lower == "fast":
             # Fast Research: Ljjv0c
@@ -1693,7 +1734,7 @@ class NotebookLMClient:
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1713,7 +1754,7 @@ class NotebookLMClient:
             }
         return None
 
-    def poll_research(self, notebook_id: str, target_task_id: str | None = None) -> dict | None:
+    async def poll_research(self, notebook_id: str, target_task_id: str | None = None) -> dict | None:
         """Poll for research results.
 
         Call this repeatedly until status is "completed".
@@ -1724,14 +1765,14 @@ class NotebookLMClient:
         Returns:
             Dict with status, sources, and summary when complete
         """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Poll params: [null, null, "notebook_id"]
         params = [None, None, notebook_id]
         body = self._build_request_body(self.RPC_POLL_RESEARCH, params)
         url = self._build_url(self.RPC_POLL_RESEARCH, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1861,7 +1902,7 @@ class NotebookLMClient:
         return research_tasks[0]
 
 
-    def import_research_sources(
+    async def import_research_sources(
         self,
         notebook_id: str,
         task_id: str,
@@ -1872,7 +1913,7 @@ class NotebookLMClient:
         if not sources:
             return []
 
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source array for import
         # Web source: [null, null, ["url", "title"], null, null, null, null, null, null, null, 2]
@@ -1923,7 +1964,7 @@ class NotebookLMClient:
 
         # Import can take a long time when fetching multiple web sources
         # Use 120s timeout instead of the default 30s
-        response = client.post(url, content=body, timeout=120.0)
+        response = await client.post(url, content=body, timeout=120.0)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -1950,7 +1991,7 @@ class NotebookLMClient:
 
         return imported_sources
 
-    def create_audio_overview(
+    async def create_audio_overview(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -1961,7 +2002,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create an Audio Overview (podcast) for a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -1997,7 +2038,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2020,7 +2061,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_video_overview(
+    async def create_video_overview(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2031,7 +2072,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create a Video Overview for a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2066,7 +2107,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2089,17 +2130,17 @@ class NotebookLMClient:
 
         return None
 
-    def poll_studio_status(self, notebook_id: str) -> list[dict]:
+    async def poll_studio_status(self, notebook_id: str) -> list[dict]:
         """Poll for studio content (audio/video overviews) status.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Poll params: [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
         params = [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
         body = self._build_request_body(self.RPC_POLL_STUDIO, params)
         url = self._build_url(self.RPC_POLL_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2230,7 +2271,7 @@ class NotebookLMClient:
 
         return artifacts
 
-    def delete_studio_artifact(self, artifact_id: str, notebook_id: str | None = None) -> bool:
+    async def delete_studio_artifact(self, artifact_id: str, notebook_id: str | None = None) -> bool:
         """Delete a studio artifact (Audio, Video, or Mind Map).
 
         WARNING: This action is IRREVERSIBLE. The artifact will be permanently deleted.
@@ -2245,7 +2286,7 @@ class NotebookLMClient:
         # 1. Try standard deletion (Audio, Video, etc.)
         try:
             params = [[2], artifact_id]
-            result = self._call_rpc(self.RPC_DELETE_STUDIO, params)
+            result = await self._call_rpc(self.RPC_DELETE_STUDIO, params)
             if result is not None:
                 return True
         except Exception:
@@ -2255,11 +2296,11 @@ class NotebookLMClient:
         # 2. Fallback: Try Mind Map deletion if we have a notebook ID
         # Mind maps require a different RPC (AH0mwd) and payload structure
         if notebook_id:
-            return self.delete_mind_map(notebook_id, artifact_id)
+            return await self.delete_mind_map(notebook_id, artifact_id)
 
         return False
 
-    def delete_mind_map(self, notebook_id: str, mind_map_id: str) -> bool:
+    async def delete_mind_map(self, notebook_id: str, mind_map_id: str) -> bool:
         """Delete a Mind Map artifact using the observed two-step RPC sequence.
 
         Args:
@@ -2271,7 +2312,7 @@ class NotebookLMClient:
         """
         # 1. We need the artifact-specific timestamp from LIST_MIND_MAPS
         params = [notebook_id]
-        list_result = self._call_rpc(
+        list_result = await self._call_rpc(
             self.RPC_LIST_MIND_MAPS, params, f"/notebook/{notebook_id}"
         )
 
@@ -2289,17 +2330,17 @@ class NotebookLMClient:
 
         # 2. Step 1: UUID-based deletion (AH0mwd)
         params_v2 = [notebook_id, None, [mind_map_id], [2]]
-        self._call_rpc(self.RPC_DELETE_MIND_MAP, params_v2, f"/notebook/{notebook_id}")
+        await self._call_rpc(self.RPC_DELETE_MIND_MAP, params_v2, f"/notebook/{notebook_id}")
 
         # 3. Step 2: Timestamp-based sync/deletion (cFji9)
         # This is required to fully remove it from the list and avoid "ghosts"
         if timestamp:
             params_v1 = [notebook_id, None, timestamp, [2]]
-            self._call_rpc(self.RPC_LIST_MIND_MAPS, params_v1, f"/notebook/{notebook_id}")
+            await self._call_rpc(self.RPC_LIST_MIND_MAPS, params_v1, f"/notebook/{notebook_id}")
 
         return True
 
-    def create_infographic(
+    async def create_infographic(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2310,7 +2351,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create an Infographic from notebook sources.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2336,7 +2377,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2359,7 +2400,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_slide_deck(
+    async def create_slide_deck(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2370,7 +2411,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create a Slide Deck from notebook sources.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2395,7 +2436,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2418,7 +2459,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_report(
+    async def create_report(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2428,7 +2469,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create a Report from notebook sources.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2513,7 +2554,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2535,7 +2576,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_flashcards(
+    async def create_flashcards(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2543,7 +2584,7 @@ class NotebookLMClient:
     ) -> dict | None:
         """Create Flashcards from notebook sources.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2578,7 +2619,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2599,7 +2640,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_quiz(
+    async def create_quiz(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2614,7 +2655,7 @@ class NotebookLMClient:
             question_count: Number of questions (default: 2)
             difficulty: Difficulty level (default: 2)
         """
-        client = self._get_client()
+        client = await self._get_client()
         sources_nested = [[[sid]] for sid in source_ids]
 
         # Quiz options at position 9: [null, [2, null*6, [question_count, difficulty]]]
@@ -2640,7 +2681,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2662,7 +2703,7 @@ class NotebookLMClient:
 
         return None
 
-    def create_data_table(
+    async def create_data_table(
         self,
         notebook_id: str,
         source_ids: list[str],
@@ -2677,7 +2718,7 @@ class NotebookLMClient:
             description: Description of the data table to create
             language: Language code (default: "en")
         """
-        client = self._get_client()
+        client = await self._get_client()
         sources_nested = [[[sid]] for sid in source_ids]
 
         # Data Table options at position 18: [null, [description, language]]
@@ -2696,7 +2737,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_CREATE_STUDIO, params)
         url = self._build_url(self.RPC_CREATE_STUDIO, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2717,7 +2758,7 @@ class NotebookLMClient:
 
         return None
 
-    def generate_mind_map(
+    async def generate_mind_map(
         self,
         source_ids: list[str],
     ) -> dict | None:
@@ -2732,7 +2773,7 @@ class NotebookLMClient:
         Returns:
             Dict with mind_map_json and generation_id, or None on failure
         """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the nested format: [[[id1]], [[id2]], ...]
         sources_nested = [[[sid]] for sid in source_ids]
@@ -2748,7 +2789,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_GENERATE_MIND_MAP, params)
         url = self._build_url(self.RPC_GENERATE_MIND_MAP)
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2774,7 +2815,7 @@ class NotebookLMClient:
 
         return None
 
-    def save_mind_map(
+    async def save_mind_map(
         self,
         notebook_id: str,
         mind_map_json: str,
@@ -2795,7 +2836,7 @@ class NotebookLMClient:
         Returns:
             Dict with mind_map_id and saved info, or None on failure
         """
-        client = self._get_client()
+        client = await self._get_client()
 
         # Build source IDs in the simpler format: [[id1], [id2], ...]
         sources_simple = [[sid] for sid in source_ids]
@@ -2813,7 +2854,7 @@ class NotebookLMClient:
         body = self._build_request_body(self.RPC_SAVE_MIND_MAP, params)
         url = self._build_url(self.RPC_SAVE_MIND_MAP, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2836,17 +2877,17 @@ class NotebookLMClient:
 
         return None
 
-    def list_mind_maps(self, notebook_id: str) -> list[dict]:
+    async def list_mind_maps(self, notebook_id: str) -> list[dict]:
         """List all Mind Maps in a notebook.
     """
-        client = self._get_client()
+        client = await self._get_client()
 
         params = [notebook_id]
 
         body = self._build_request_body(self.RPC_LIST_MIND_MAPS, params)
         url = self._build_url(self.RPC_LIST_MIND_MAPS, f"/notebook/{notebook_id}")
 
-        response = client.post(url, content=body)
+        response = await client.post(url, content=body)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)
@@ -2861,7 +2902,7 @@ class NotebookLMClient:
                 # Tombstone format: [uuid, null, 2]
                 if not isinstance(mind_map_data, list) or len(mind_map_data) < 2:
                     continue
-                
+
                 details = mind_map_data[1]
                 if details is None:
                     # This is a tombstone/deleted entry, skip it
@@ -2888,13 +2929,6 @@ class NotebookLMClient:
                     })
 
         return mind_maps
-
-
-    def close(self) -> None:
-        """Close the HTTP client."""
-        if self._client:
-            self._client.close()
-            self._client = None
 
 
 def extract_cookies_from_chrome_export(cookie_header: str) -> dict[str, str]:

@@ -1,6 +1,7 @@
 """NotebookLM MCP Server."""
 
 import argparse
+import asyncio
 import functools
 import json
 import logging
@@ -40,114 +41,124 @@ async def health_check(request: Request) -> JSONResponse:
 
 # Global state
 _client: NotebookLMClient | None = None
+_client_lock: asyncio.Lock | None = None
 _query_timeout: float = float(os.environ.get("NOTEBOOKLM_QUERY_TIMEOUT", "120.0"))
+
+
+def _get_lock() -> asyncio.Lock:
+    """Get or create the async lock for client initialization."""
+    global _client_lock
+    if _client_lock is None:
+        _client_lock = asyncio.Lock()
+    return _client_lock
 
 
 def logged_tool():
     """Decorator that combines @mcp.tool() with MCP request/response logging."""
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):
             tool_name = func.__name__
             if mcp_logger.isEnabledFor(logging.DEBUG):
                 # Log request
                 params = {k: v for k, v in kwargs.items() if v is not None}
                 mcp_logger.debug(f"MCP Request: {tool_name}({json.dumps(params, default=str)})")
-            
-            result = func(*args, **kwargs)
-            
+
+            result = await func(*args, **kwargs)
+
             if mcp_logger.isEnabledFor(logging.DEBUG):
                 # Log response (truncate if too long)
                 result_str = json.dumps(result, default=str)
                 if len(result_str) > 1000:
                     result_str = result_str[:1000] + "..."
                 mcp_logger.debug(f"MCP Response: {tool_name} -> {result_str}")
-            
+
             return result
         # Apply the MCP tool decorator
         return mcp.tool()(wrapper)
     return decorator
 
 
-def get_client() -> NotebookLMClient:
+async def get_client() -> NotebookLMClient:
     """Get or create the API client.
 
     Tries environment variables first, falls back to cached tokens from auth CLI.
     """
     global _client
-    if _client is None:
-        import os
+    async with _get_lock():
+        if _client is None:
+            from .auth import load_cached_tokens
 
-        from .auth import load_cached_tokens
+            cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
+            csrf_token = os.environ.get("NOTEBOOKLM_CSRF_TOKEN", "")
+            session_id = os.environ.get("NOTEBOOKLM_SESSION_ID", "")
 
-        cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
-        csrf_token = os.environ.get("NOTEBOOKLM_CSRF_TOKEN", "")
-        session_id = os.environ.get("NOTEBOOKLM_SESSION_ID", "")
-
-        if cookie_header:
-            # Use environment variables
-            cookies = extract_cookies_from_chrome_export(cookie_header)
-        else:
-            # Try cached tokens from auth CLI
-            cached = load_cached_tokens()
-            if cached:
-                cookies = cached.cookies
-                csrf_token = csrf_token or cached.csrf_token
-                session_id = session_id or cached.session_id
+            if cookie_header:
+                # Use environment variables
+                cookies = extract_cookies_from_chrome_export(cookie_header)
             else:
-                raise ValueError(
-                    "No authentication found. Either:\n"
-                    "1. Run 'notebooklm-mcp-auth' to authenticate via Chrome, or\n"
-                    "2. Set NOTEBOOKLM_COOKIES environment variable manually"
-                )
+                # Try cached tokens from auth CLI
+                cached = load_cached_tokens()
+                if cached:
+                    cookies = cached.cookies
+                    csrf_token = csrf_token or cached.csrf_token
+                    session_id = session_id or cached.session_id
+                else:
+                    raise ValueError(
+                        "No authentication found. Either:\n"
+                        "1. Run 'notebooklm-mcp-auth' to authenticate via Chrome, or\n"
+                        "2. Set NOTEBOOKLM_COOKIES environment variable manually"
+                    )
 
-        _client = NotebookLMClient(
-            cookies=cookies,
-            csrf_token=csrf_token,
-            session_id=session_id,
-        )
+            _client = NotebookLMClient(
+                cookies=cookies,
+                csrf_token=csrf_token,
+                session_id=session_id,
+            )
+            # Initialize client (triggers async auth token refresh if needed)
+            await _client._ensure_initialized()
     return _client
 
 
 @logged_tool()
-def refresh_auth() -> dict[str, Any]:
+async def refresh_auth() -> dict[str, Any]:
     """Reload auth tokens from disk or run headless re-authentication.
-    
+
     Call this after running notebooklm-mcp-auth to pick up new tokens,
     or to attempt automatic re-authentication if Chrome profile has saved login.
-    
+
     Returns status indicating if tokens were refreshed successfully.
     """
     global _client
-    
+
     try:
         # Try reloading from disk first
         from .auth import load_cached_tokens
-        
+
         cached = load_cached_tokens()
         if cached:
             # Reset client to force re-initialization with fresh tokens
             _client = None
-            get_client()  # This will use the cached tokens
+            await get_client()  # This will use the cached tokens
             return {
                 "status": "success",
                 "message": "Auth tokens reloaded from disk cache.",
             }
-        
+
         # Try headless auth if Chrome profile exists
         try:
             from .auth_cli import run_headless_auth
             tokens = run_headless_auth()
             if tokens:
                 _client = None
-                get_client()
+                await get_client()
                 return {
-                    "status": "success", 
+                    "status": "success",
                     "message": "Auth tokens refreshed via headless Chrome.",
                 }
         except Exception:
             pass
-        
+
         return {
             "status": "error",
             "error": "No cached tokens found. Run 'notebooklm-mcp-auth' to authenticate.",
@@ -156,20 +167,20 @@ def refresh_auth() -> dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 @logged_tool()
-def notebook_list(max_results: int = 100) -> dict[str, Any]:
+async def notebook_list(max_results: int = 100) -> dict[str, Any]:
     """List all notebooks.
 
     Args:
         max_results: Maximum number of notebooks to return (default: 100)
     """
     try:
-        client = get_client()
-        notebooks = client.list_notebooks()
+        client = await get_client()
+        notebooks = await client.list_notebooks()
 
         # Count owned vs shared notebooks
         owned_count = sum(1 for nb in notebooks if nb.is_owned)
         shared_count = len(notebooks) - owned_count
-        
+
         # Count notebooks shared by me (owned + is_shared=True)
         shared_by_me_count = sum(1 for nb in notebooks if nb.is_owned and nb.is_shared)
 
@@ -198,15 +209,15 @@ def notebook_list(max_results: int = 100) -> dict[str, Any]:
 
 
 @logged_tool()
-def notebook_create(title: str = "") -> dict[str, Any]:
+async def notebook_create(title: str = "") -> dict[str, Any]:
     """Create a new notebook.
 
     Args:
         title: Optional title for the notebook
     """
     try:
-        client = get_client()
-        notebook = client.create_notebook(title=title)
+        client = await get_client()
+        notebook = await client.create_notebook(title=title)
 
         if notebook:
             return {
@@ -223,15 +234,15 @@ def notebook_create(title: str = "") -> dict[str, Any]:
 
 
 @logged_tool()
-def notebook_get(notebook_id: str) -> dict[str, Any]:
+async def notebook_get(notebook_id: str) -> dict[str, Any]:
     """Get notebook details with sources.
 
     Args:
         notebook_id: Notebook UUID
     """
     try:
-        client = get_client()
-        result = client.get_notebook(notebook_id)
+        client = await get_client()
+        result = await client.get_notebook(notebook_id)
 
         # Extract timestamps from metadata if available
         # Result structure: [title, sources, id, emoji, null, metadata, ...]
@@ -257,7 +268,7 @@ def notebook_get(notebook_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def notebook_describe(notebook_id: str) -> dict[str, Any]:
+async def notebook_describe(notebook_id: str) -> dict[str, Any]:
     """Get AI-generated notebook summary with suggested topics.
 
     Args:
@@ -266,8 +277,8 @@ def notebook_describe(notebook_id: str) -> dict[str, Any]:
     Returns: summary (markdown), suggested_topics list
     """
     try:
-        client = get_client()
-        result = client.get_notebook_summary(notebook_id)
+        client = await get_client()
+        result = await client.get_notebook_summary(notebook_id)
 
         return {
             "status": "success",
@@ -278,7 +289,7 @@ def notebook_describe(notebook_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def source_describe(source_id: str) -> dict[str, Any]:
+async def source_describe(source_id: str) -> dict[str, Any]:
     """Get AI-generated source summary with keyword chips.
 
     Args:
@@ -287,8 +298,8 @@ def source_describe(source_id: str) -> dict[str, Any]:
     Returns: summary (markdown with **bold** keywords), keywords list
     """
     try:
-        client = get_client()
-        result = client.get_source_guide(source_id)
+        client = await get_client()
+        result = await client.get_source_guide(source_id)
 
         return {
             "status": "success",
@@ -299,7 +310,7 @@ def source_describe(source_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def source_get_content(source_id: str) -> dict[str, Any]:
+async def source_get_content(source_id: str) -> dict[str, Any]:
     """Get raw text content of a source (no AI processing).
 
     Returns the original indexed text from PDFs, web pages, pasted text,
@@ -311,8 +322,8 @@ def source_get_content(source_id: str) -> dict[str, Any]:
     Returns: content (str), title (str), source_type (str), char_count (int)
     """
     try:
-        client = get_client()
-        result = client.get_source_fulltext(source_id)
+        client = await get_client()
+        result = await client.get_source_fulltext(source_id)
 
         return {
             "status": "success",
@@ -323,7 +334,7 @@ def source_get_content(source_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
+async def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
     """Add URL (website or YouTube) as source.
 
     Args:
@@ -331,8 +342,8 @@ def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
         url: URL to add
     """
     try:
-        client = get_client()
-        result = client.add_url_source(notebook_id, url=url)
+        client = await get_client()
+        result = await client.add_url_source(notebook_id, url=url)
 
         if result:
             return {
@@ -345,7 +356,7 @@ def notebook_add_url(notebook_id: str, url: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def notebook_add_text(
+async def notebook_add_text(
     notebook_id: str,
     text: str,
     title: str = "Pasted Text",
@@ -358,8 +369,8 @@ def notebook_add_text(
         title: Optional title
     """
     try:
-        client = get_client()
-        result = client.add_text_source(notebook_id, text=text, title=title)
+        client = await get_client()
+        result = await client.add_text_source(notebook_id, text=text, title=title)
 
         if result:
             return {
@@ -372,7 +383,7 @@ def notebook_add_text(
 
 
 @logged_tool()
-def notebook_add_drive(
+async def notebook_add_drive(
     notebook_id: str,
     document_id: str,
     title: str,
@@ -402,8 +413,8 @@ def notebook_add_drive(
                 "error": f"Unknown doc_type '{doc_type}'. Use 'doc', 'slides', 'sheets', or 'pdf'.",
             }
 
-        client = get_client()
-        result = client.add_drive_source(
+        client = await get_client()
+        result = await client.add_drive_source(
             notebook_id,
             document_id=document_id,
             title=title,
@@ -428,7 +439,7 @@ def notebook_add_drive(
 
 
 @logged_tool()
-def notebook_query(
+async def notebook_query(
     notebook_id: str,
     query: str,
     source_ids: list[str] | str | None = None,
@@ -459,8 +470,8 @@ def notebook_query(
         # Use provided timeout or fall back to global default
         effective_timeout = timeout if timeout is not None else _query_timeout
 
-        client = get_client()
-        result = client.query(
+        client = await get_client()
+        result = await client.query(
             notebook_id,
             query_text=query,
             source_ids=source_ids,
@@ -480,7 +491,7 @@ def notebook_query(
 
 
 @logged_tool()
-def notebook_delete(
+async def notebook_delete(
     notebook_id: str,
     confirm: bool = False,
 ) -> dict[str, Any]:
@@ -500,8 +511,8 @@ def notebook_delete(
         }
 
     try:
-        client = get_client()
-        result = client.delete_notebook(notebook_id)
+        client = await get_client()
+        result = await client.delete_notebook(notebook_id)
 
         if result:
             return {
@@ -514,7 +525,7 @@ def notebook_delete(
 
 
 @logged_tool()
-def notebook_rename(
+async def notebook_rename(
     notebook_id: str,
     new_title: str,
 ) -> dict[str, Any]:
@@ -525,8 +536,8 @@ def notebook_rename(
         new_title: New title
     """
     try:
-        client = get_client()
-        result = client.rename_notebook(notebook_id, new_title)
+        client = await get_client()
+        result = await client.rename_notebook(notebook_id, new_title)
 
         if result:
             return {
@@ -542,7 +553,7 @@ def notebook_rename(
 
 
 @logged_tool()
-def chat_configure(
+async def chat_configure(
     notebook_id: str,
     goal: str = "default",
     custom_prompt: str | None = None,
@@ -557,8 +568,8 @@ def chat_configure(
         response_length: default|longer|shorter
     """
     try:
-        client = get_client()
-        result = client.configure_chat(
+        client = await get_client()
+        result = await client.configure_chat(
             notebook_id=notebook_id,
             goal=goal,
             custom_prompt=custom_prompt,
@@ -572,7 +583,7 @@ def chat_configure(
 
 
 @logged_tool()
-def source_list_drive(notebook_id: str) -> dict[str, Any]:
+async def source_list_drive(notebook_id: str) -> dict[str, Any]:
     """List sources with types and Drive freshness status.
 
     Use before source_sync_drive to identify stale sources.
@@ -581,8 +592,8 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
         notebook_id: Notebook UUID
     """
     try:
-        client = get_client()
-        sources = client.get_notebook_sources_with_types(notebook_id)
+        client = await get_client()
+        sources = await client.get_notebook_sources_with_types(notebook_id)
 
         # Separate sources by syncability
         syncable_sources = []
@@ -591,7 +602,7 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
         for src in sources:
             if src.get("can_sync"):
                 # Check freshness for syncable sources (Drive docs and Gemini Notes)
-                is_fresh = client.check_source_freshness(src["id"])
+                is_fresh = await client.check_source_freshness(src["id"])
                 src["is_fresh"] = is_fresh
                 src["needs_sync"] = is_fresh is False
                 syncable_sources.append(src)
@@ -626,7 +637,7 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def source_sync_drive(
+async def source_sync_drive(
     source_ids: list[str],
     confirm: bool = False,
 ) -> dict[str, Any]:
@@ -654,14 +665,14 @@ def source_sync_drive(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
         results = []
         synced_count = 0
         failed_count = 0
 
         for source_id in source_ids:
             try:
-                result = client.sync_drive_source(source_id)
+                result = await client.sync_drive_source(source_id)
                 if result:
                     results.append({
                         "source_id": source_id,
@@ -698,7 +709,7 @@ def source_sync_drive(
 
 
 @logged_tool()
-def source_delete(
+async def source_delete(
     source_id: str,
     confirm: bool = False,
 ) -> dict[str, Any]:
@@ -718,8 +729,8 @@ def source_delete(
         }
 
     try:
-        client = get_client()
-        result = client.delete_source(source_id)
+        client = await get_client()
+        result = await client.delete_source(source_id)
 
         if result:
             return {
@@ -732,7 +743,7 @@ def source_delete(
 
 
 @logged_tool()
-def research_start(
+async def research_start(
     query: str,
     source: str = "web",
     mode: str = "fast",
@@ -752,7 +763,7 @@ def research_start(
         title: Title for new notebook
     """
     try:
-        client = get_client()
+        client = await get_client()
 
         # Validate mode + source combination early
         if mode.lower() == "deep" and source.lower() == "drive":
@@ -764,7 +775,7 @@ def research_start(
         # Create notebook if needed
         if not notebook_id:
             notebook_title = title or f"Research: {query[:50]}"
-            notebook = client.create_notebook(title=notebook_title)
+            notebook = await client.create_notebook(title=notebook_title)
             if not notebook:
                 return {"status": "error", "error": "Failed to create notebook"}
             notebook_id = notebook.id
@@ -773,7 +784,7 @@ def research_start(
             created_notebook = False
 
         # Start research
-        result = client.start_research(
+        result = await client.start_research(
             notebook_id=notebook_id,
             query=query,
             source=source,
@@ -839,7 +850,7 @@ def _compact_research_result(result: dict) -> dict:
 
 
 @logged_tool()
-def research_status(
+async def research_status(
     notebook_id: str,
     poll_interval: int = 30,
     max_wait: int = 300,
@@ -859,18 +870,18 @@ def research_status(
     import time
 
     try:
-        client = get_client()
+        client = await get_client()
         start_time = time.time()
         polls = 0
 
         while True:
             polls += 1
-            result = client.poll_research(notebook_id, target_task_id=task_id)
+            result = await client.poll_research(notebook_id, target_task_id=task_id)
 
             if not result:
                 # If specific task requested but not found, keep waiting (it might appear)
                 if task_id:
-                     time.sleep(poll_interval)
+                     await asyncio.sleep(poll_interval)
                      continue
                 return {"status": "error", "error": "Failed to poll research status"}
 
@@ -908,14 +919,14 @@ def research_status(
                 }
 
             # Wait before next poll
-            time.sleep(poll_interval)
+            await asyncio.sleep(poll_interval)
 
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
 
 @logged_tool()
-def research_import(
+async def research_import(
     notebook_id: str,
     task_id: str,
     source_indices: list[int] | None = None,
@@ -930,10 +941,10 @@ def research_import(
         source_indices: Source indices to import (default: all)
     """
     try:
-        client = get_client()
+        client = await get_client()
 
         # First, get the current research results to get source details
-        poll_result = client.poll_research(notebook_id, target_task_id=task_id)
+        poll_result = await client.poll_research(notebook_id, target_task_id=task_id)
 
         if not poll_result or poll_result.get("status") == "no_research":
             return {
@@ -990,7 +1001,7 @@ def research_import(
 
         # Import web/drive sources (skip deep_report sources as they don't have URLs)
         web_sources_to_import = [s for s in sources_to_import if s.get("result_type") != 5]
-        imported = client.import_research_sources(
+        imported = await client.import_research_sources(
             notebook_id=notebook_id,
             task_id=task_id,
             sources=web_sources_to_import,
@@ -999,7 +1010,7 @@ def research_import(
         # If deep research with report, import the report as a text source
         if deep_report_source and report_content:
             try:
-                report_result = client.add_text_source(
+                report_result = await client.add_text_source(
                     notebook_id=notebook_id,
                     title=deep_report_source.get("title", "Deep Research Report"),
                     text=report_content,
@@ -1025,7 +1036,7 @@ def research_import(
 
 
 @logged_tool()
-def audio_overview_create(
+async def audio_overview_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     format: str = "deep_dive",
@@ -1061,7 +1072,7 @@ def audio_overview_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map format string to code
         try:
@@ -1083,7 +1094,7 @@ def audio_overview_create(
 
         # Get source IDs if not provided
         if source_ids is None:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s["id"]]
 
         if not source_ids:
@@ -1092,7 +1103,7 @@ def audio_overview_create(
                 "error": "No sources found in notebook. Add sources before creating audio overview.",
             }
 
-        result = client.create_audio_overview(
+        result = await client.create_audio_overview(
             notebook_id=notebook_id,
             source_ids=source_ids,
             format_code=format_code,
@@ -1119,7 +1130,7 @@ def audio_overview_create(
 
 
 @logged_tool()
-def video_overview_create(
+async def video_overview_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     format: str = "explainer",
@@ -1155,7 +1166,7 @@ def video_overview_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map format string to code
         try:
@@ -1177,7 +1188,7 @@ def video_overview_create(
 
         # Get source IDs if not provided
         if source_ids is None:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s["id"]]
 
         if not source_ids:
@@ -1186,7 +1197,7 @@ def video_overview_create(
                 "error": "No sources found in notebook. Add sources before creating video overview.",
             }
 
-        result = client.create_video_overview(
+        result = await client.create_video_overview(
             notebook_id=notebook_id,
             source_ids=source_ids,
             format_code=format_code,
@@ -1213,19 +1224,19 @@ def video_overview_create(
 
 
 @logged_tool()
-def studio_status(notebook_id: str) -> dict[str, Any]:
+async def studio_status(notebook_id: str) -> dict[str, Any]:
     """Check studio content generation status and get URLs.
 
     Args:
         notebook_id: Notebook UUID
     """
     try:
-        client = get_client()
-        artifacts = client.poll_studio_status(notebook_id)
+        client = await get_client()
+        artifacts = await client.poll_studio_status(notebook_id)
 
         # Also fetch mind maps and add them as artifacts
         try:
-            mind_maps = client.list_mind_maps(notebook_id)
+            mind_maps = await client.list_mind_maps(notebook_id)
             for mm in mind_maps:
                 artifacts.append({
                     "artifact_id": mm.get("mind_map_id"),
@@ -1258,7 +1269,7 @@ def studio_status(notebook_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
-def studio_delete(
+async def studio_delete(
     notebook_id: str,
     artifact_id: str,
     confirm: bool = False,
@@ -1280,8 +1291,8 @@ def studio_delete(
         }
 
     try:
-        client = get_client()
-        result = client.delete_studio_artifact(artifact_id, notebook_id)
+        client = await get_client()
+        result = await client.delete_studio_artifact(artifact_id, notebook_id)
 
         if result:
             return {
@@ -1295,7 +1306,7 @@ def studio_delete(
 
 
 @logged_tool()
-def infographic_create(
+async def infographic_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     orientation: str = "landscape",
@@ -1331,7 +1342,7 @@ def infographic_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map orientation string to code
         try:
@@ -1353,7 +1364,7 @@ def infographic_create(
 
         # Get source IDs if not provided
         if source_ids is None:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s["id"]]
 
         if not source_ids:
@@ -1362,7 +1373,7 @@ def infographic_create(
                 "error": "No sources found in notebook. Add sources before creating infographic.",
             }
 
-        result = client.create_infographic(
+        result = await client.create_infographic(
             notebook_id=notebook_id,
             source_ids=source_ids,
             orientation_code=orientation_code,
@@ -1389,7 +1400,7 @@ def infographic_create(
 
 
 @logged_tool()
-def slide_deck_create(
+async def slide_deck_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     format: str = "detailed_deck",
@@ -1425,7 +1436,7 @@ def slide_deck_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map format string to code
         try:
@@ -1447,7 +1458,7 @@ def slide_deck_create(
 
         # Get source IDs if not provided
         if source_ids is None:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s["id"]]
 
         if not source_ids:
@@ -1456,7 +1467,7 @@ def slide_deck_create(
                 "error": "No sources found in notebook. Add sources before creating slide deck.",
             }
 
-        result = client.create_slide_deck(
+        result = await client.create_slide_deck(
             notebook_id=notebook_id,
             source_ids=source_ids,
             format_code=format_code,
@@ -1483,7 +1494,7 @@ def slide_deck_create(
 
 
 @logged_tool()
-def report_create(
+async def report_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     report_format: str = "Briefing Doc",
@@ -1516,14 +1527,14 @@ def report_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Get source IDs if not provided
         if not source_ids:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s.get("id")]
 
-        result = client.create_report(
+        result = await client.create_report(
             notebook_id=notebook_id,
             source_ids=source_ids,
             report_format=report_format,
@@ -1548,7 +1559,7 @@ def report_create(
 
 
 @logged_tool()
-def flashcards_create(
+async def flashcards_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     difficulty: str = "medium",
@@ -1575,7 +1586,7 @@ def flashcards_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map difficulty to code
         try:
@@ -1588,10 +1599,10 @@ def flashcards_create(
 
         # Get source IDs if not provided
         if not source_ids:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s.get("id")]
-            
-        result = client.create_flashcards(
+
+        result = await client.create_flashcards(
             notebook_id=notebook_id,
             source_ids=source_ids,
             difficulty_code=difficulty_code,
@@ -1613,7 +1624,7 @@ def flashcards_create(
 
 
 @logged_tool()
-def quiz_create(
+async def quiz_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     question_count: int = 2,
@@ -1643,7 +1654,7 @@ def quiz_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Map difficulty to code
         try:
@@ -1655,10 +1666,10 @@ def quiz_create(
             }
 
         if not source_ids:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s.get("id")]
 
-        result = client.create_quiz(
+        result = await client.create_quiz(
             notebook_id=notebook_id,
             source_ids=source_ids,
             question_count=question_count,
@@ -1682,7 +1693,7 @@ def quiz_create(
 
 
 @logged_tool()
-def data_table_create(
+async def data_table_create(
     notebook_id: str,
     description: str,
     source_ids: list[str] | None = None,
@@ -1712,13 +1723,13 @@ def data_table_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         if not source_ids:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s.get("id")]
 
-        result = client.create_data_table(
+        result = await client.create_data_table(
             notebook_id=notebook_id,
             source_ids=source_ids,
             description=description,
@@ -1741,7 +1752,7 @@ def data_table_create(
 
 
 @logged_tool()
-def mind_map_create(
+async def mind_map_create(
     notebook_id: str,
     source_ids: list[str] | None = None,
     title: str = "Mind Map",
@@ -1768,20 +1779,20 @@ def mind_map_create(
         }
 
     try:
-        client = get_client()
+        client = await get_client()
 
         # Get source IDs if not provided
         if not source_ids:
-            sources = client.get_notebook_sources_with_types(notebook_id)
+            sources = await client.get_notebook_sources_with_types(notebook_id)
             source_ids = [s["id"] for s in sources if s.get("id")]
 
         # Step 1: Generate the mind map
-        gen_result = client.generate_mind_map(source_ids=source_ids)
+        gen_result = await client.generate_mind_map(source_ids=source_ids)
         if not gen_result or not gen_result.get("mind_map_json"):
             return {"status": "error", "error": "Failed to generate mind map"}
 
         # Step 2: Save the mind map to the notebook
-        save_result = client.save_mind_map(
+        save_result = await client.save_mind_map(
             notebook_id=notebook_id,
             mind_map_json=gen_result["mind_map_json"],
             source_ids=source_ids,
@@ -1830,7 +1841,7 @@ ESSENTIAL_COOKIES = [
 
 
 @logged_tool()
-def save_auth_tokens(
+async def save_auth_tokens(
     cookies: str,
     csrf_token: str = "",
     session_id: str = "",
