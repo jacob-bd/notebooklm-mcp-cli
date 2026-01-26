@@ -731,6 +731,175 @@ def source_delete(
         return {"status": "error", "error": str(e)}
 
 
+
+@logged_tool()
+def download_audio(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Audio Overview to a file.
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the audio file (MP4/MP3)
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_audio(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_video(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Video Overview to a file.
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the video file (MP4)
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_video(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_report(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Report to a file (Markdown).
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the markdown file
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_report(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_mind_map(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Mind Map to a file (JSON).
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the JSON file
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_mind_map(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_slide_deck(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Slide Deck to a file (PDF).
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the PDF file
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_slide_deck(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_infographic(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Infographic to a file (PNG).
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the PNG file
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_infographic(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def download_data_table(
+    notebook_id: str,
+    output_path: str,
+    artifact_id: str | None = None,
+) -> dict[str, Any]:
+    """Download Data Table to a file (CSV).
+
+    Args:
+        notebook_id: Notebook UUID
+        output_path: Path to save the CSV file
+        artifact_id: Optional specific artifact ID
+    """
+    try:
+        client = get_client()
+        saved_path = client.download_data_table(notebook_id, output_path, artifact_id)
+        return {
+            "status": "success",
+            "path": saved_path,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 @logged_tool()
 def research_start(
     query: str,

@@ -11,6 +11,7 @@ import re
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 
@@ -117,6 +118,39 @@ def _parse_url_params(url: str) -> dict[str, Any]:
         return {k: v[0] if len(v) == 1 else v for k, v in params.items()}
     except Exception:
         return {}
+
+
+class NotebookLMError(Exception):
+    """Base exception for NotebookLM errors."""
+    pass
+
+
+class ArtifactError(NotebookLMError):
+    """Base exception for artifact errors."""
+    pass
+
+
+class ArtifactNotReadyError(ArtifactError):
+    """Raised when an artifact is not ready for download."""
+    def __init__(self, artifact_type: str, artifact_id: str | None = None):
+        msg = f"{artifact_type} is not ready or does not exist"
+        if artifact_id:
+            msg += f" (ID: {artifact_id})"
+        super().__init__(msg)
+
+
+class ArtifactParseError(ArtifactError):
+    """Raised when artifact metadata cannot be parsed."""
+    def __init__(self, artifact_type: str, details: str = "", cause: Exception | None = None):
+        msg = f"Failed to parse {artifact_type} metadata: {details}"
+        super().__init__(msg)
+        self.__cause__ = cause
+
+
+class ArtifactDownloadError(ArtifactError):
+    """Raised when artifact download fails."""
+    def __init__(self, artifact_type: str, details: str = ""):
+        super().__init__(f"Failed to download {artifact_type}: {details}")
 
 
 class AuthenticationError(Exception):
@@ -327,12 +361,12 @@ class NotebookLMClient:
         "sec-ch-ua-platform": '"macOS"',
     }
 
-    def __init__(self, cookies: dict[str, str], csrf_token: str = "", session_id: str = ""):
+    def __init__(self, cookies: dict[str, str] | list[dict], csrf_token: str = "", session_id: str = ""):
         """
         Initialize the client.
 
         Args:
-            cookies: Dict of Google auth cookies (SID, SSID, HSID, APISID, SAPISID, etc.)
+            cookies: Dict of Google auth cookies or List of cookie dicts (from CDP)
             csrf_token: CSRF token (optional - will be auto-extracted from page if not provided)
             session_id: Session ID (optional - will be auto-extracted from page if not provided)
         """
@@ -354,6 +388,48 @@ class NotebookLMClient:
         if not self.csrf_token:
             self._refresh_auth_tokens()
 
+    def _get_httpx_cookies(self) -> httpx.Cookies:
+        """Convert cookies to httpx.Cookies object (preserving domains)."""
+        cookies = httpx.Cookies()
+        
+        # Determine if we have raw list[dict] or simple dict[str, str]
+        if isinstance(self.cookies, list):
+            for cookie in self.cookies:
+                name = cookie.get("name")
+                value = cookie.get("value")
+                domain = cookie.get("domain")
+                path = cookie.get("path", "/")
+                
+                if name and value:
+                    cookies.set(name, value, domain=domain, path=path)
+        else:
+            # Fallback for simple dict
+            for name, value in self.cookies.items():
+                cookies.set(name, value, domain=".google.com")
+                
+        return cookies
+
+    def _get_cookie_header(self) -> str:
+        """Get Cookie header string (backward compatibility)."""
+        if isinstance(self.cookies, list):
+            # Flatten to simple dict for header
+            simple_cookies = {c["name"]: c["value"] for c in self.cookies if "name" in c and "value" in c}
+            return "; ".join(f"{k}={v}" for k, v in simple_cookies.items())
+        else:
+            return "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """Close the underlying HTTP client."""
+        if self._client:
+            self._client.close()
+            self._client = None
+
     def _refresh_auth_tokens(self) -> None:
         """
         Refresh CSRF token and session ID by fetching the NotebookLM homepage.
@@ -364,14 +440,14 @@ class NotebookLMClient:
         Raises:
             ValueError: If cookies are expired (redirected to login) or tokens not found
         """
-        # Build cookie header
-        cookie_header = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+        # Use httpx.Cookies for proper domain filtering
+        cookies = self._get_httpx_cookies()
 
         # Must use browser-like headers for page fetch
-        headers = {**self._PAGE_FETCH_HEADERS, "Cookie": cookie_header}
+        headers = self._PAGE_FETCH_HEADERS.copy()
 
         # Use a temporary client for the page fetch
-        with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as client:
+        with httpx.Client(cookies=cookies, headers=headers, follow_redirects=True, timeout=15.0) as client:
             response = client.get(f"{self.BASE_URL}/")
 
             # Check if redirected to login (cookies expired)
@@ -443,21 +519,44 @@ class NotebookLMClient:
     def _get_client(self) -> httpx.Client:
         """Get or create HTTP client."""
         if self._client is None:
-            # Build cookie string
-            cookie_str = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+            # Use cookies object directly
+            cookies = self._get_httpx_cookies()
 
             self._client = httpx.Client(
+                cookies=cookies,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
                     "Origin": self.BASE_URL,
                     "Referer": f"{self.BASE_URL}/",
-                    "Cookie": cookie_str,
                     "X-Same-Domain": "1",
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
                 },
                 timeout=30.0,
             )
+            
+            # Explicitly set headers if needed, though constructor handles most
+            if self.csrf_token:
+                self._client.headers["X-Goog-Csrf-Token"] = self.csrf_token
+                
         return self._client
+    
+    def _get_async_client(self) -> httpx.AsyncClient:
+        """Get an async client for streaming operations."""
+        cookies = self._get_httpx_cookies()
+
+        client = httpx.AsyncClient(
+            cookies=cookies,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                "Origin": self.BASE_URL,
+                "Referer": f"{self.BASE_URL}/",
+                "X-Same-Domain": "1",
+            },
+            timeout=30.0,
+        )
+        if self.csrf_token:
+            client.headers["X-Goog-Csrf-Token"] = self.csrf_token
+        return client
 
     def _build_request_body(self, rpc_id: str, params: Any) -> str:
         """Build the batchexecute request body."""
@@ -1431,14 +1530,202 @@ class NotebookLMClient:
                 "BrowserUploader not available. Install with: pip install websocket-client"
             ) from e
 
-    def query(
-        self,
-        notebook_id: str,
-        query_text: str,
-        source_ids: list[str] | None = None,
-        conversation_id: str | None = None,
-        timeout: float = 120.0,
-    ) -> dict | None:
+    # =========================================================================
+    # Download Operations
+    # =========================================================================
+
+    async def _download_url(self, url: str, output_path: str) -> str:
+        """Download content from a URL to a local file.
+
+        Args:
+            url: The URL to download.
+            output_path: The local path to save the file.
+
+        Returns:
+            The output path.
+
+        Raises:
+            ArtifactDownloadError: If the download fails.
+        """
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Build headers with auth cookies
+        # Use basic headers if _PAGE_FETCH_HEADERS is not available, otherwise merge
+        base_headers = getattr(self, "_PAGE_FETCH_HEADERS", {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        })
+        headers = {**base_headers, "Referer": "https://notebooklm.google.com/"}
+        
+        # Use httpx.Cookies for proper cross-domain redirect handling
+        cookies = self._get_httpx_cookies()
+
+        try:
+            async with httpx.AsyncClient(cookies=cookies, headers=headers, follow_redirects=True, timeout=120.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                
+                # Check for login redirect (content type HTML usually means auth failed for binary)
+                content_type = response.headers.get("content-type", "").lower()
+                if "text/html" in content_type and len(response.content) < 200000:
+                    # Heuristic: HTML content where binary expected is likely an auth error page
+                    # Unless we are expecting HTML (unlikely for audio/video/pdf)
+                    if "<!doctype html>" in response.text.lower() or "sign in" in response.text.lower():
+                         raise AuthenticationError("Download failed: Redirected to login page (AUTH_REQUIRED). Trace: Check cookies.")
+                
+                # Write to file
+                output_file.write_bytes(response.content)
+                
+            return str(output_file)
+        except Exception as e:
+            raise ArtifactDownloadError(
+                "file", details=f"Failed to download from {url[:50]}...: {str(e)}"
+            ) from e
+
+    def _list_raw(self, notebook_id: str) -> list[Any]:
+        """Get raw artifact list for parsing download URLs."""
+        # This reuses the list_notebooks parsing logic but returns the raw list
+        # needed for extracting deeply nested metadata
+        # RPC: wXbhsf is list_notebooks. But we need artifacts within a notebook.
+        # Actually, artifacts are usually fetched via list_notebooks (which returns everything)
+        # OR via specific RPCs.
+        # Let's check how list_notebooks gets data.
+        # It calls RPC_LIST_NOTEBOOKS.
+        # But wait, audio/video are "studio artifacts".
+        # We should use poll_studio_status to get the raw list of artifacts.
+        
+        # Poll params: [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
+        params = [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
+        body = self._build_request_body(self.RPC_POLL_STUDIO, params)
+        url = self._build_url(self.RPC_POLL_STUDIO, f"/notebook/{notebook_id}")
+        
+        client = self._get_client()
+        response = client.post(url, content=body)
+        response.raise_for_status()
+        
+        parsed = self._parse_response(response.text)
+        result = self._extract_rpc_result(parsed, self.RPC_POLL_STUDIO)
+        
+        if result and isinstance(result, list) and len(result) > 0:
+             # Response is an array of artifacts, possibly wrapped
+             return result[0] if isinstance(result[0], list) else result
+        return []
+
+    def download_audio(
+        self, notebook_id: str, output_path: str, artifact_id: str | None = None
+    ) -> str:
+        """Download an Audio Overview to a file.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the audio file (MP4/MP3).
+            artifact_id: Specific artifact ID, or uses first completed audio.
+
+        Returns:
+            The output path.
+        """
+        import asyncio
+        artifacts = self._list_raw(notebook_id)
+        
+        # Filter for completed audio (Type 1, Status 3)
+        # Type 1 = STUDIO_TYPE_AUDIO (constants.py)
+        # Status 3 = COMPLETED
+        candidates = []
+        for a in artifacts:
+            if isinstance(a, list) and len(a) > 4:
+                if a[2] == self.STUDIO_TYPE_AUDIO and a[4] == 3: # 3 is COMPLETED
+                    candidates.append(a)
+        
+        if not candidates:
+            raise ArtifactNotReadyError("audio")
+
+        target = None
+        if artifact_id:
+            target = next((a for a in candidates if a[0] == artifact_id), None)
+            if not target:
+                raise ArtifactNotReadyError("audio", artifact_id)
+        else:
+            target = candidates[0]
+
+        # Extract URL from metadata[6][5] (based on analysis)
+        try:
+            metadata = target[6]
+            media_list = metadata[5]
+            url = None
+            
+            # Try to find audio/mp4
+            if isinstance(media_list, list):
+                for item in media_list:
+                    if isinstance(item, list) and len(item) > 2 and "audio" in str(item[2]):
+                        url = item[0]
+                        break
+                if not url and len(media_list) > 0 and isinstance(media_list[0], list):
+                    url = media_list[0][0]
+            
+            if not url:
+                 raise ArtifactDownloadError("audio", details="No download URL found")
+
+            # Run async download in sync context for now until we go full async
+            return asyncio.run(self._download_url(url, output_path))
+            
+        except (IndexError, TypeError, AttributeError) as e:
+            raise ArtifactParseError("audio", details=str(e)) from e
+
+    def download_video(
+        self, notebook_id: str, output_path: str, artifact_id: str | None = None
+    ) -> str:
+        """Download a Video Overview to a file.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the video file (MP4).
+            artifact_id: Specific artifact ID, or uses first completed video.
+
+        Returns:
+            The output path.
+        """
+        import asyncio
+        artifacts = self._list_raw(notebook_id)
+        
+        # Filter for completed video (Type 3, Status 3)
+        candidates = []
+        for a in artifacts:
+            if isinstance(a, list) and len(a) > 4:
+                 if a[2] == self.STUDIO_TYPE_VIDEO and a[4] == 3:
+                     candidates.append(a)
+        
+        if not candidates:
+            raise ArtifactNotReadyError("video")
+
+        target = None
+        if artifact_id:
+            target = next((a for a in candidates if a[0] == artifact_id), None)
+            if not target:
+                raise ArtifactNotReadyError("video", artifact_id)
+        else:
+            target = candidates[0]
+
+        # Extract URL from metadata[8]
+        try:
+            metadata = target[8]
+            url = None
+            # Video metadata parsing logic from analysis
+            if isinstance(metadata, list):
+                for item in metadata:
+                    if (isinstance(item, list) and len(item) > 0 and 
+                        isinstance(item[0], list) and len(item[0]) > 0 and 
+                        str(item[0][0]).startswith("http")):
+                        url = item[0][0]
+                        break
+            
+            if not url:
+                raise ArtifactDownloadError("video", details="No download URL found")
+
+            return asyncio.run(self._download_url(url, output_path))
+
+        except (IndexError, TypeError, AttributeError) as e:
+            raise ArtifactParseError("video", details=str(e)) from e
+
         """Query the notebook with a question.
 
         Supports both new conversations and follow-up queries. For follow-ups,
@@ -2268,6 +2555,11 @@ class NotebookLMClient:
 
         return artifacts
 
+
+    def get_studio_status(self, notebook_id: str) -> list[dict]:
+        """Alias for poll_studio_status (used by CLI)."""
+        return self.poll_studio_status(notebook_id)
+
     def delete_studio_artifact(self, artifact_id: str, notebook_id: str | None = None) -> bool:
         """Delete a studio artifact (Audio, Video, or Mind Map).
 
@@ -2935,27 +3227,403 @@ class NotebookLMClient:
             self._client = None
 
 
-def extract_cookies_from_chrome_export(cookie_header: str) -> dict[str, str]:
-    """
-    Extract cookies from a copy-pasted cookie header value.
 
-    Usage:
-    1. Go to notebooklm.google.com in Chrome
-    2. Open DevTools > Network tab
-    3. Refresh and find any request to notebooklm.google.com
-    4. Copy the Cookie header value
-    5. Pass it to this function
-    """
-    cookies = {}
-    for part in cookie_header.split(";"):
-        part = part.strip()
-        if "=" in part:
-            key, value = part.split("=", 1)
-            cookies[key.strip()] = value.strip()
-    return cookies
+    def download_infographic(
+        self, notebook_id: str, output_path: str, artifact_id: str | None = None
+    ) -> str:
+        """Download an Infographic to a file.
 
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the image file (PNG).
+            artifact_id: Specific artifact ID, or uses first completed infographic.
 
-# Example usage (for testing)
+        Returns:
+            The output path.
+        """
+        import asyncio
+        artifacts = self._list_raw(notebook_id)
+        
+        # Filter for completed infographics (Type 7, Status 3)
+        candidates = []
+        for a in artifacts:
+            if isinstance(a, list) and len(a) > 4:
+                if a[2] == self.STUDIO_TYPE_INFOGRAPHIC and a[4] == 3:
+                     candidates.append(a)
+        
+        if not candidates:
+            raise ArtifactNotReadyError("infographic")
+
+        target = None
+        if artifact_id:
+            target = next((a for a in candidates if a[0] == artifact_id), None)
+            if not target:
+                 raise ArtifactNotReadyError("infographic", artifact_id)
+        else:
+            target = candidates[0]
+
+        # Extract URL from metadata logic
+        try:
+            metadata = None
+            if len(target) > 14:
+                options = target[14]
+                if isinstance(options, list) and len(options) > 2:
+                    img_data = options[2]
+                    if (isinstance(img_data, list) and len(img_data) > 0 and 
+                        isinstance(img_data[0], list) and len(img_data[0]) > 1):
+                        possible_url = img_data[0][1]
+                        if isinstance(possible_url, list) and len(possible_url) > 0:
+                            url = possible_url[0]
+                            if isinstance(url, str) and url.startswith("http"):
+                                return asyncio.run(self._download_url(url, output_path))
+            
+            raise ArtifactDownloadError("infographic", details="Could not find image URL in metadata")
+
+        except (IndexError, TypeError, AttributeError) as e:
+            raise ArtifactParseError("infographic", details=str(e)) from e
+
+    def download_slide_deck(
+        self, notebook_id: str, output_path: str, artifact_id: str | None = None
+    ) -> str:
+        """Download a slide deck as a PDF file.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the PDF file.
+            artifact_id: Specific artifact ID, or uses first completed slide deck.
+
+        Returns:
+            The output path.
+        """
+        import asyncio
+        artifacts = self._list_raw(notebook_id)
+        
+        # Filter for completed slide deck (Type 8, Status 3)
+        candidates = []
+        for a in artifacts:
+            if isinstance(a, list) and len(a) > 4:
+                if a[2] == self.STUDIO_TYPE_SLIDE_DECK and a[4] == 3:
+                     candidates.append(a)
+        
+        if not candidates:
+            raise ArtifactNotReadyError("slide_deck")
+
+        target = None
+        if artifact_id:
+             target = next((a for a in candidates if a[0] == artifact_id), None)
+             if not target:
+                 raise ArtifactNotReadyError("slide_deck", artifact_id)
+        else:
+            target = candidates[0]
+
+        # Extract PDF URL from metadata at index 16, position 3
+        try:
+            if len(target) <= 16:
+                 raise ArtifactParseError("slide_deck", details="Missing metadata at index 16")
+            
+            # [config, title, slides_list, pdf_url]
+            metadata = target[16]
+            if isinstance(metadata, list) and len(metadata) > 3:
+                pdf_url = metadata[3]
+                if isinstance(pdf_url, str) and pdf_url.startswith("http"):
+                     return asyncio.run(self._download_url(pdf_url, output_path))
+            
+            raise ArtifactDownloadError("slide_deck", details="Could not find PDF URL")
+
+        except (IndexError, TypeError, AttributeError) as e:
+            raise ArtifactParseError("slide_deck", details=str(e)) from e
+        
+    def download_report(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+    ) -> str:
+        """Download a report artifact as markdown.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the markdown file.
+            artifact_id: Specific artifact ID, or uses first completed report.
+
+        Returns:
+            The output path where the file was saved.
+        """
+        artifacts = self._list_raw(notebook_id)
+
+        # Filter for completed reports (Type 6, Status 3)
+        candidates = []
+        for a in artifacts:
+            if isinstance(a, list) and len(a) > 7:
+                 if a[2] == self.STUDIO_TYPE_REPORT and a[4] == 3:
+                     candidates.append(a)
+        
+        if not candidates:
+             raise ArtifactNotReadyError("report")
+        
+        target = None
+        if artifact_id:
+            target = next((a for a in candidates if a[0] == artifact_id), None)
+            if not target:
+                raise ArtifactNotReadyError("report", artifact_id)
+        else:
+            target = candidates[0]
+
+        try:
+            # Report content is in index 7
+            content_wrapper = target[7]
+            markdown_content = ""
+            
+            if isinstance(content_wrapper, list) and len(content_wrapper) > 0:
+                markdown_content = content_wrapper[0]
+            elif isinstance(content_wrapper, str):
+                markdown_content = content_wrapper
+            
+            if not isinstance(markdown_content, str):
+                raise ArtifactParseError("report", details="Invalid content structure")
+
+            output = Path(output_path)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(markdown_content, encoding="utf-8")
+            return str(output)
+
+        except (IndexError, TypeError, AttributeError) as e:
+            raise ArtifactParseError("report", details=str(e)) from e
+
+    def download_mind_map(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+    ) -> str:
+        """Download a mind map as JSON.
+
+        Mind maps are stored in the notes system, not the regular artifacts list.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the JSON file.
+            artifact_id: Specific mind map ID (note ID), or uses first available.
+
+        Returns:
+            The output path where the file was saved.
+        """
+        # Mind maps are retrieved via list_mind_maps RPC
+        params = [notebook_id]
+        result = self._call_rpc(self.RPC_LIST_MIND_MAPS, params, f"/notebook/{notebook_id}")
+        
+        mind_maps = []
+        if result and isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], list):
+                 mind_maps = result[0]
+        
+        if not mind_maps:
+            raise ArtifactNotReadyError("mind_map")
+
+        target = None
+        if artifact_id:
+            target = next((mm for mm in mind_maps if isinstance(mm, list) and mm[0] == artifact_id), None)
+            if not target:
+                raise ArtifactNotFoundError(artifact_id, artifact_type="mind_map")
+        else:
+            target = mind_maps[0]
+
+        try:
+            # Mind map JSON is stringified in target[1][1]
+            if len(target) > 1 and isinstance(target[1], list) and len(target[1]) > 1:
+                 json_string = target[1][1]
+                 if isinstance(json_string, str):
+                     json_data = json.loads(json_string)
+                     
+                     output = Path(output_path)
+                     output.parent.mkdir(parents=True, exist_ok=True)
+                     output.write_text(json.dumps(json_data, indent=2, ensure_ascii=False), encoding="utf-8")
+                     return str(output)
+            
+            raise ArtifactParseError("mind_map", details="Invalid structure")
+
+        except (IndexError, TypeError, json.JSONDecodeError, AttributeError) as e:
+            raise ArtifactParseError("mind_map", details=str(e)) from e
+
+    def download_data_table(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+    ) -> str:
+        """Download a data table as CSV.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the CSV file.
+            artifact_id: Specific artifact ID, or uses first completed data table.
+
+        Returns:
+            The output path where the file was saved.
+        """
+        import csv
+        
+        artifacts = self._list_raw(notebook_id)
+        
+        # Filter for completed data tables (Type 9, Status 3)
+        candidates = []
+        for a in artifacts:
+             if isinstance(a, list) and len(a) > 18:
+                  if a[2] == self.STUDIO_TYPE_DATA_TABLE and a[4] == 3:
+                       candidates.append(a)
+        
+        if not candidates:
+             raise ArtifactNotReadyError("data_table")
+
+        target = None
+        if artifact_id:
+             target = next((a for a in candidates if a[0] == artifact_id), None)
+             if not target:
+                  raise ArtifactNotReadyError("data_table", artifact_id)
+        else:
+             target = candidates[0]
+        
+        try:
+             # Data table structure analysis
+             # content is usually at index 18: [description, language, columns, rows]
+             options = target[18]
+             if not isinstance(options, list) or len(options) < 4:
+                  raise ArtifactParseError("data_table", details="Missing table data")
+             
+             # Extract columns and rows
+             # Search options for table-like data
+             table_data = None
+             for item in options:
+                  if isinstance(item, list) and len(item) > 0 and isinstance(item[0], list):
+                       # Candidate for rows
+                       table_data = item
+                       break
+             
+             if not table_data:
+                  raise ArtifactParseError("data_table", details="Could not find table rows")
+                  
+             # Write to CSV
+             output = Path(output_path)
+             output.parent.mkdir(parents=True, exist_ok=True)
+             
+             with open(output, 'w', newline='', encoding='utf-8') as f:
+                  writer = csv.writer(f)
+                  for row in table_data:
+                       if isinstance(row, list):
+                            writer.writerow(row)
+                       
+             return str(output)
+
+        except (IndexError, TypeError, AttributeError) as e:
+             raise ArtifactParseError("data_table", details=str(e)) from e
+        
+    def _get_artifact_content(self, notebook_id: str, artifact_id: str) -> str | None:
+        """Fetch artifact HTML content for quiz/flashcard types."""
+        # This requires a specific RPC call: GET_INTERACTIVE_HTML (internal name?)
+        # Based on analysis: likely part of getting the artifact implementation details
+        # For now, we'll try to extract it from the artifact list metadata if possible
+        # or implement a specific fetch if needed.
+        # Actually, interactive artifacts usually load content via a separate request.
+        # Let's check typical patterns.
+        return None  # Placeholder until RPC identified
+
+    def _extract_app_data(self, html_content: str) -> dict:
+        """Extract JSON app data from interactive HTML."""
+        # Typical pattern: <script id="application-data" type="application/json">...</script>
+        import re
+        match = re.search(r'<script id="application-data" type="application/json">(.*?)</script>', html_content)
+        if match:
+            return json.loads(match.group(1))
+        return {}
+
+    def _format_interactive_content(
+        self,
+        app_data: dict,
+        title: str,
+        output_format: str,
+        html_content: str,
+        is_quiz: bool,
+    ) -> str:
+        """Format quiz or flashcard content."""
+        if output_format == "html":
+            return html_content
+
+        if is_quiz:
+            questions = app_data.get("quiz", [])
+            if output_format == "markdown":
+                # Simple markdown formatting
+                md = f"# {title}\n\n"
+                for i, q in enumerate(questions, 1):
+                    md += f"## Question {i}\n{q.get('question', '')}\n\n"
+                    for opt in q.get('options', []):
+                        check = "(x)" if opt.get('isCorrect') else "( )"
+                        md += f"- {check} {opt.get('text', '')}\n"
+                    md += "\n"
+                return md
+            return json.dumps({"title": title, "questions": questions}, indent=2)
+
+        cards = app_data.get("flashcards", [])
+        if output_format == "markdown":
+            md = f"# {title}\n\n"
+            for i, c in enumerate(cards, 1):
+                md += f"## Card {i}\n**Front:** {c.get('f', '')}\n\n**Back:** {c.get('b', '')}\n\n---\n\n"
+            return md
+        
+        normalized = [{"front": c.get("f", ""), "back": c.get("b", "")} for c in cards]
+        return json.dumps({"title": title, "cards": normalized}, indent=2)
+
+    def download_quiz(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "markdown"  # json, markdown, html
+    ) -> str:
+        """Download a quiz artifact.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the file.
+            artifact_id: Specific artifact ID.
+            output_format: 'json', 'markdown', or 'html'.
+
+        Returns:
+            The output path.
+        """
+        # Note: True download requires fetching the HTML content which is not yet fully reversed
+        # For now, we'll raise NotImplementedError to avoid shipping broken code
+        # until we reverse the GET_INTERACTIVE_HTML RPC
+        raise NotImplementedError("Quiz download requires additional RPC reversing (pending)")
+
+    def download_flashcards(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "markdown"
+    ) -> str:
+        """Download flashcards artifact.
+
+        Args:
+            notebook_id: The notebook ID.
+            output_path: Path to save the file.
+            artifact_id: Specific artifact ID.
+            output_format: 'json', 'markdown', or 'html'.
+
+        Returns:
+            The output path.
+        """
+        # Note: True download requires fetching the HTML content which is not yet fully reversed
+        # For now, we'll raise NotImplementedError to avoid shipping broken code
+        # until we reverse the GET_INTERACTIVE_HTML RPC
+        raise NotImplementedError("Flashcards download requires additional RPC reversing (pending)")
+
+    def close(self) -> None:
+        """Close the HTTP client."""
+        if self._client:
+            self._client.close()
+            self._client = None
+
 if __name__ == "__main__":
     import sys
 

@@ -241,7 +241,7 @@ class Profile:
     def __init__(
         self,
         name: str,
-        cookies: dict[str, str],
+        cookies: list[dict] | dict[str, str],
         csrf_token: str | None = None,
         session_id: str | None = None,
         email: str | None = None,
@@ -279,7 +279,7 @@ class Profile:
         
         return cls(
             name=data.get("name", "default"),
-            cookies=data.get("cookies", {}),
+            cookies=data.get("cookies", []) if isinstance(data.get("cookies"), list) else data.get("cookies", {}),
             csrf_token=data.get("csrf_token"),
             session_id=data.get("session_id"),
             email=data.get("email"),
@@ -349,7 +349,7 @@ class AuthManager:
 
     def save_profile(
         self,
-        cookies: dict[str, str],
+        cookies: list[dict] | dict[str, str],
         csrf_token: str | None = None,
         session_id: str | None = None,
         email: str | None = None,
@@ -394,7 +394,15 @@ class AuthManager:
         self._profile = None
 
     def get_cookies(self) -> dict[str, str]:
-        """Get cookies for the current profile."""
+        """Get cookies for the current profile as simple dict."""
+        profile = self.load_profile()
+        if isinstance(profile.cookies, list):
+            # Convert list[dict] to dict[str, str]
+            return {c["name"]: c["value"] for c in profile.cookies if "name" in c and "value" in c}
+        return profile.cookies
+
+    def get_raw_cookies(self) -> list[dict] | dict[str, str]:
+        """Get raw cookies (list or dict)."""
         profile = self.load_profile()
         return profile.cookies
 

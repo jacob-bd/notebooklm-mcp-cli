@@ -51,9 +51,17 @@ Studio_tools_plan.md
 
 # Local project memory (personal, not shared)
 CLAUDE.local.md
+PROJECT_RECAP.md
+todo.md
+.notebooklm-py-analysis/
+
+# Data and Artifacts
+download/
+downloads/
 
 # Auto Claude data directory
 .auto-claude/
 .worktrees/
 .claude/
-run*
+run*.notebooklm-py-analysis/
+*.code-workspace

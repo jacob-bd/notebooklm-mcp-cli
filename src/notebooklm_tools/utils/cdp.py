@@ -271,15 +271,17 @@ def execute_cdp_command(ws_url: str, method: str, params: dict | None = None) ->
         ws.close()
 
 
-def get_page_cookies(ws_url: str) -> dict[str, str]:
+def get_page_cookies(ws_url: str) -> list[dict]:
     """Get all cookies for the page via CDP.
     
     This is the key function that avoids keychain access!
-    Uses Network.getCookies CDP command instead of decrypting cookies.
+    Uses Network.getAllCookies CDP command to get cookies for all domains.
+    
+    Returns:
+        List of cookie objects (dicts) including name, value, domain, path, etc.
     """
-    result = execute_cdp_command(ws_url, "Network.getCookies")
-    cookies_list = result.get("cookies", [])
-    return {c["name"]: c["value"] for c in cookies_list}
+    result = execute_cdp_command(ws_url, "Network.getAllCookies")
+    return result.get("cookies", [])
 
 
 def get_page_html(ws_url: str) -> str:

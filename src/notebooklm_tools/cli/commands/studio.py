@@ -70,7 +70,19 @@ data_table_app = typer.Typer(
 
 def get_client(profile: str | None = None) -> NotebookLMClient:
     """Get a client instance."""
-    return NotebookLMClient(profile=profile)
+    from notebooklm_tools.core.auth import AuthManager
+    
+    manager = AuthManager(profile if profile else "default")
+    if not manager.profile_exists():
+        console.print(f"[red]Error:[/red] Profile '{manager.profile_name}' not found. Run 'nlm login' first.")
+        raise typer.Exit(1)
+        
+    p = manager.load_profile()
+    return NotebookLMClient(
+        cookies=p.cookies,
+        csrf_token=p.csrf_token,
+        session_id=p.session_id,
+    )
 
 
 def parse_source_ids(source_ids: str | None) -> list[str] | None:

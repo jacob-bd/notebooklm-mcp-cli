@@ -25,6 +25,7 @@ from notebooklm_tools.cli.commands.studio import (
     slides_app,
     video_app,
 )
+from notebooklm_tools.cli.commands.download import app as download_app
 
 console = Console()
 
@@ -44,6 +45,7 @@ app.add_typer(studio_app, name="studio", help="Manage studio artifacts")
 app.add_typer(research_app, name="research", help="Research and discover sources")
 app.add_typer(alias_app, name="alias", help="Manage ID aliases")
 app.add_typer(config_app, name="config", help="Manage configuration")
+app.add_typer(download_app, name="download", help="Download artifacts (audio, video, etc)")
 
 # Generation commands as top-level
 app.add_typer(audio_app, name="audio", help="Create audio overviews")
