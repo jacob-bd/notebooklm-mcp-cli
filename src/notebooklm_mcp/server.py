@@ -5,9 +5,24 @@ import functools
 import json
 import logging
 import os
+import sys
+from contextlib import asynccontextmanager
 from typing import Any
 
+# Redirect stdout to protect MCP channel and monkeypatch FastMCP to prevent CPU spikes
+_stdout, sys.stdout = sys.stdout, sys.stderr
+try:
+    import docket.worker, fastmcp.server.server
+    async def n(*a,**k): pass
+    @asynccontextmanager
+    async def l(*a,**k): yield
+    docket.worker.Worker.run = docket.worker.Worker.run_forever = n
+    fastmcp.server.server.FastMCP._docket_lifespan = l
+except: pass
+
 from fastmcp import FastMCP
+
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -26,6 +41,7 @@ mcp = FastMCP(
 **Auth:** If you get authentication errors, run `notebooklm-mcp-auth` via your Bash/terminal tool. This is the automated authentication method that handles everything. Only use save_auth_tokens as a fallback if the CLI fails.
 **Confirmation:** Tools with confirm param require user approval before setting confirm=True.
 **Studio:** After creating audio/video/infographic/slides, poll studio_status for completion.""",
+    tasks=False,  # Explicitly disable background tasks
 )
 
 # Health check endpoint for load balancers and monitoring
@@ -2009,14 +2025,8 @@ Examples:
     
     # Configure logging
     if args.debug:
-        logging.basicConfig(
-            level=logging.WARNING,  # Suppress most logs
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        
         # Shared handler and formatter for debug loggers
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(sys.stderr)
         handler.setFormatter(logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
@@ -2031,7 +2041,7 @@ Examples:
         api_logger.setLevel(logging.DEBUG)
         api_logger.addHandler(handler)
         
-        print("Debug logging: ENABLED (MCP tool calls + NotebookLM API requests/responses)")
+        print("Debug logging: ENABLED (MCP tool calls + NotebookLM API requests/responses)", file=sys.stderr)
     
     if args.transport == "http":
         print(f"Starting NotebookLM MCP server (HTTP) on http://{args.host}:{args.port}{args.path}")
@@ -2057,7 +2067,8 @@ Examples:
             stateless_http=args.stateless,
         )
     else:
-        # Default: stdio transport (no message - stdio should be silent)
+        # Default: stdio transport
+        sys.stdout = _stdout
         mcp.run()
     
     return 0
