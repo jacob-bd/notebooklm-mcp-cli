@@ -141,21 +141,49 @@ def studio_create(
         result = None
 
         if artifact_type == "audio":
+            try:
+                format_code = constants.AUDIO_FORMATS.get_code(audio_format)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "error": f"Unknown audio_format '{audio_format}'. Use: {', '.join(constants.AUDIO_FORMATS.names)}",
+                }
+            try:
+                length_code = constants.AUDIO_LENGTHS.get_code(audio_length)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "error": f"Unknown audio_length '{audio_length}'. Use: {', '.join(constants.AUDIO_LENGTHS.names)}",
+                }
             result = client.create_audio_overview(
                 notebook_id=notebook_id,
                 source_ids=source_ids,
-                format=audio_format,
-                length=audio_length,
+                format_code=format_code,
+                length_code=length_code,
                 language=language,
                 focus_prompt=focus_prompt,
             )
 
         elif artifact_type == "video":
+            try:
+                format_code = constants.VIDEO_FORMATS.get_code(video_format)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "error": f"Unknown video_format '{video_format}'. Use: {', '.join(constants.VIDEO_FORMATS.names)}",
+                }
+            try:
+                style_code = constants.VIDEO_STYLES.get_code(visual_style)
+            except ValueError:
+                return {
+                    "status": "error",
+                    "error": f"Unknown visual_style '{visual_style}'. Use: {', '.join(constants.VIDEO_STYLES.names)}",
+                }
             result = client.create_video_overview(
                 notebook_id=notebook_id,
                 source_ids=source_ids,
-                format=video_format,
-                visual_style=visual_style,
+                format_code=format_code,
+                visual_style_code=style_code,
                 language=language,
                 focus_prompt=focus_prompt,
             )

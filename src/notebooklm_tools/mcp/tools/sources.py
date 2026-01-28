@@ -145,10 +145,9 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
 
             # Use can_sync flag from client to identify Drive sources
             if source.get("can_sync"):
-                # Check if stale
-                freshness = client.check_source_freshness(source["id"])
-                source_info["stale"] = freshness.get("stale", False)
-                source_info["last_sync"] = freshness.get("last_sync")
+                # Check if stale - client returns bool (True=fresh, False=stale)
+                is_fresh = client.check_source_freshness(source["id"])
+                source_info["stale"] = not is_fresh if is_fresh is not None else None
                 source_info["drive_doc_id"] = source.get("drive_doc_id")
                 drive_sources.append(source_info)
             else:

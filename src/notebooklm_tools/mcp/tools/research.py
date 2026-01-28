@@ -82,11 +82,11 @@ def research_status(
     """
     try:
         client = get_client()
+        # Note: client.poll_research only supports notebook_id and target_task_id
+        # poll_interval and max_wait are documented but not implemented in client
         result = client.poll_research(
             notebook_id=notebook_id,
-            poll_interval=poll_interval,
-            max_wait=max_wait,
-            task_id=task_id,
+            target_task_id=task_id,
         )
 
         if result:
@@ -132,18 +132,46 @@ def research_import(
     """
     try:
         client = get_client()
+        
+        # First poll for the research results to get the sources
+        research_result = client.poll_research(
+            notebook_id=notebook_id,
+            target_task_id=task_id,
+        )
+        
+        if not research_result or research_result.get("status") == "no_research":
+            return {"status": "error", "error": "Research task not found or not completed"}
+        
+        all_sources = research_result.get("sources", [])
+        if not all_sources:
+            return {"status": "error", "error": "No sources found in research results"}
+        
+        # Filter by indices if provided
+        if source_indices is not None:
+            sources_to_import = []
+            for idx in source_indices:
+                if 0 <= idx < len(all_sources):
+                    sources_to_import.append(all_sources[idx])
+        else:
+            sources_to_import = all_sources
+        
+        if not sources_to_import:
+            return {"status": "error", "error": "No valid sources to import"}
+        
+        # Now call the client with the actual source dicts
         result = client.import_research_sources(
             notebook_id=notebook_id,
             task_id=task_id,
-            source_indices=source_indices,
+            sources=sources_to_import,
         )
 
         if result:
             return {
                 "status": "success",
                 "notebook_id": notebook_id,
-                "imported_count": result.get("imported_count", 0),
-                "message": f"Imported {result.get('imported_count', 0)} sources.",
+                "imported_count": len(result),
+                "imported_sources": result,
+                "message": f"Imported {len(result)} sources.",
             }
         return {"status": "error", "error": "Failed to import sources"}
     except Exception as e:
