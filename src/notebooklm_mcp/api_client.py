@@ -683,16 +683,19 @@ class NotebookLMClient:
         from .auth import load_cached_tokens, get_cache_path
         
         # Check if auth.json has tokens
-        cache_path = get_cache_path()
-        if cache_path.exists():
-            cached = load_cached_tokens()
-            if cached and cached.cookies:
-                self.cookies = cached.cookies
-                self.csrf_token = ""
-                self._session_id = ""
-                return True
+        # Only reload from disk if we are not explicitly forcing a visible/browser refresh
+        if not visible:
+            cache_path = get_cache_path()
+            if cache_path.exists():
+                cached = load_cached_tokens()
+                if cached and cached.cookies:
+                    self.cookies = cached.cookies
+                    self.csrf_token = ""
+                    self._session_id = ""
+                    return True
         
         # Auth flow (headless or visible)
+
         import time
         current_time = time.time()
         if not visible and current_time - self._last_headless_auth_time < self._headless_auth_cooldown:
@@ -1326,7 +1329,8 @@ class NotebookLMClient:
         client = self._get_client()
 
         # Text source params structure:
-        source_data = [None, [title, text], None, 2, None, None, None, None, None, None, 1]
+        # Use Type 4 (Pasted Text) for correct markdown grid rendering
+        source_data = [None, [title, text], None, 4, None, None, None, None, None, None, 1]
         params = [
             [source_data],
             notebook_id,
@@ -2919,9 +2923,9 @@ class NotebookLMClient:
             self._client.close()
             self._client = None
 
-    def _register_file_source(self, notebook_id: str, filename: str) -> str | None:
+    def _register_file_source(self, notebook_id: str, filename: str, source_type: int = 2) -> str | None:
         """Register a file source intent and get SOURCE_ID (Step 1)."""
-        params = [[[filename]], notebook_id, [2], [1, None, None, None, None, None, None, None, None, None, [1]]]
+        params = [[[filename]], notebook_id, [source_type], [1, None, None, None, None, None, None, None, None, None, [1]]]
         result = self._call_rpc(self.RPC_REGISTER_SOURCE_FILE, params, f"/notebook/{notebook_id}")
         def extract_id(data):
             if isinstance(data, str): return data
@@ -2965,15 +2969,26 @@ class NotebookLMClient:
         if not os.path.exists(file_path): raise FileNotFoundError(f"File not found: {file_path}")
         
         # Determine filename and extension
-        suffix = Path(file_path).suffix
-        filename = title or Path(file_path).name
+        p = Path(file_path)
+        suffix = p.suffix
+        filename = title or p.name
         if not filename.lower().endswith(suffix.lower()): filename += suffix
         
+        # Map extension to source type
+        # .pdf -> Type 3
+        # .md  -> Type 4 (Pasted Text) for interactive grid rendering
+        # others -> Type 2 (Default)
+        source_type = 2
+        if suffix.lower() == ".pdf":
+            source_type = 3
+        elif suffix.lower() == ".md":
+            source_type = 4
+            
         with open(file_path, "rb") as f: content = f.read()
         
         try:
             # 1. Register intent
-            source_id = self._register_file_source(notebook_id, filename)
+            source_id = self._register_file_source(notebook_id, filename, source_type=source_type)
             if not source_id: return None
             
             # 2. Start upload session
