@@ -3,6 +3,7 @@ import typer
 from rich.console import Console
 from notebooklm_tools.core.client import NotebookLMClient
 from notebooklm_tools.core.auth import load_cached_tokens, AuthManager
+from notebooklm_tools.utils.config import get_config
 
 console = Console()
 
@@ -10,7 +11,7 @@ def get_client(profile: str | None = None) -> NotebookLMClient:
     """Get an authenticated NotebookLM client.
 
     Args:
-        profile: Optional profile name. Uses 'default' if not specified.
+        profile: Optional profile name. Uses config default_profile if not specified.
 
     Tries to load cached tokens first. If unavailable, guides the user to login.
     """
@@ -20,8 +21,10 @@ def get_client(profile: str | None = None) -> NotebookLMClient:
     if env_cookies:
         return NotebookLMClient(cookies=extract_cookies_from_string(env_cookies))
 
-    # 2. Try loading specified or default profile
-    manager = AuthManager(profile if profile else "default")
+    # 2. Try loading specified profile, or fall back to config default
+    if not profile:
+        profile = get_config().auth.default_profile
+    manager = AuthManager(profile)
     if not manager.profile_exists():
         console.print(f"[red]Error:[/red] Profile '{manager.profile_name}' not found. Run 'nlm login' first.")
         raise typer.Exit(1)

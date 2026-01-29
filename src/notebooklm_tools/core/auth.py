@@ -389,8 +389,11 @@ class AuthManager:
     def delete_profile(self) -> None:
         """Delete the current profile."""
         import shutil
-        if self.profile_dir.exists():
-            shutil.rmtree(self.profile_dir)
+        from notebooklm_tools.utils.config import get_profiles_dir
+        # Get path directly without auto-creating (profile_dir property auto-creates)
+        profile_path = get_profiles_dir() / self.profile_name
+        if profile_path.exists():
+            shutil.rmtree(profile_path)
         self._profile = None
 
     def get_cookies(self) -> dict[str, str]:

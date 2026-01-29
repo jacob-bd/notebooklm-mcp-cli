@@ -18,10 +18,12 @@ pip install notebooklm-mcp-cli
 nlm login                         # Opens Chrome, extracts cookies automatically
 nlm login --profile work          # Named profile for multiple accounts
 nlm login --check                 # Check if authenticated
-nlm login profile list            # List all profiles
+nlm login profile list            # List all profiles with email addresses
 nlm login profile delete <name>   # Delete a profile
 nlm login profile rename <old> <new>  # Rename a profile
 ```
+
+Each profile gets its own isolated Chrome session, so you can stay logged into multiple Google accounts simultaneously.
 
 ## Command Structure
 
@@ -152,6 +154,25 @@ nlm chat configure <notebook> --goal learning_guide --length longer
 nlm chat configure <notebook> --goal custom --prompt "You are an expert..."
 ```
 
+### Configuration
+
+```bash
+nlm config show                         # Show all settings
+nlm config get auth.default_profile     # Get a specific value
+nlm config set auth.default_profile work  # Set default profile
+nlm config set output.format json       # Change default output format
+```
+
+**Available Settings:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `output.format` | `table` | Default output format (table, json) |
+| `output.color` | `true` | Enable colored output |
+| `output.short_ids` | `true` | Show shortened IDs |
+| `auth.browser` | `auto` | Browser for login (auto, chrome, chromium) |
+| `auth.default_profile` | `default` | Profile to use when `--profile` not specified |
+
 ### Aliases (Shortcuts)
 
 ```bash
@@ -230,3 +251,5 @@ nlm download audio ai <artifact-id> --output podcast.mp3
 - Use `--wait` when adding sources to ensure they're ready before querying
 - Use aliases for frequently-used notebooks
 - Audio/video takes 1-5 minutes; poll with `nlm studio status`
+- Set `nlm config set auth.default_profile <name>` to avoid typing `--profile` every time
+- Run `nlm login profile list` to see all profiles with their associated email addresses

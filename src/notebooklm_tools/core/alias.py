@@ -113,11 +113,11 @@ def detect_id_type(value: str, profile: str | None = None) -> str:
     
     Returns: "notebook", "source", or "unknown"
     """
-    from notebooklm_tools.core.client import NotebookLMClient
+    from notebooklm_tools.cli.utils import get_client
     from notebooklm_tools.core.exceptions import NLMError
     
     try:
-        with NotebookLMClient(profile=profile) as client:
+        with get_client(profile) as client:
             # Try as notebook ID first (most common)
             try:
                 notebook = client.get_notebook(value)

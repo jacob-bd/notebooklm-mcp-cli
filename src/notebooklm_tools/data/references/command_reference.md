@@ -48,37 +48,31 @@ nlm login [OPTIONS]
 | `--manual` | `-m` | Import cookies from file |
 | `--file` | `-f` | Cookie file path for manual mode |
 
-### nlm auth status
+**Note**: Each profile gets its own isolated Chrome session, so you can be logged into multiple Google accounts simultaneously.
 
-Check current authentication status.
+### nlm login profile list
 
-```bash
-nlm auth status [OPTIONS]
-```
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--profile` | `-p` | Profile to check |
-
-### nlm auth list
-
-List all authentication profiles.
+List all authentication profiles with their associated email addresses.
 
 ```bash
-nlm auth list
+nlm login profile list
 ```
 
-### nlm auth delete
+### nlm login profile delete
 
-Delete an authentication profile.
+Delete an authentication profile and its credentials.
 
 ```bash
-nlm auth delete <profile> [OPTIONS]
+nlm login profile delete <profile>
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--confirm` | Required to confirm deletion |
+### nlm login profile rename
+
+Rename an authentication profile.
+
+```bash
+nlm login profile rename <old-name> <new-name>
+```
 
 ---
 
@@ -625,4 +619,20 @@ Set a configuration value.
 
 ```bash
 nlm config set <key> <value>
+```
+
+**Available Configuration Keys:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `output.format` | `table` | Default output format (table, json) |
+| `output.color` | `true` | Enable colored output |
+| `output.short_ids` | `true` | Show shortened IDs |
+| `auth.browser` | `auto` | Browser for login (auto, chrome, chromium) |
+| `auth.default_profile` | `default` | Profile to use when `--profile` not specified |
+
+**Example**: Set default profile to avoid typing `--profile` for every command:
+
+```bash
+nlm config set auth.default_profile work
 ```

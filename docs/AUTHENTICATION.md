@@ -1,10 +1,10 @@
 # Authentication Guide
 
-This guide explains how to authenticate with NotebookLM MCP.
+This guide explains how to authenticate with NotebookLM MCP and CLI.
 
 ## Overview
 
-NotebookLM MCP uses browser cookies for authentication (there is no official API). The `notebooklm-mcp-auth` CLI tool extracts these cookies and caches them for the MCP server to use.
+NotebookLM uses browser cookies for authentication (there is no official API). The CLI/MCP extracts these cookies automatically via Chrome DevTools Protocol.
 
 **Two authentication methods are available:**
 
@@ -29,8 +29,9 @@ This method launches Chrome automatically and extracts cookies after you log in.
 ```bash
 # 1. Close Chrome completely (Cmd+Q on Mac, or quit from taskbar)
 
-# 2. Run the auth command
-notebooklm-mcp-auth
+# 2. Run the auth command (CLI or standalone)
+nlm login                      # CLI (recommended)
+notebooklm-mcp-auth            # Standalone tool
 
 # 3. Log in to your Google account in the browser window that opens
 
@@ -39,10 +40,10 @@ notebooklm-mcp-auth
 
 ### What Happens Behind the Scenes
 
-1. A dedicated Chrome profile is created at `~/.notebooklm-mcp/chrome-profile/`
+1. A dedicated Chrome profile is created for authentication
 2. Chrome launches with remote debugging enabled
 3. You log in to NotebookLM via the browser
-4. Cookies and CSRF token are extracted and cached
+4. Cookies, CSRF token, and account email are extracted and cached
 5. Chrome can be closed
 
 ### Persistent Login
@@ -52,6 +53,44 @@ The dedicated Chrome profile persists your Google login:
 - **Future runs:** Already logged in, just extracts fresh cookies
 
 This profile is separate from your regular Chrome profile and includes no extensions.
+
+---
+
+## Multi-Profile Support
+
+Use multiple Google accounts by creating named profiles:
+
+```bash
+# Create profiles for different accounts
+nlm login --profile work       # Opens Chrome - log in with work account
+nlm login --profile personal   # Opens Chrome - log in with personal account
+
+# List all profiles
+nlm login profile list
+# Output:
+#   work: jsmith@company.com
+#   personal: jsmith@gmail.com
+
+# Set default profile (no --profile flag needed)
+nlm config set auth.default_profile personal
+
+# Use profiles
+nlm notebook list                    # Uses default (personal)
+nlm notebook list --profile work     # Uses work account
+
+# Manage profiles
+nlm login profile rename work company
+nlm login profile delete old-profile
+```
+
+### How Multi-Profile Works
+
+Each profile gets:
+- **Separate credentials**: Stored in `~/.notebooklm-mcp-cli/profiles/<name>/`
+- **Separate Chrome profile**: Isolated browser session in `~/.notebooklm-mcp-cli/chrome-profiles/<name>/`
+- **Captured email**: Automatically extracted during login for easy identification
+
+This means you can stay logged into multiple Google accounts simultaneously without conflicts.
 
 ---
 
@@ -103,23 +142,31 @@ SID=abc123...; HSID=xyz789...; SSID=...; APISID=...; SAPISID=...; __Secure-1PSID
 
 ## Where Tokens Are Stored
 
-Authentication tokens are cached at:
+All data is stored under `~/.notebooklm-mcp-cli/`:
 
 ```
-~/.notebooklm-mcp/auth.json
+~/.notebooklm-mcp-cli/
+├── config.toml                    # CLI configuration
+├── aliases.json                   # Notebook aliases
+├── profiles/                      # Authentication profiles
+│   ├── default/
+│   │   └── auth.json              # Cookies, tokens, email
+│   ├── work/
+│   │   └── auth.json
+│   └── personal/
+│       └── auth.json
+├── chrome-profile/                # Chrome profile (single-profile users)
+└── chrome-profiles/               # Chrome profiles (multi-profile users)
+    ├── work/
+    └── personal/
 ```
 
-This file contains:
+Each profile's `auth.json` contains:
 - Parsed cookies
 - CSRF token (auto-extracted)
 - Session ID (auto-extracted)
+- Account email (auto-extracted)
 - Extraction timestamp
-
-The dedicated Chrome profile (for auto mode) is stored at:
-
-```
-~/.notebooklm-mcp/chrome-profile/
-```
 
 ---
 
@@ -194,18 +241,18 @@ Make sure you copied the cookie **value**, not the header name. The value should
 
 ## Chrome 136+ Compatibility
 
-Chrome version 136 and later restrict remote debugging on the default profile for security reasons. This MCP works around this by:
+Chrome version 136 and later restrict remote debugging on the default profile for security reasons. This is handled automatically by:
 
-1. Using a dedicated profile directory (`~/.notebooklm-mcp/chrome-profile/`)
+1. Using dedicated profile directories (`~/.notebooklm-mcp-cli/chrome-profiles/<name>/`)
 2. Adding the `--remote-allow-origins=*` flag for WebSocket connections
 
-This is handled automatically - no action required from users.
+No action required from users.
 
 ---
 
 ## Security Notes
 
-- Cookies are stored locally in `~/.notebooklm-mcp/auth.json`
-- The dedicated Chrome profile contains your Google login for NotebookLM
-- Never share your `auth.json` file or commit it to version control
+- Cookies are stored locally in `~/.notebooklm-mcp-cli/profiles/<name>/auth.json`
+- Each Chrome profile contains your Google login for NotebookLM
+- Never share your `auth.json` files or commit them to version control
 - The `cookies.txt` file in the repo is a template - don't commit real cookies

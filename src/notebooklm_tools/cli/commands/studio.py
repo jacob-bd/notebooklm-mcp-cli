@@ -406,7 +406,7 @@ def create_mindmap(
 @slides_app.command("create")
 def create_slides(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
-    format: str = typer.Option("detailed", "--format", "-f", help="Format: detailed, presenter"),
+    format: str = typer.Option("detailed_deck", "--format", "-f", help="Format: detailed_deck, presenter_slides"),
     length: str = typer.Option("default", "--length", "-l", help="Length: short, default"),
     language: str = typer.Option("en", "--language", help="BCP-47 language code"),
     focus: str = typer.Option("", "--focus", help="Optional focus topic"),

@@ -36,6 +36,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Integration tests for all CLI bug fixes (9 tests covering error handling, parameter passing, alias resolution)
 - `nlm login profile rename` command for renaming authentication profiles
+- **Multi-profile Chrome isolation** - each authentication profile now uses a separate Chrome session, allowing simultaneous logins to multiple Google accounts
+- **Email capture during login** - profiles now display associated Google account email in `nlm login profile list`
+- **Default profile configuration** - `nlm config set auth.default_profile <name>` to avoid typing `--profile` for every command
+
+## [0.2.0] - 2026-01-25
+
+### Major Release: Unified CLI & MCP Package
+
+This release unifies the previously separate `notebooklm-cli` and `notebooklm-mcp-server` packages into a single `notebooklm-mcp-cli` package. One install now provides both the `nlm` CLI and `notebooklm-mcp` server.
+
+### Added
+
+#### Unified Package
+- Single `notebooklm-mcp-cli` package replaces separate CLI and MCP packages
+- Automatic migration from legacy packages (Chrome profiles and aliases preserved)
+- Three executables: `nlm` (CLI), `notebooklm-mcp` (MCP server), `notebooklm-mcp-auth` (auth tool)
+
+#### File Upload
+- Direct file upload via HTTP resumable protocol (PDF, TXT, Markdown, Audio)
+- No browser automation needed for uploads
+- File type validation with clear error messages
+- `--wait` parameter to block until source is ready
+
+#### Download System
+- Unified download commands for all artifact types (audio, video, reports, slides, infographics, mind maps, data tables)
+- Streaming downloads with progress bars
+- Interactive artifact support - Quiz and flashcards downloadable as JSON, Markdown, or HTML
+- Alias support in download commands
+
+#### Export to Google Workspace
+- Export Data Tables to Google Sheets (`nlm export sheets`)
+- Export Reports to Google Docs (`nlm export docs`)
+
+#### Notes API
+- Full CRUD operations: `nlm note create/list/update/delete`
+- MCP tools: `note_create`, `note_list`, `note_update`, `note_delete`
+
+#### Sharing API
+- View sharing status and collaborators (`nlm share status`)
+- Enable/disable public link access (`nlm share public/private`)
+- Invite collaborators by email with role selection (`nlm share invite`)
+
+#### Multi-Profile Authentication
+- Named profiles for multiple Google accounts (`nlm login --profile <name>`)
+- Profile management: `nlm login profile list/delete/rename`
+- Each profile gets isolated Chrome session (no cross-account conflicts)
+
+#### Dual CLI Command Structure
+- **Noun-first**: `nlm notebook list`, `nlm source add`, `nlm studio create`
+- **Verb-first**: `nlm list notebooks`, `nlm add url`, `nlm create audio`
+- Both styles work interchangeably
+
+#### AI Coding Assistant Integration
+- Skill installer for Claude Code, Cursor, Gemini CLI, Codex, OpenCode, Antigravity
+- `nlm skill install <tool>` adds NotebookLM expertise to AI assistants
+- User-level and project-level installation options
+
+#### MCP Server Improvements
+- HTTP transport mode (`notebooklm-mcp --transport http --port 8000`)
+- Debug logging (`notebooklm-mcp --debug`)
+- Consolidated from 45+ tools down to 26 unified tools
+- Modular server architecture with mixins
+
+#### Research Improvements
+- Query fallback for more reliable research polling
+- Better status tracking for deep research tasks
+- Task ID filtering for concurrent research operations
+
+### Changed
+- Storage location moved to `~/.notebooklm-mcp-cli/`
+- Client refactored into modular mixin architecture (BaseClient, NotebookMixin, SourceMixin, etc.)
+- MCP tools consolidated (e.g., separate `notebook_add_url/text/drive` → unified `source_add`)
 
 ## [0.1.14] - 2026-01-17
 

@@ -208,8 +208,8 @@ pip uninstall notebooklm-mcp-cli
 # Using pipx
 pipx uninstall notebooklm-mcp-cli
 
-# Remove cached auth tokens (optional)
-rm -rf ~/.notebooklm-mcp
+# Remove cached auth tokens and data (optional)
+rm -rf ~/.notebooklm-mcp-cli
 ```
 
 Also remove from your AI tools:
@@ -244,10 +244,13 @@ nlm login --manual --file cookies.txt
 **Profile management:**
 ```bash
 nlm login --check                    # Show current auth status
-nlm login profile list               # List all profiles
+nlm login profile list               # List all profiles with email addresses
 nlm login profile delete <profile>   # Delete a profile
 nlm login profile rename <old> <new> # Rename a profile
+nlm config set auth.default_profile work  # Set default profile
 ```
+
+Each profile gets its own isolated Chrome session, so you can be logged into multiple Google accounts simultaneously.
 
 ### Standalone Auth Tool
 

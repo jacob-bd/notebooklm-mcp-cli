@@ -204,17 +204,20 @@ def login_callback(
             auto_launch=True,
             wait_for_login=True,
             login_timeout=300,
+            profile_name=profile,
         )
 
         cookies = result["cookies"]
         csrf_token = result.get("csrf_token", "")
         session_id = result.get("session_id", "")
+        email = result.get("email", "")
 
         # Save to profile
         auth.save_profile(
             cookies=cookies,
             csrf_token=csrf_token,
             session_id=session_id,
+            email=email,
         )
 
         # Close Chrome to release profile lock (enables headless auth later)
@@ -225,6 +228,8 @@ def login_callback(
         console.print(f"  Profile: {profile}")
         console.print(f"  Cookies: {len(cookies)} extracted")
         console.print(f"  CSRF Token: {'Yes' if csrf_token else 'No (will be auto-extracted)'}")
+        if email:
+            console.print(f"  Account: {email}")
         console.print(f"  Credentials saved to: {auth.profile_dir}")
 
     except NLMError as e:

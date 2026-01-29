@@ -119,12 +119,16 @@ mcp__notebooklm-mcp__save_auth_tokens(cookies="<cookie_header>")
 nlm login                           # Launch Chrome, extract cookies (primary method)
 nlm login --check                   # Validate current session
 nlm login --profile work            # Use named profile for multiple accounts
-nlm login profile list              # List all profiles
+nlm login profile list              # List all profiles with email addresses
 nlm login profile delete <name>     # Delete a profile
 nlm login profile rename <old> <new> # Rename a profile
 ```
 
+**Multi-Profile Support**: Each profile gets its own isolated Chrome session, so you can be logged into multiple Google accounts simultaneously.
+
 **Session lifetime**: ~20 minutes. Re-authenticate when commands fail with auth errors.
+
+**Setting default profile**: Use `nlm config set auth.default_profile <name>` to avoid typing `--profile` for every command.
 
 **Note**: Both MCP and CLI share the same authentication backend, so authenticating with one works for both.
 
@@ -632,10 +636,22 @@ nlm audio create myproject --confirm
 CLI-only commands for managing settings:
 
 ```bash
-nlm config show              # Show current config
-nlm config get <key>         # Get specific setting
-nlm config set <key> <value> # Update setting
+nlm config show                              # Show current config
+nlm config get <key>                         # Get specific setting
+nlm config set <key> <value>                 # Update setting
+nlm config set auth.default_profile work     # Set default profile
+nlm config set output.format json            # Change default output
 ```
+
+**Available Settings:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `output.format` | `table` | Default output format (table, json) |
+| `output.color` | `true` | Enable colored output |
+| `output.short_ids` | `true` | Show shortened IDs |
+| `auth.browser` | `auto` | Browser for login (auto, chrome, chromium) |
+| `auth.default_profile` | `default` | Profile to use when `--profile` not specified |
 
 ## Output Formats
 

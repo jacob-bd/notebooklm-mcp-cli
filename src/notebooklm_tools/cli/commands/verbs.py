@@ -460,7 +460,8 @@ def add_url_verb(
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Add a URL source to notebook."""
-    add_source(notebook, url=url_arg, profile=profile)
+    # Explicitly pass None for unused source types to avoid typer.Option resolution issues
+    add_source(notebook, url=url_arg, text=None, drive=None, youtube=None, file=None, profile=profile)
 
 
 @add_app.command("text")
@@ -471,7 +472,8 @@ def add_text_verb(
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Add text source to notebook."""
-    add_source(notebook, text=text_arg, title=title or "Pasted Text", profile=profile)
+    # Explicitly pass None for unused source types to avoid typer.Option resolution issues
+    add_source(notebook, url=None, text=text_arg, drive=None, youtube=None, file=None, title=title or "Pasted Text", profile=profile)
 
 
 @add_app.command("drive")
@@ -483,7 +485,8 @@ def add_drive_verb(
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Add a Google Drive source to notebook."""
-    add_source(notebook, drive=document_id, title=title or f"Drive Document ({document_id[:8]}...)", doc_type=doc_type, profile=profile)
+    # Explicitly pass None for unused source types to avoid typer.Option resolution issues
+    add_source(notebook, url=None, text=None, drive=document_id, youtube=None, file=None, title=title or f"Drive Document ({document_id[:8]}...)", doc_type=doc_type, profile=profile)
 
 
 # =============================================================================

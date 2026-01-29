@@ -60,10 +60,27 @@ def get_profile_dir(profile_name: str = "default") -> Path:
     return profile_dir
 
 
-def get_chrome_profile_dir() -> Path:
-    """Get Chrome profile directory for automated auth."""
-    chrome_dir = get_storage_dir() / "chrome-profile"
-    chrome_dir.mkdir(exist_ok=True)
+def get_chrome_profile_dir(profile_name: str = "default") -> Path:
+    """Get Chrome profile directory for automated auth.
+    
+    Each NLM profile gets its own Chrome user-data-dir so different
+    Google accounts can be used for different profiles.
+    
+    For backward compatibility, the "default" profile uses the old
+    chrome-profile/ directory if it exists, keeping single-profile
+    users' experience unchanged.
+    """
+    storage = get_storage_dir()
+    
+    # Backward compatibility: use old location for default profile if it exists
+    if profile_name == "default":
+        old_chrome_dir = storage / "chrome-profile"
+        if old_chrome_dir.exists():
+            return old_chrome_dir
+    
+    # New multi-profile structure
+    chrome_dir = storage / "chrome-profiles" / profile_name
+    chrome_dir.mkdir(parents=True, exist_ok=True)
     return chrome_dir
 
 

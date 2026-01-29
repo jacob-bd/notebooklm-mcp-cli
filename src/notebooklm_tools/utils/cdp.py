@@ -80,9 +80,9 @@ def get_chrome_path() -> str | None:
 from notebooklm_tools.utils.config import get_chrome_profile_dir
 
 
-def is_profile_locked() -> bool:
+def is_profile_locked(profile_name: str = "default") -> bool:
     """Check if the Chrome profile is locked (Chrome is using it)."""
-    lock_file = get_chrome_profile_dir() / "SingletonLock"
+    lock_file = get_chrome_profile_dir(profile_name) / "SingletonLock"
     return lock_file.exists()
 
 
@@ -106,13 +106,13 @@ def find_existing_nlm_chrome(port_range: range = CDP_PORT_RANGE) -> int | None:
     return None
 
 
-def launch_chrome_process(port: int = CDP_DEFAULT_PORT, headless: bool = False) -> subprocess.Popen | None:
+def launch_chrome_process(port: int = CDP_DEFAULT_PORT, headless: bool = False, profile_name: str = "default") -> subprocess.Popen | None:
     """Launch Chrome and return process handle."""
     chrome_path = get_chrome_path()
     if not chrome_path:
         return None
     
-    profile_dir = get_chrome_profile_dir()
+    profile_dir = get_chrome_profile_dir(profile_name)
     profile_dir.mkdir(parents=True, exist_ok=True)
     
     args = [
@@ -146,10 +146,10 @@ _chrome_process: subprocess.Popen | None = None
 _chrome_port: int | None = None
 
 
-def launch_chrome(port: int = CDP_DEFAULT_PORT, headless: bool = False) -> bool:
+def launch_chrome(port: int = CDP_DEFAULT_PORT, headless: bool = False, profile_name: str = "default") -> bool:
     """Launch Chrome with remote debugging enabled."""
     global _chrome_process, _chrome_port
-    _chrome_process = launch_chrome_process(port, headless)
+    _chrome_process = launch_chrome_process(port, headless, profile_name)
     _chrome_port = port if _chrome_process else None
     return _chrome_process is not None
 
@@ -360,11 +360,30 @@ def extract_session_id(html: str) -> str:
     return ""
 
 
+def extract_email(html: str) -> str:
+    """Extract user email from page HTML."""
+    # Try various patterns Google uses to embed the email
+    patterns = [
+        r'"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"',  # Generic email in quotes
+        r'data-email="([^"]+)"',  # data-email attribute
+        r'"oPEP7c":"([^"]+@[^"]+)"',  # Google's internal email field
+    ]
+    for pattern in patterns:
+        matches = re.findall(pattern, html)
+        for match in matches:
+            # Filter out common false positives
+            if '@google.com' not in match and '@gstatic' not in match:
+                if '@' in match and '.' in match.split('@')[-1]:
+                    return match
+    return ""
+
+
 def extract_cookies_via_cdp(
     port: int = CDP_DEFAULT_PORT,
     auto_launch: bool = True,
     wait_for_login: bool = True,
     login_timeout: int = 300,
+    profile_name: str = "default",
 ) -> dict[str, Any]:
     """Extract cookies and tokens from Chrome via CDP.
     
@@ -375,9 +394,10 @@ def extract_cookies_via_cdp(
         auto_launch: If True, launch Chrome if not running
         wait_for_login: If True, wait for user to log in
         login_timeout: Max seconds to wait for login
+        profile_name: NLM profile name (each gets its own Chrome user-data-dir)
     
     Returns:
-        Dict with cookies, csrf_token, and session_id
+        Dict with cookies, csrf_token, session_id, and email
     
     Raises:
         AuthenticationError: If extraction fails
@@ -392,11 +412,11 @@ def extract_cookies_via_cdp(
         debugger_url = None
     
     if not debugger_url and auto_launch:
-        if is_profile_locked():
+        if is_profile_locked(profile_name):
             # Profile locked but no Chrome found on known ports - stale lock?
             raise AuthenticationError(
                 message="The NLM auth profile is locked but no Chrome instance found",
-                hint="Close any stuck Chrome processes or delete ~/.nlm/chrome-profile/SingletonLock",
+                hint=f"Close any stuck Chrome processes or delete the SingletonLock file in the {profile_name} Chrome profile.",
             )
         
         if not get_chrome_path():
@@ -414,7 +434,7 @@ def extract_cookies_via_cdp(
                 hint="Close some Chrome instances and try again.",
             )
         
-        if not launch_chrome(port):
+        if not launch_chrome(port, profile_name=profile_name):
             raise AuthenticationError(
                 message="Failed to launch Chrome",
                 hint="Try 'nlm login --manual' to import cookies from a file.",
@@ -478,13 +498,15 @@ def extract_cookies_via_cdp(
             hint="Make sure you're fully logged in.",
         )
     
-    # Get page HTML for CSRF and session ID
+    # Get page HTML for CSRF, session ID, and email
     html = get_page_html(ws_url)
     csrf_token = extract_csrf_token(html)
     session_id = extract_session_id(html)
+    email = extract_email(html)
     
     return {
         "cookies": cookies,
         "csrf_token": csrf_token,
         "session_id": session_id,
+        "email": email,
     }
