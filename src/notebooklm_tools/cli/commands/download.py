@@ -12,6 +12,7 @@ from rich.progress import (
 )
 from notebooklm_tools.core.client import NotebookLMClient, ArtifactNotReadyError, ArtifactError
 from notebooklm_tools.cli.utils import get_client, handle_error
+from notebooklm_tools.core.alias import get_alias_manager
 
 app = typer.Typer(help="Download artifacts from notebooks.")
 console = Console()
@@ -85,6 +86,7 @@ def download_audio(
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar")
 ):
     """Download Audio Overview."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
     try:
         path = output or f"{notebook_id}_audio.m4a"
@@ -108,6 +110,7 @@ def download_video(
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar")
 ):
     """Download Video Overview."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
     try:
         path = output or f"{notebook_id}_video.mp4"
@@ -130,6 +133,7 @@ def download_report(
     artifact_id: Optional[str] = typer.Option(None, "--id", help="Specific artifact ID")
 ):
     """Download Report (Markdown)."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     path = output or f"{notebook_id}_report.md"
     simple_download(
         lambda client: client.download_report(notebook_id, path, artifact_id),
@@ -143,6 +147,7 @@ def download_mind_map(
     artifact_id: Optional[str] = typer.Option(None, "--id", help="Specific artifact ID (note ID)")
 ):
     """Download Mind Map (JSON)."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     path = output or f"{notebook_id}_mindmap.json"
     simple_download(
         lambda client: client.download_mind_map(notebook_id, path, artifact_id),
@@ -157,6 +162,7 @@ def download_slide_deck(
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar")
 ):
     """Download Slide Deck (PDF)."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
     try:
         path = output or f"{notebook_id}_slides.pdf"
@@ -180,6 +186,7 @@ def download_infographic(
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar")
 ):
     """Download Infographic (PNG)."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
     try:
         path = output or f"{notebook_id}_infographic.png"
@@ -202,6 +209,7 @@ def download_data_table(
     artifact_id: Optional[str] = typer.Option(None, "--id", help="Specific artifact ID")
 ):
     """Download Data Table (CSV)."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     path = output or f"{notebook_id}_table.csv"
     simple_download(
         lambda client: client.download_data_table(notebook_id, path, artifact_id),
@@ -223,6 +231,7 @@ def download_quiz_cmd(
     ),
 ):
     """Download Quiz."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
 
     # Validate format
@@ -269,6 +278,7 @@ def download_flashcards_cmd(
     ),
 ):
     """Download Flashcards."""
+    notebook_id = get_alias_manager().resolve(notebook_id)
     client = get_client()
 
     # Validate format
