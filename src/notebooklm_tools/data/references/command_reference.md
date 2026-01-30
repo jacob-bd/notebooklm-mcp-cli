@@ -11,9 +11,13 @@ This document contains the complete command signatures and all available options
 5. [Research Commands](#research-commands)
 6. [Generation Commands](#generation-commands)
 7. [Studio Commands](#studio-commands)
-8. [Chat Commands](#chat-commands)
-9. [Alias Commands](#alias-commands)
-10. [Config Commands](#config-commands)
+8. [Download Commands](#download-commands)
+9. [Export Commands](#export-commands)
+10. [Sharing Commands](#sharing-commands)
+11. [Note Commands](#note-commands)
+12. [Chat Commands](#chat-commands)
+13. [Alias Commands](#alias-commands)
+14. [Config Commands](#config-commands)
 
 ---
 
@@ -532,8 +536,171 @@ nlm studio delete <notebook-id> <artifact-id> [OPTIONS]
 |--------|-------------|
 | `--confirm` | **Required** to confirm deletion |
 | `--profile` | Use specific profile |
+---
+
+## Download Commands
+
+### nlm download
+
+Download generated artifacts to local files.
+
+```bash
+nlm download <type> <notebook-id> <output-path> [OPTIONS]
+```
+
+**Available types:** `audio`, `video`, `report`, `mind-map`, `slides`, `infographic`, `quiz`, `flashcards`, `data-table`
+
+| Option | Description |
+|--------|-------------|
+| `--artifact-id` | Specific artifact ID (uses latest if omitted) |
+| `--format` | Output format for quiz/flashcards: `json`, `markdown`, `html` |
+| `--profile` | Use specific profile |
+
+**Examples:**
+```bash
+nlm download audio <nb-id> podcast.mp3
+nlm download video <nb-id> video.mp4
+nlm download report <nb-id> report.md
+nlm download quiz <nb-id> quiz.html --format html
+nlm download flashcards <nb-id> cards.json --format json
+```
 
 ---
+
+## Export Commands
+
+### nlm export
+
+Export artifacts to Google Docs or Sheets.
+
+```bash
+nlm export <type> <notebook-id> <artifact-id> [OPTIONS]
+```
+
+**Available types:** `docs`, `sheets`
+
+| Option | Description |
+|--------|-------------|
+| `--title` | Title for the exported document |
+| `--profile` | Use specific profile |
+
+**Examples:**
+```bash
+nlm export sheets <nb-id> <artifact-id> --title "Data Table Export"
+nlm export docs <nb-id> <artifact-id> --title "My Report"
+```
+
+---
+
+## Sharing Commands
+
+### nlm share status
+
+Get current sharing settings for a notebook.
+
+```bash
+nlm share status <notebook-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--profile` | Use specific profile |
+
+### nlm share public
+
+Enable or disable public link sharing.
+
+```bash
+nlm share public <notebook-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--off` | Disable public sharing (default: enable) |
+| `--profile` | Use specific profile |
+
+**Examples:**
+```bash
+nlm share public <nb-id>         # Enable public link
+nlm share public <nb-id> --off   # Disable public link
+```
+
+### nlm share invite
+
+Invite a collaborator by email.
+
+```bash
+nlm share invite <notebook-id> <email> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--role` | `viewer` (default) or `editor` |
+| `--profile` | Use specific profile |
+
+**Examples:**
+```bash
+nlm share invite <nb-id> user@example.com
+nlm share invite <nb-id> user@example.com --role editor
+```
+
+---
+
+## Note Commands
+
+### nlm note create
+
+Create a note in a notebook.
+
+```bash
+nlm note create <notebook-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--content` | Note content (required) |
+| `--title` | Note title |
+| `--profile` | Use specific profile |
+
+### nlm note list
+
+List all notes in a notebook.
+
+```bash
+nlm note list <notebook-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON |
+| `--profile` | Use specific profile |
+
+### nlm note update
+
+Update an existing note.
+
+```bash
+nlm note update <notebook-id> <note-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--content` | New content |
+| `--title` | New title |
+| `--profile` | Use specific profile |
+
+### nlm note delete
+
+Delete a note permanently.
+
+```bash
+nlm note delete <notebook-id> <note-id> [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--confirm` | **Required** to confirm deletion |
+| `--profile` | Use specific profile |
 
 ## Chat Commands
 

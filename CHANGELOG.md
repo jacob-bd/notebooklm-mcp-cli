@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2026-01-25
 
-### Major Release: Unified CLI & MCP Package
+### Major Release: Unified CLI & MCP Package (Code Name: "Cancun Wind")
 
 This release unifies the previously separate `notebooklm-cli` and `notebooklm-mcp-server` packages into a single `notebooklm-mcp-cli` package. One install now provides both the `nlm` CLI and `notebooklm-mcp` server.
 

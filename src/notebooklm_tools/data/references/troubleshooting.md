@@ -76,7 +76,7 @@ nlm login --check || nlm login
 
 1. **List existing profiles:**
    ```bash
-   nlm auth list
+   nlm login profile list
    ```
 
 2. **Create a new profile:**
@@ -86,13 +86,18 @@ nlm login --check || nlm login
 
 3. **Delete corrupted profile:**
    ```bash
-   nlm auth delete <profile-name> --confirm
+   nlm login profile delete <profile-name>
    nlm login --profile <profile-name>
    ```
 
-4. **Check which profile is active:**
+4. **Switch default profile:**
    ```bash
-   nlm auth status
+   nlm login switch <profile-name>
+   ```
+
+5. **Check current session:**
+   ```bash
+   nlm login --check
    ```
 
 ---

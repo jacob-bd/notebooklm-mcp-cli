@@ -11,15 +11,20 @@ This skill provides comprehensive guidance for using NotebookLM via both the `nl
 
 **ALWAYS check which tools are available before proceeding:**
 
-1. **Check for MCP tools**: Look for tools starting with `mcp__notebooklm-mcp__*`
-2. **If MCP tools are available**: Use them directly (preferred method)
-3. **If MCP tools are NOT available**: Use `nlm` CLI commands via Bash
+1. **Check for MCP tools**: Look for tools starting with `mcp__notebooklm-mcp__*` or `mcp_notebooklm_*`
+2. **If BOTH MCP tools AND CLI are available**: **ASK the user** which they prefer to use before proceeding
+3. **If only MCP tools are available**: Use them directly (refer to tool docstrings for parameters)
+4. **If only CLI is available**: Use `nlm` CLI commands via Bash
 
 **Decision Logic:**
 ```
-has_mcp_tools = check_available_tools()  # Look for mcp__notebooklm-mcp__* tools
+has_mcp_tools = check_available_tools()  # Look for mcp__notebooklm-mcp__* or mcp_notebooklm_*
+has_cli = check_bash_available()  # Can run nlm commands
 
-if has_mcp_tools:
+if has_mcp_tools and has_cli:
+    # ASK USER: "I can use either MCP tools or the nlm CLI. Which do you prefer?"
+    user_preference = ask_user()
+else if has_mcp_tools:
     # Use MCP tools directly
     mcp__notebooklm-mcp__notebook_list()
 else:
@@ -27,14 +32,16 @@ else:
     bash("nlm notebook list")
 ```
 
-This skill documents BOTH approaches. Choose the appropriate one based on tool availability.
+This skill documents BOTH approaches. Choose the appropriate one based on tool availability and **user preference**.
 
 ## Quick Reference
+
+**Run `nlm --ai` to get comprehensive AI-optimized documentation** - this provides a complete view of all CLI capabilities.
 
 ```bash
 nlm --help              # List all commands
 nlm <command> --help    # Help for specific command
-nlm --ai                # Full AI-optimized documentation
+nlm --ai                # Full AI-optimized documentation (RECOMMENDED)
 nlm --version           # Check installed version
 ```
 
@@ -42,14 +49,15 @@ nlm --version           # Check installed version
 
 1. **Always authenticate first**: Run `nlm login` before any operations
 2. **Sessions expire in ~20 minutes**: Re-run `nlm login` if commands start failing
-3. **`--confirm` is REQUIRED**: All generation and delete commands need `--confirm` or `-y`
-4. **Research requires `--notebook-id`**: The flag is mandatory, not positional
-5. **Capture IDs from output**: Create/start commands return IDs needed for subsequent operations
-6. **Use aliases**: Simplify long UUIDs with `nlm alias set <name> <uuid>`
-7. **⚠️ ALWAYS ASK USER BEFORE DELETE**: Before executing ANY delete command, ask the user for explicit confirmation. Deletions are **irreversible**. Show what will be deleted and warn about permanent data loss.
+3. **⚠️ ALWAYS ASK USER BEFORE DELETE**: Before executing ANY delete command, ask the user for explicit confirmation. Deletions are **irreversible**. Show what will be deleted and warn about permanent data loss.
+4. **`--confirm` is REQUIRED**: All generation and delete commands need `--confirm` or `-y` (CLI) or `confirm=True` (MCP)
+5. **Research requires `--notebook-id`**: The flag is mandatory, not positional
+6. **Capture IDs from output**: Create/start commands return IDs needed for subsequent operations
+7. **Use aliases**: Simplify long UUIDs with `nlm alias set <name> <uuid>`
 8. **Check aliases before creating**: Run `nlm alias list` before creating a new alias to avoid conflicts with existing names.
 9. **DO NOT launch REPL**: Never use `nlm chat start` - it opens an interactive REPL that AI tools cannot control. Use `nlm notebook query` for one-shot Q&A instead.
 10. **Choose output format wisely**: Default output (no flags) is compact and token-efficient—use it for status checks. Use `--quiet` to capture IDs for piping. Only use `--json` when you need to parse specific fields programmatically.
+11. **Use `--help` when unsure**: Run `nlm <command> --help` to see available options and flags for any command.
 
 ## Workflow Decision Tree
 
@@ -100,17 +108,18 @@ User wants to...
 If using MCP tools and encountering authentication errors:
 
 ```bash
-# Run the authentication CLI
-notebooklm-mcp-auth
+# Run the CLI authentication (works for both CLI and MCP)
+nlm login
 
 # Then reload tokens in MCP
 mcp__notebooklm-mcp__refresh_auth()
 ```
 
-Or manually save cookies via MCP:
+Or manually save cookies via MCP (fallback):
 ```python
 # Extract cookies from Chrome DevTools and save
 mcp__notebooklm-mcp__save_auth_tokens(cookies="<cookie_header>")
+```
 ```
 
 #### CLI Authentication
@@ -136,33 +145,8 @@ nlm login profile rename <old> <new> # Rename a profile
 ### 2. Notebook Management
 
 #### MCP Tools
-```python
-# List notebooks
-mcp__notebooklm-mcp__notebook_list(max_results=100)
 
-# Create notebook
-mcp__notebooklm-mcp__notebook_create(title="My Notebook")
-
-# Get details
-mcp__notebooklm-mcp__notebook_get(notebook_id="abc123")
-
-# AI-generated summary
-mcp__notebooklm-mcp__notebook_describe(notebook_id="abc123")
-
-# Query notebook (one-shot Q&A)
-mcp__notebooklm-mcp__notebook_query(
-    notebook_id="abc123",
-    query="What are the main findings?",
-    source_ids=["xyz1", "xyz2"],  # Optional
-    conversation_id="conv123"  # Optional for follow-ups
-)
-
-# Rename
-mcp__notebooklm-mcp__notebook_rename(notebook_id="abc123", new_title="New Title")
-
-# Delete (REQUIRES confirm=True)
-mcp__notebooklm-mcp__notebook_delete(notebook_id="abc123", confirm=True)
-```
+Use tools: `notebook_list`, `notebook_create`, `notebook_get`, `notebook_describe`, `notebook_query`, `notebook_rename`, `notebook_delete`. All accept `notebook_id` parameter. Delete requires `confirm=True`.
 
 #### CLI Commands
 ```bash
@@ -180,52 +164,14 @@ nlm notebook delete <id> --confirm     # PERMANENT deletion
 ### 3. Source Management
 
 #### MCP Tools
-```python
-# Adding sources (unified tool)
-mcp__notebooklm-mcp__source_add(
-    notebook_id="abc123",
-    source_type="url",
-    url="https://example.com"
-)
 
-mcp__notebooklm-mcp__source_add(
-    notebook_id="abc123",
-    source_type="text",
-    text="Content here",
-    title="My Notes"
-)
+Use `source_add` with these `source_type` values:
+- `url` - Web page or YouTube URL (`url` param)
+- `text` - Pasted content (`text` + `title` params)
+- `file` - Local file upload (`file_path` param)
+- `drive` - Google Drive doc (`document_id` + `doc_type` params)
 
-mcp__notebooklm-mcp__source_add(
-    notebook_id="abc123",
-    source_type="file",
-    file_path="/path/to/document.pdf"
-)
-
-mcp__notebooklm-mcp__source_add(
-    notebook_id="abc123",
-    source_type="drive",
-    document_id="1KQH3eW0...",
-    doc_type="doc"  # doc, slides, sheets, pdf
-)
-
-# List sources with Drive freshness
-mcp__notebooklm-mcp__source_list_drive(notebook_id="abc123")
-
-# Get source summary
-mcp__notebooklm-mcp__source_describe(source_id="xyz789")
-
-# Get raw content
-mcp__notebooklm-mcp__source_get_content(source_id="xyz789")
-
-# Sync stale Drive sources (REQUIRES confirm=True)
-mcp__notebooklm-mcp__source_sync_drive(
-    source_ids=["xyz1", "xyz2"],
-    confirm=True
-)
-
-# Delete (REQUIRES confirm=True)
-mcp__notebooklm-mcp__source_delete(source_id="xyz789", confirm=True)
-```
+Other tools: `source_list_drive`, `source_describe`, `source_get_content`, `source_sync_drive` (requires `confirm=True`), `source_delete` (requires `confirm=True`).
 
 #### CLI Commands
 ```bash
@@ -261,33 +207,12 @@ nlm source delete <source-id> --confirm
 Research finds NEW sources from the web or Google Drive.
 
 #### MCP Tools
-```python
-# Start research
-mcp__notebooklm-mcp__research_start(
-    query="quantum computing trends",
-    source="web",  # or "drive"
-    mode="fast",   # or "deep" (web only, ~5min)
-    notebook_id="abc123",  # Optional, creates new if not provided
-    title="My Research"    # Optional
-)
 
-# Check progress (blocks until complete or timeout)
-mcp__notebooklm-mcp__research_status(
-    notebook_id="abc123",
-    poll_interval=30,  # Seconds between polls
-    max_wait=300,      # Max seconds to wait (0=single check)
-    compact=True,      # Default: truncate report to save tokens
-    task_id="task123", # Optional: check specific task
-    query="quantum computing"  # Optional: fallback matching for deep research
-)
+Use `research_start` with:
+- `source`: `web` or `drive`
+- `mode`: `fast` (~30s) or `deep` (~5min, web only)
 
-# Import discovered sources
-mcp__notebooklm-mcp__research_import(
-    notebook_id="abc123",
-    task_id="task123",
-    source_indices=[0, 2, 5]  # Optional: import specific sources
-)
-```
+Workflow: `research_start` → poll `research_status` → `research_import`
 
 #### CLI Commands
 ```bash
@@ -313,90 +238,21 @@ nlm research import <nb-id> <task-id> --indices 0,2,5  # Import specific
 
 #### MCP Tools (Unified Creation)
 
-MCP provides a unified `studio_create` tool for all artifact types:
+Use `studio_create` with `artifact_type` and type-specific options. All require `confirm=True`.
 
-```python
-# Audio Overview (podcast)
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="audio",
-    audio_format="deep_dive",  # or "brief", "critique", "debate"
-    audio_length="default",    # or "short", "long"
-    language="en",
-    focus_prompt="Focus on key findings",  # Optional
-    source_ids=["xyz1", "xyz2"],  # Optional
-    confirm=True  # REQUIRED
-)
+| artifact_type | Key Options |
+|--------------|-------------|
+| `audio` | `audio_format`: deep_dive/brief/critique/debate, `audio_length`: short/default/long |
+| `video` | `video_format`: explainer/brief, `visual_style`: auto_select/classic/whiteboard/kawaii/anime/watercolor/retro_print/heritage/paper_craft |
+| `report` | `report_format`: Briefing Doc/Study Guide/Blog Post/Create Your Own, `custom_prompt` |
+| `quiz` | `question_count`, `difficulty`: easy/medium/hard |
+| `flashcards` | `difficulty`: easy/medium/hard |
+| `mind_map` | `title` |
+| `slide_deck` | `slide_format`: detailed_deck/presenter_slides, `slide_length`: short/default |
+| `infographic` | `orientation`: landscape/portrait/square, `detail_level`: concise/standard/detailed |
+| `data_table` | `description` (REQUIRED) |
 
-# Video Overview
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="video",
-    video_format="explainer",  # or "brief"
-    visual_style="auto_select",  # or "classic", "whiteboard", "kawaii", etc.
-    confirm=True
-)
-
-# Report
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="report",
-    report_format="Briefing Doc",  # or "Study Guide", "Blog Post", "Create Your Own"
-    custom_prompt="Focus on technical details",  # If report_format="Create Your Own"
-    confirm=True
-)
-
-# Quiz
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="quiz",
-    question_count=5,
-    difficulty="medium",  # or "easy", "hard"
-    confirm=True
-)
-
-# Flashcards
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="flashcards",
-    difficulty="medium",
-    confirm=True
-)
-
-# Mind Map
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="mind_map",
-    title="Topic Overview",
-    confirm=True
-)
-
-# Slide Deck
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="slide_deck",
-    slide_format="detailed_deck",  # or "presenter_slides"
-    slide_length="default",  # or "short"
-    confirm=True
-)
-
-# Infographic
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="infographic",
-    orientation="landscape",  # or "portrait", "square"
-    detail_level="standard",  # or "concise", "detailed"
-    confirm=True
-)
-
-# Data Table
-mcp__notebooklm-mcp__studio_create(
-    notebook_id="abc123",
-    artifact_type="data_table",
-    description="Extract all key findings and dates",  # REQUIRED
-    confirm=True
-)
-```
+**Common options**: `source_ids`, `language` (BCP-47 code), `focus_prompt`
 
 #### CLI Commands
 
@@ -460,34 +316,8 @@ nlm data-table create <id> "Extract all dates and events" --confirm
 ### 6. Studio (Artifact Management)
 
 #### MCP Tools
-```python
-# Check status
-mcp__notebooklm-mcp__studio_status(notebook_id="abc123")
 
-# Download artifacts (unified tool)
-mcp__notebooklm-mcp__download_artifact(
-    notebook_id="abc123",
-    artifact_type="audio",  # or video, report, quiz, flashcards, etc.
-    output_path="podcast.mp3",
-    artifact_id="art123",  # Optional: specific artifact (uses latest if not provided)
-    output_format="json"   # For quiz/flashcards: json|markdown|html
-)
-
-# Export to Google Docs/Sheets
-mcp__notebooklm-mcp__export_artifact(
-    notebook_id="abc123",
-    artifact_id="art123",
-    export_type="sheets",  # or "docs"
-    title="My Data Table"
-)
-
-# Delete (REQUIRES confirm=True)
-mcp__notebooklm-mcp__studio_delete(
-    notebook_id="abc123",
-    artifact_id="art123",
-    confirm=True
-)
-```
+Use `studio_status` to check progress. Use `download_artifact` with `artifact_type` and `output_path`. Use `export_artifact` with `export_type`: docs/sheets. Delete with `studio_delete` (requires `confirm=True`).
 
 #### CLI Commands
 ```bash
@@ -514,40 +344,8 @@ nlm studio delete <nb-id> <artifact-id> --confirm
 ### 7. Chat Configuration and Notes
 
 #### MCP Tools
-```python
-# Configure chat behavior
-mcp__notebooklm-mcp__chat_configure(
-    notebook_id="abc123",
-    goal="learning_guide",  # or "default", "custom"
-    response_length="default",  # or "longer", "shorter"
-    custom_prompt="Act as a technical tutor"  # Required if goal="custom"
-)
 
-# Create note
-mcp__notebooklm-mcp__note_create(
-    notebook_id="abc123",
-    content="My research findings...",
-    title="Key Insights"
-)
-
-# List notes
-mcp__notebooklm-mcp__note_list(notebook_id="abc123")
-
-# Update note
-mcp__notebooklm-mcp__note_update(
-    notebook_id="abc123",
-    note_id="note123",
-    content="Updated content",
-    title="Updated Title"
-)
-
-# Delete note (REQUIRES confirm=True)
-mcp__notebooklm-mcp__note_delete(
-    notebook_id="abc123",
-    note_id="note123",
-    confirm=True
-)
-```
+Use `chat_configure` with `goal`: default/learning_guide/custom. Use `note` with `action`: create/list/update/delete. Delete requires `confirm=True`.
 
 #### CLI Commands
 
@@ -584,23 +382,8 @@ nlm note delete <nb-id> <note-id> --confirm
 ### 8. Notebook Sharing
 
 #### MCP Tools
-```python
-# Check sharing status
-mcp__notebooklm-mcp__notebook_share_status(notebook_id="abc123")
 
-# Enable public link
-mcp__notebooklm-mcp__notebook_share_public(
-    notebook_id="abc123",
-    is_public=True  # or False to disable
-)
-
-# Invite collaborator
-mcp__notebooklm-mcp__notebook_share_invite(
-    notebook_id="abc123",
-    email="user@example.com",
-    role="viewer"  # or "editor"
-)
-```
+Use `notebook_share_status` to check, `notebook_share_public` to enable/disable public link, `notebook_share_invite` with `email` and `role`: viewer/editor.
 
 #### CLI Commands
 ```bash

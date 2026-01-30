@@ -220,13 +220,16 @@ nlm login --profile work
 nlm login --profile personal
 
 # Step 3: List all profiles
-nlm auth list
+nlm login profile list
 
-# Step 4: Use specific profile for commands
+# Step 4: Switch default profile
+nlm login switch work
+
+# Step 5: Use specific profile for commands
 nlm notebook list --profile work
 nlm notebook list --profile personal
 
-# Step 5: Create notebook in specific account
+# Step 6: Create notebook in specific account
 nlm notebook create "Work Project" --profile work
 ```
 
@@ -289,7 +292,83 @@ nlm studio status pres
 
 ---
 
-## Workflow 10: Cleanup and Deletion
+## Workflow 10: Notebook Sharing and Collaboration
+
+### Goal: Share a notebook with collaborators
+
+```bash
+# Step 1: Check current sharing status
+nlm share status <notebook-id>
+
+# Step 2: Enable public link sharing
+nlm share public <notebook-id>
+# Output includes the public URL
+
+# Step 3: Invite specific collaborators
+nlm share invite <notebook-id> colleague@example.com --role viewer
+nlm share invite <notebook-id> editor@example.com --role editor
+
+# Step 4: Disable public link when done
+nlm share public <notebook-id> --off
+
+# Step 5: Verify sharing settings
+nlm share status <notebook-id>
+```
+
+---
+
+## Workflow 11: Working with Notes
+
+### Goal: Add and manage personal notes in a notebook
+
+```bash
+# Step 1: Create a note
+nlm note create <notebook-id> --content "My key observations about this topic..." --title "Key Insights"
+
+# Step 2: List all notes
+nlm note list <notebook-id>
+
+# Step 3: Update a note
+nlm note update <notebook-id> <note-id> --content "Updated observations..."
+
+# Step 4: Notes are included in queries
+nlm notebook query <notebook-id> "What are my personal notes about?"
+
+# Step 5: Delete a note (after user confirms)
+nlm note delete <notebook-id> <note-id> --confirm
+```
+
+---
+
+## Workflow 12: Downloading and Exporting Artifacts
+
+### Goal: Download generated content locally or export to Google Docs/Sheets
+
+```bash
+# Step 1: Check available artifacts
+nlm studio status <notebook-id>
+
+# Step 2: Download audio podcast
+nlm download audio <notebook-id> ./downloads/podcast.mp3
+
+# Step 3: Download report
+nlm download report <notebook-id> ./downloads/report.md
+
+# Step 4: Download quiz in different formats
+nlm download quiz <notebook-id> quiz.json --format json
+nlm download quiz <notebook-id> quiz.html --format html
+nlm download flashcards <notebook-id> cards.html --format html
+
+# Step 5: Export data table to Google Sheets
+nlm export sheets <notebook-id> <artifact-id> --title "Extracted Data"
+
+# Step 6: Export report to Google Docs
+nlm export docs <notebook-id> <artifact-id> --title "My Report"
+```
+
+---
+
+## Workflow 13: Cleanup and Deletion
 
 ### Goal: Clean up notebooks and artifacts
 
@@ -322,7 +401,7 @@ nlm alias delete <alias-name>
 
 ---
 
-## Workflow 11: Scripting and Automation
+## Workflow 14: Scripting and Automation
 
 ### Goal: Automate repetitive tasks
 
