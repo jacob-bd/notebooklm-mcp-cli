@@ -171,16 +171,22 @@ class NotesMixin(BaseClient):
         if content is None and title is None:
             raise ValueError("Must provide content or title to update")
 
-        # Fetch current note to get existing values
-        all_notes = self.list_notes(notebook_id)
-        current_note = next((n for n in all_notes if n["id"] == note_id), None)
+        # If both content and title are provided, we can skip fetching existing note
+        # This fixes timing issues when called right after create_note
+        if content is not None and title is not None:
+            new_content = content
+            new_title = title
+        else:
+            # Fetch current note to get existing values for partial updates
+            all_notes = self.list_notes(notebook_id)
+            current_note = next((n for n in all_notes if n["id"] == note_id), None)
 
-        if not current_note:
-            return None
+            if not current_note:
+                return None
 
-        # Use existing values if not provided
-        new_content = content if content is not None else current_note.get("content", "")
-        new_title = title if title is not None else current_note.get("title", "")
+            # Use existing values if not provided
+            new_content = content if content is not None else current_note.get("content", "")
+            new_title = title if title is not None else current_note.get("title", "")
 
         # RPC format: [notebook_id, note_id, [[[content, title, [], 0]]]]
         params = [
@@ -191,15 +197,13 @@ class NotesMixin(BaseClient):
 
         result = self._call_rpc(self.RPC_UPDATE_NOTE, params, f"/notebook/{notebook_id}")
 
-        # Response is null on success
-        if result is None:  # API returns null on success
-            return {
-                "id": note_id,
-                "title": new_title,
-                "content": new_content,
-            }
-
-        return None
+        # API returns the updated note data on success (not None as previously thought)
+        # If we got here without exception, the update succeeded
+        return {
+            "id": note_id,
+            "title": new_title,
+            "content": new_content,
+        }
 
     def delete_note(self, note_id: str, notebook_id: str) -> bool:
         """Delete a note permanently.

@@ -41,12 +41,7 @@ from .chat import (
 from .exports import (
     export_artifact,
 )
-from .notes import (
-    note_create,
-    note_list,
-    note_update,
-    note_delete,
-)
+from .notes import note
 
 __all__ = [
     # Downloads (1 consolidated)
@@ -85,10 +80,7 @@ __all__ = [
     "chat_configure",
     # Exports (1)
     "export_artifact",
-    # Notes (4)
-    "note_create",
-    "note_list",
-    "note_update",
-    "note_delete",
+    # Notes (1 consolidated)
+    "note",
 ]
 
