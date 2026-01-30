@@ -61,6 +61,11 @@ TOOL_CONFIGS = {
 }
 
 
+def complete_tool_name(ctx: "click.Context", param: "click.Parameter", incomplete: str) -> list[str]:
+    """Shell completion callback for tool names."""
+    return [name for name in TOOL_CONFIGS.keys() if name.startswith(incomplete)]
+
+
 def get_data_dir() -> Path:
     """Get the package data directory containing skill files."""
     import notebooklm_tools
@@ -268,7 +273,8 @@ Where `<tool>` is: claude-code, opencode, gemini-cli, antigravity, or codex.
 def install(
     tool: str = typer.Argument(
         ...,
-        help="Tool to install skill for (claude-code, opencode, gemini-cli, antigravity, codex, other)",
+        help="Tool to install skill for (claude-code, cursor, codex, opencode, gemini-cli, antigravity, other)",
+        shell_complete=complete_tool_name,
     ),
     level: Literal["user", "project"] = typer.Option(
         "user",
@@ -385,6 +391,7 @@ def uninstall(
     tool: str = typer.Argument(
         ...,
         help="Tool to uninstall skill from",
+        shell_complete=complete_tool_name,
     ),
     level: Literal["user", "project"] = typer.Option(
         "user",
