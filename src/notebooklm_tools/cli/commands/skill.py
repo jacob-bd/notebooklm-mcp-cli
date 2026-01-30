@@ -295,9 +295,14 @@ def install(
 
     # Check level support
     if level == "user" and "user" not in config:
-        console.print(f"[red]Error:[/red] Tool '{tool}' does not support user-level installation")
-        console.print(f"Use --level project instead")
-        raise typer.Exit(1)
+        if tool == "other":
+            # Auto-switch to project level for export
+            level = "project"
+            console.print("[dim]Note: 'other' exports to current directory (project level)[/dim]")
+        else:
+            console.print(f"[red]Error:[/red] Tool '{tool}' does not support user-level installation")
+            console.print(f"Use --level project instead")
+            raise typer.Exit(1)
 
     # Get install path
     install_path = config.get(level)
