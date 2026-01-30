@@ -124,8 +124,6 @@ nlm status artifacts <notebook>
 | `nlm show` | Show information (config, aliases, skill) |
 | `nlm install` | Install resources (skill) |
 | `nlm uninstall` | Uninstall resources (skill) |
-| `nlm download-verb` | Download artifacts (audio, video, report, mind-map, slides, infographic, data-table) |
-| `nlm research-verb` | Research commands (start, import) |
 
 ---
 
@@ -297,10 +295,7 @@ nlm research import <notebook-id> <task-id> --indices 0,2,5  # Import specific
 
 **Verb-First:**
 ```bash
-nlm research-verb start "query" --notebook-id <id>       # Start research
-nlm research-verb start "query" --notebook-id <id> --mode deep
 nlm status research <notebook-id>                        # Check progress
-nlm research-verb import <notebook-id> <task-id>         # Import sources
 ```
 
 **Research Modes:**
@@ -329,7 +324,7 @@ nlm audio create <notebook-id> --format brief --focus "key topic" --confirm
 **Verb-First:**
 ```bash
 nlm create audio <notebook-id> --confirm
-nlm create audio <notebook-id> --length medium --format mp3 --confirm
+nlm create audio <notebook-id> --format deep_dive --length short --confirm
 ```
 
 #### Report
@@ -345,7 +340,7 @@ nlm report create <notebook-id> --format "Create Your Own" --prompt "Summary..."
 **Verb-First:**
 ```bash
 nlm create report <notebook-id> --confirm
-nlm create report <notebook-id> --type study-guide --confirm
+nlm create report <notebook-id> --format "Study Guide" --confirm
 ```
 
 #### Quiz
@@ -361,7 +356,7 @@ nlm quiz create <notebook-id> --count 5 --difficulty 3 --confirm
 **Verb-First:**
 ```bash
 nlm create quiz <notebook-id> --confirm
-nlm create quiz <notebook-id> --difficulty medium --quantity 10 --confirm
+nlm create quiz <notebook-id> --difficulty 3 --count 10 --confirm
 ```
 
 #### Flashcards
@@ -399,14 +394,14 @@ nlm create mindmap <notebook-id> --title "Overview" --confirm
 ```bash
 nlm slides create <notebook-id> --confirm
 nlm slides create <notebook-id> --format presenter --length short --confirm
-# Formats: detailed, presenter (default: detailed)
+# Formats: detailed_deck, presenter_slides (default: detailed_deck)
 # Lengths: short, default
 ```
 
 **Verb-First:**
 ```bash
 nlm create slides <notebook-id> --confirm
-nlm create slides <notebook-id> --length short --format pdf --confirm
+nlm create slides <notebook-id> --length short --format detailed_deck --confirm
 ```
 
 #### Infographic
@@ -488,17 +483,6 @@ nlm download infographic <notebook-id> <artifact-id>        # Download infograph
 nlm download data-table <notebook-id> <artifact-id>         # Download data table (csv)
 ```
 
-**Verb-First:**
-```bash
-nlm download-verb audio <notebook-id> <artifact-id>         # Download audio
-nlm download-verb video <notebook-id> <artifact-id>         # Download video
-nlm download-verb report <notebook-id> <artifact-id>        # Download report
-nlm download-verb mind-map <notebook-id> <artifact-id>      # Download mind map
-nlm download-verb slides <notebook-id> <artifact-id>        # Download slides
-nlm download-verb infographic <notebook-id> <artifact-id>   # Download infographic
-nlm download-verb data-table <notebook-id> <artifact-id>    # Download data table
-```
-
 **Download Workflow:**
 1. Generate artifact: `nlm audio create <notebook> --confirm`
 2. Check status: `nlm studio status <notebook>` (wait for "completed")
@@ -536,9 +520,9 @@ nlm download flashcards <notebook-id> <artifact-id> --format html      # Interac
 ### Export Commands (to Google Docs/Sheets)
 
 ```bash
-nlm export docs <notebook-id> <artifact-id>              # Export report to Google Docs
-nlm export docs <notebook-id> <artifact-id> --title "My Doc"  # With custom title
-nlm export sheets <notebook-id> <artifact-id>            # Export data table to Google Sheets
+nlm export to-docs <notebook-id> <artifact-id>              # Export report to Google Docs
+nlm export to-docs <notebook-id> <artifact-id> --title "My Doc"  # With custom title
+nlm export to-sheets <notebook-id> <artifact-id>            # Export data table to Google Sheets
 ```
 
 **Exportable Types:**
@@ -812,12 +796,12 @@ nlm create infographic <notebook-id> --confirm
 nlm status artifacts <notebook-id> --full
 
 # Download all when ready (replace <artifact-ids> with actual IDs)
-nlm download-verb audio <notebook-id> <audio-id>
-nlm download-verb video <notebook-id> <video-id>
-nlm download-verb report <notebook-id> <report-id>
-nlm download-verb mind-map <notebook-id> <mindmap-id>
-nlm download-verb slides <notebook-id> <slides-id>
-nlm download-verb infographic <notebook-id> <infographic-id>
+nlm download audio <notebook-id> --id <audio-id>
+nlm download video <notebook-id> --id <video-id>
+nlm download report <notebook-id> --id <report-id>
+nlm download mind-map <notebook-id> --id <mindmap-id>
+nlm download slide-deck <notebook-id> --id <slides-id>
+nlm download infographic <notebook-id> --id <infographic-id>
 ```
 
 ---
@@ -843,7 +827,7 @@ nlm download-verb infographic <notebook-id> <infographic-id>
 17. **Streaming downloads** - All downloads use efficient streaming to handle large files without memory issues. This is automatic.
 18. **Drive source sync** - Use `nlm source stale <notebook>` or `nlm list stale-sources <notebook>` to check which Drive sources need syncing before running sync commands.
 19. **Use --wait for blocking source adds** - When adding sources before querying, use `nlm source add ... --wait` to block until processing completes. This ensures the source is ready for queries.
-20. **Export to Google Docs/Sheets** - Reports can be exported to Google Docs, Data Tables to Google Sheets. Use `nlm export docs/sheets <notebook> <artifact-id>`.
+20. **Export to Google Docs/Sheets** - Reports can be exported to Google Docs, Data Tables to Google Sheets. Use `nlm export to-docs/to-sheets <notebook> <artifact-id>`.
 """
 
 

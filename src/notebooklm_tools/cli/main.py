@@ -42,9 +42,7 @@ from notebooklm_tools.cli.commands.verbs import (
     sync_app,
     content_app,
     stale_app,
-    research_app as research_verb_app,
     configure_app,
-    download_app as download_verb_app,
     set_app,
     show_app,
     install_app,
@@ -414,9 +412,7 @@ app.add_typer(query_app, name="query", help="Chat with notebook sources")
 app.add_typer(sync_app, name="sync", help="Sync resources (Drive sources)")
 app.add_typer(content_app, name="content", help="Get raw content from sources")
 app.add_typer(stale_app, name="stale", help="List stale resources that need syncing")
-app.add_typer(research_verb_app, name="research-verb", help="Research and discover sources (verb-first)")
 app.add_typer(configure_app, name="configure", help="Configure settings")
-app.add_typer(download_verb_app, name="download-verb", help="Download studio artifacts (verb-first)")
 app.add_typer(set_app, name="set", help="Set values (aliases, config)")
 app.add_typer(show_app, name="show", help="Show information")
 app.add_typer(install_app, name="install", help="Install resources (skills)")
