@@ -172,6 +172,15 @@ def research_status(
             with get_client(profile) as client:
                 task = client.poll_research(notebook_id, target_task_id=task_id)
         
+        # Handle None task (no research found)
+        if task is None:
+            console.print(f"\n[bold]Research Status:[/bold]")
+            console.print(f"  Status: [dim]no research found[/dim]")
+            if task_id:
+                console.print(f"  Task ID: [cyan]{task_id}[/cyan] [dim](not found)[/dim]")
+            console.print(f"\n[dim]Start a research task with 'nlm research start'.[/dim]")
+            raise typer.Exit(0)
+        
         # Handle dict response from client
         if isinstance(task, dict):
             status = task.get('status', 'unknown')
