@@ -35,12 +35,6 @@ def client():
         session_id=tokens.session_id,
     )
 
-@pytest.fixture(autouse=True)
-def debug_client_import():
-    import inspect
-    from notebooklm_tools.core.client import NotebookLMClient
-    print(f"\n[DEBUG] NotebookLMClient loaded from: {inspect.getfile(NotebookLMClient)}")
-
 @pytest.fixture(scope="module")
 def output_dir():
     """Create a temporary output directory."""
