@@ -68,7 +68,7 @@ Then use natural language: *"Create a notebook about quantum computing and gener
 
 📚 **More Documentation:**
 - **[CLI Guide](docs/CLI_GUIDE.md)** — Complete command reference
-- **[MCP Guide](docs/MCP_GUIDE.md)** — All 28 MCP tools with examples
+- **[MCP Guide](docs/MCP_GUIDE.md)** — All 29 MCP tools with examples
 - **[Authentication](docs/AUTHENTICATION.md)** — Setup and troubleshooting
 - **[API Reference](docs/API_REFERENCE.md)** — Internal API docs for contributors
 
@@ -275,7 +275,7 @@ For detailed instructions and troubleshooting, see **[docs/AUTHENTICATION.md](do
 
 ## MCP Configuration
 
-> **⚠️ Context Window Warning:** This MCP provides **28 tools**. Disable it when not using NotebookLM to preserve context. In Claude Code: `@notebooklm-mcp` to toggle.
+> **⚠️ Context Window Warning:** This MCP provides **29 tools**. Disable it when not using NotebookLM to preserve context. In Claude Code: `@notebooklm-mcp` to toggle.
 
 ### Quick Setup
 

@@ -35,6 +35,7 @@ from notebooklm_tools.cli.commands.source import (
 from notebooklm_tools.cli.commands.studio import (
     studio_status,
     studio_delete,
+    studio_rename,
     create_audio,
     create_video,
     create_report,
@@ -504,6 +505,16 @@ def rename_notebook_verb(
 ) -> None:
     """Rename a notebook."""
     rename_notebook(notebook_id=notebook, new_title=title, profile=profile)
+
+
+@rename_app.command("studio")
+def rename_studio_verb(
+    artifact: str = typer.Argument(..., help="Artifact ID to rename"),
+    title: str = typer.Argument(..., help="New title"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Rename a studio artifact."""
+    studio_rename(artifact_id=artifact, new_title=title, profile=profile)
 
 
 # =============================================================================

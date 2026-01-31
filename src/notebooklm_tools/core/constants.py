@@ -184,6 +184,9 @@ STUDIO_TYPES = CodeMapper({
     "data_table": STUDIO_TYPE_DATA_TABLE,
 })
 
+# Index in the artifact data array where custom prompt/options are stored
+STUDIO_ARTIFACT_FOCUS_INDEX = 6
+
 # =============================================================================
 # Audio Overview
 # =============================================================================

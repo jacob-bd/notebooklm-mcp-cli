@@ -1,14 +1,14 @@
 # NotebookLM MCP - Comprehensive Test Plan
 
-**Purpose:** Verify all **28 consolidated MCP tools** work correctly.
+**Purpose:** Verify all **29 consolidated MCP tools** work correctly.
 
 **Version:** 2.2 (Updated 2026-01-31 - corrected tool count)
 
 **Changes from v2.1:**
-- Corrected tool count: 28 tools (notes consolidated into single `note` tool)
+- Corrected tool count: 29 tools (notes consolidated + server_info added)
 
 **Changes from v1:**
-- Tools consolidated: 45+ → 28 (-38%)
+- Tools consolidated: 45+ → 29 (-36%)
 - `source_add(type=...)` replaces 4 source tools
 - `studio_create(type=...)` replaces 9 creation tools
 - `download_artifact(type=...)` replaces 9 download tools
@@ -512,6 +512,21 @@ Check studio content generation status for notebook [notebook_id].
 
 ---
 
+### Test 5.11 - Rename Studio Artifact
+**Tool:** `studio_status` (with action="rename")
+
+**Prompt:**
+```
+Rename artifact [artifact_id] in notebook [notebook_id] to "My Renamed Podcast".
+- action: rename
+- artifact_id: [artifact_id from studio_status]
+- new_title: "My Renamed Podcast"
+```
+
+**Expected:** Artifact renamed successfully.
+
+---
+
 ## Test Group 6: Downloads (Consolidated download_artifact)
 
 ### Test 6.1 - Download Report
@@ -725,14 +740,17 @@ Delete notebook [notebook_id] with confirm=True.
 
 ---
 
-## Test Group 11: Notes Management
+## Test Group 11: Notes Management (Unified `note` tool)
 
 ### Test 11.1 - Create Note
-**Tool:** `note_create`
+**Tool:** `note`
 
 **Prompt:**
 ```
-Create a note in notebook [notebook_id] with content "This is a test note about AI" and title "AI Note".
+Create a note in notebook [notebook_id]:
+- action: create
+- content: "This is a test note about AI"
+- title: "AI Note"
 ```
 
 **Expected:** Note created with `note_id`.
@@ -742,11 +760,12 @@ Create a note in notebook [notebook_id] with content "This is a test note about 
 ---
 
 ### Test 11.2 - List Notes
-**Tool:** `note_list`
+**Tool:** `note`
 
 **Prompt:**
 ```
-List all notes in notebook [notebook_id].
+List all notes in notebook [notebook_id]:
+- action: list
 ```
 
 **Expected:** Array of notes including the one just created, with previews.
@@ -754,11 +773,14 @@ List all notes in notebook [notebook_id].
 ---
 
 ### Test 11.3 - Update Note
-**Tool:** `note_update`
+**Tool:** `note`
 
 **Prompt:**
 ```
-Update note [note_id] in notebook [notebook_id] with new content "Updated: AI is transforming technology".
+Update note [note_id] in notebook [notebook_id]:
+- action: update
+- note_id: [note_id]
+- content: "Updated: AI is transforming technology"
 ```
 
 **Expected:** Success confirmation.
@@ -766,18 +788,39 @@ Update note [note_id] in notebook [notebook_id] with new content "Updated: AI is
 ---
 
 ### Test 11.4 - Delete Note
-**Tool:** `note_delete`
+**Tool:** `note`
 
 **Prompt:**
 ```
-Delete note [note_id] in notebook [notebook_id] with confirm=True.
+Delete note [note_id] in notebook [notebook_id]:
+- action: delete
+- note_id: [note_id]
+- confirm: True
 ```
 
 **Expected:** Deletion confirmation message.
 
 ---
 
-## Summary: 30 Consolidated Tools
+## Test Group 12: Server Info
+
+### Test 12.1 - Get Server Info
+**Tool:** `server_info`
+
+**Prompt:**
+```
+Get NotebookLM MCP server version and check for updates.
+```
+
+**Expected:**
+- `version`: Current version
+- `latest_version`: Latest PyPI version (or null if offline)
+- `update_available`: Boolean
+- `update_command`: Upgrade command
+
+---
+
+## Summary: 29 Consolidated Tools
 
 | Category | Tools | Count |
 |----------|-------|-------|
@@ -788,9 +831,11 @@ Delete note [note_id] in notebook [notebook_id] with confirm=True.
 | **Research** | `research_start`, `research_status`, `research_import` | 3 |
 | **Studio** | `studio_create`, `studio_status`, `studio_delete` | 3 |
 | **Downloads** | `download_artifact` | 1 |
+| **Exports** | `export_artifact` | 1 |
 | **Chat** | `notebook_query`, `chat_configure` | 2 |
-| **Notes** | `note_create`, `note_list`, `note_update`, `note_delete` | 4 |
-| **Total** | | **30** |
+| **Notes** | `note` (unified: list, create, update, delete) | 1 |
+| **Server** | `server_info` | 1 |
+| **Total** | | **29** |
 
 ---
 

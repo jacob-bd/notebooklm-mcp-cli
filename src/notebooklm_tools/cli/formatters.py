@@ -341,11 +341,13 @@ class JsonFormatter(Formatter):
                 if full:
                     item['title'] = art.get('title', '')
                     item['url'] = art.get('url', '')
+                    item['custom_instructions'] = art.get('custom_instructions', None)
             else:
                 item = {'id': art.id, 'type': art.type, 'status': art.status}
                 if full:
                     item['title'] = getattr(art, 'title', '')
                     item['url'] = getattr(art, 'url', '')
+                    item['custom_instructions'] = getattr(art, 'custom_instructions', None)
             data.append(item)
         print(json.dumps(data, indent=2))
 

@@ -257,6 +257,7 @@ The `f.req` structure:
 | `R7cb6c` | Create Studio Content | See Studio RPCs section |
 | `gArtLc` | Poll Studio Status | `[[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']` |
 | `V5N4be` | Delete Studio Content | `[[2], "artifact_id"]` |
+| `rc3d8d` | Rename Studio Artifact | `[["artifact_id", "new_title"], [["title"]]]` |
 | `yyryJe` | Generate Mind Map | See Mind Map RPCs section |
 | `CYK0Xb` | Save Mind Map | See Mind Map RPCs section |
 | `cFji9` | List Mind Maps | `[notebook_id]` |
@@ -637,12 +638,33 @@ Polls for audio/video generation status.
 # Request
 params = [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
 
-# Response includes:
-# - artifact_id (UUID of generated content)
-# - type (1 = Audio, 3 = Video)
-# - status (1 = in_progress, 3 = completed)
-# - Audio/Video URLs when completed
-# - Duration (for audio)
+# Response Structure
+[
+    [
+        # Artifact Data Array
+        [
+            artifact_id,       # [0] UUID
+            "Title",           # [1] Title
+            type_code,         # [2] Type (1=Audio, 3=Video, etc)
+            [source_ids],      # [3] Source IDs used
+            wait_time_sec,     # [4] Est wait time
+            None,              # [5] (Previously thought to be prompt)
+            [                  # [6] Custom Prompt / Focus Data
+                 null,
+                 [
+                     "Custom Prompt Text",  # [1][0] The actual prompt text
+                     audience_level,        # [1][1] (e.g. 2)
+                     ...
+                 ]
+            ],
+            None,              # [7]
+            [url_data],        # [8] URL for audio/video (nested)
+            ...
+        ],
+        ... # More artifacts
+    ],
+    ...
+]
 ```
 
 ### `V5N4be` - Delete Studio Content
@@ -658,6 +680,20 @@ params = [[2], "artifact_id"]
 ```
 
 **WARNING:** This action is IRREVERSIBLE. The artifact is permanently deleted.
+
+### `rc3d8d` - Rename Studio Artifact
+
+Renames a studio artifact (audio, video, report, etc.).
+
+```python
+# Request
+params = [["artifact_id", "New Title"], [["title"]]]
+
+# Response
+# Returns the updated artifact data on success
+```
+
+**Note:** This RPC was discovered in v0.2.8. The second array `[["title"]]` specifies which field(s) to update.
 
 ### Audio Options
 

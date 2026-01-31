@@ -129,6 +129,31 @@ def studio_delete(
         raise typer.Exit(1)
 
 
+@app.command("rename")
+def studio_rename(
+    artifact_id: str = typer.Argument(..., help="Artifact ID to rename"),
+    new_title: str = typer.Argument(..., help="New title for the artifact"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Rename a studio artifact."""
+    artifact_id = get_alias_manager().resolve(artifact_id)
+
+    try:
+        with get_client(profile) as client:
+            success = client.rename_studio_artifact(artifact_id, new_title)
+        
+        if success:
+            console.print(f"[green]✓[/green] Renamed artifact to: {new_title}")
+        else:
+            console.print("[red]Error:[/red] Failed to rename artifact")
+            raise typer.Exit(1)
+    except NLMError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
+        if e.hint:
+            console.print(f"\n[dim]Hint: {e.hint}[/dim]")
+        raise typer.Exit(1)
+
+
 # ========== Audio ==========
 
 @audio_app.command("create")

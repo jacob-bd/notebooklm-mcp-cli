@@ -437,7 +437,18 @@ def main(
     Use 'nlm <command> --help' for help on specific commands.
     """
     if version:
+        from notebooklm_tools.cli.utils import check_for_updates
         console.print(f"nlm version {__version__}")
+        
+        # Check for updates when showing version
+        update_available, latest = check_for_updates()
+        if update_available and latest:
+            console.print(
+                f"\n[dim]🔔 Update available:[/dim] [green]{latest}[/green]. "
+                f"[dim]Run[/dim] [bold]uv tool upgrade notebooklm-mcp-cli[/bold] [dim]to update.[/dim]"
+            )
+        else:
+            console.print(f"[dim]You are on the latest version.[/dim]")
         raise typer.Exit()
     
     if ai:
@@ -454,6 +465,9 @@ def cli_main():
     """Main CLI entry point with error handling."""
     try:
         app()
+        # Check for updates after successful command execution
+        from notebooklm_tools.cli.utils import print_update_notification
+        print_update_notification()
     except Exception as e:
         # Import here to avoid circular dependencies
         from notebooklm_tools.core.exceptions import (

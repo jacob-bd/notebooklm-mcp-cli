@@ -47,6 +47,7 @@ RPC_NAMES = {
     "R7cb6c": "create_studio",
     "gArtLc": "poll_studio",
     "V5N4be": "delete_studio",
+    "rc3d8d": "rename_studio_artifact",
     "yyryJe": "generate_mind_map",
     "CYK0Xb": "save_mind_map",
     "cFji9": "list_mind_maps",
@@ -233,6 +234,7 @@ class NotebookLMClient:
     RPC_CREATE_STUDIO = "R7cb6c"   # Create Audio or Video Overview
     RPC_POLL_STUDIO = "gArtLc"     # Poll for studio content status
     RPC_DELETE_STUDIO = "V5N4be"   # Delete Audio or Video Overview
+    RPC_RENAME_ARTIFACT = "rc3d8d" # Rename Studio Artifact
 
     # Studio content types
     STUDIO_TYPE_AUDIO = constants.STUDIO_TYPE_AUDIO

@@ -90,6 +90,7 @@ class BaseClient:
     RPC_CREATE_STUDIO = "R7cb6c"   # Create Audio or Video Overview
     RPC_POLL_STUDIO = "gArtLc"     # Poll for studio content status
     RPC_DELETE_STUDIO = "V5N4be"   # Delete Audio or Video Overview
+    RPC_RENAME_ARTIFACT = "rc3d8d" # Rename any studio artifact (Audio, Video, etc.)
     RPC_GET_INTERACTIVE_HTML = "v9rmvd"  # Fetch quiz/flashcard HTML content
 
     # Mind map RPCs

@@ -42,6 +42,7 @@ from .exports import (
     export_artifact,
 )
 from .notes import note
+from .server import server_info
 
 __all__ = [
     # Downloads (1 consolidated)
@@ -82,5 +83,6 @@ __all__ = [
     "export_artifact",
     # Notes (1 consolidated)
     "note",
+    # Server (1)
+    "server_info",
 ]
-

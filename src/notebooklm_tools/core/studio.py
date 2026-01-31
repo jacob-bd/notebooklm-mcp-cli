@@ -333,12 +333,25 @@ class StudioMixin(BaseClient):
                 artifact_type = "quiz" if is_quiz else type_map.get(type_code, "unknown")
                 status = "in_progress" if status_code == 1 else "completed" if status_code == 3 else "unknown"
 
+                # Extract custom_instructions (focus prompt) if present
+                # Custom prompt is stored at artifact_data[STUDIO_ARTIFACT_FOCUS_INDEX][1][0] for artifacts that have one
+                custom_instructions = None
+                
+                if len(artifact_data) > constants.STUDIO_ARTIFACT_FOCUS_INDEX:
+                    options_data = artifact_data[constants.STUDIO_ARTIFACT_FOCUS_INDEX]
+                    if isinstance(options_data, list) and len(options_data) > 1:
+                        inner = options_data[1]
+                        if isinstance(inner, list) and len(inner) > 0:
+                            if isinstance(inner[0], str) and inner[0]:
+                                custom_instructions = inner[0]
+
                 artifacts.append({
                     "artifact_id": artifact_id,
                     "title": title,
                     "type": artifact_type,
                     "status": status,
                     "created_at": created_at,
+                    "custom_instructions": custom_instructions,
                     "audio_url": audio_url,
                     "video_url": video_url,
                     "infographic_url": infographic_url,
@@ -422,6 +435,27 @@ class StudioMixin(BaseClient):
             self._call_rpc(self.RPC_LIST_MIND_MAPS, params_v1, f"/notebook/{notebook_id}")
 
         return True
+
+    def rename_studio_artifact(self, artifact_id: str, new_title: str) -> bool:
+        """Rename a studio artifact (Audio, Video, Report, etc.).
+
+        Args:
+            artifact_id: The artifact UUID to rename
+            new_title: The new title for the artifact
+
+        Returns:
+            True on success, False on failure
+        """
+        # Payload structure discovered via browser network intercept:
+        # [[ "<artifact_id>", "<new_title>" ], [["title"]]]
+        params = [[artifact_id, new_title], [["title"]]]
+        
+        try:
+            result = self._call_rpc(self.RPC_RENAME_ARTIFACT, params)
+            return result is not None
+        except Exception:
+            return False
+
 
     def create_infographic(
         self,

@@ -317,7 +317,7 @@ nlm data-table create <id> "Extract all dates and events" --confirm
 
 #### MCP Tools
 
-Use `studio_status` to check progress. Use `download_artifact` with `artifact_type` and `output_path`. Use `export_artifact` with `export_type`: docs/sheets. Delete with `studio_delete` (requires `confirm=True`).
+Use `studio_status` to check progress (or rename with `action="rename"`). Use `download_artifact` with `artifact_type` and `output_path`. Use `export_artifact` with `export_type`: docs/sheets. Delete with `studio_delete` (requires `confirm=True`).
 
 #### CLI Commands
 ```bash
@@ -340,6 +340,34 @@ nlm studio delete <nb-id> <artifact-id> --confirm
 ```
 
 **Status values**: `completed` (✓), `in_progress` (●), `failed` (✗)
+
+### Renaming Artifacts
+
+#### MCP Tools
+
+Use `studio_status` with `action="rename"`, `artifact_id`, and `new_title`.
+
+#### CLI Commands
+```bash
+nlm studio rename <artifact-id> "New Title"
+nlm rename studio <artifact-id> "New Title"  # verb-first alternative
+```
+
+### Server Info (Version Check)
+
+#### MCP Tools
+
+Use `server_info` to get version and check for updates:
+
+```python
+mcp__notebooklm-mcp__server_info()
+# Returns: version, latest_version, update_available, update_command
+```
+
+#### CLI Commands
+```bash
+nlm --version  # Shows version and update availability
+```
 
 ### 7. Chat Configuration and Notes
 

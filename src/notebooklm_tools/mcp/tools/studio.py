@@ -340,14 +340,50 @@ def studio_create(
 
 
 @logged_tool()
-def studio_status(notebook_id: str) -> dict[str, Any]:
-    """Check studio content generation status and get URLs.
+def studio_status(
+    notebook_id: str,
+    action: str = "status",
+    artifact_id: str | None = None,
+    new_title: str | None = None,
+) -> dict[str, Any]:
+    """Check studio content generation status and get URLs, or rename an artifact.
 
     Args:
         notebook_id: Notebook UUID
+        action: Action to perform:
+            - status (default): List all artifacts with their status and URLs
+            - rename: Rename an artifact (requires artifact_id and new_title)
+        artifact_id: Required for action="rename" - the artifact UUID to rename
+        new_title: Required for action="rename" - the new title for the artifact
     """
     try:
         client = get_client()
+
+        # Handle rename action
+        if action == "rename":
+            if not artifact_id:
+                return {
+                    "status": "error",
+                    "error": "artifact_id is required for action='rename'",
+                }
+            if not new_title:
+                return {
+                    "status": "error",
+                    "error": "new_title is required for action='rename'",
+                }
+            
+            success = client.rename_studio_artifact(artifact_id, new_title)
+            if success:
+                return {
+                    "status": "success",
+                    "action": "rename",
+                    "artifact_id": artifact_id,
+                    "new_title": new_title,
+                    "message": f"Artifact renamed to '{new_title}'",
+                }
+            return {"status": "error", "error": "Failed to rename artifact"}
+
+        # Default: status action
         artifacts = client.poll_studio_status(notebook_id)
 
         # Also fetch mind maps
@@ -381,6 +417,7 @@ def studio_status(notebook_id: str) -> dict[str, Any]:
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
 
 
 @logged_tool()

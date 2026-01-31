@@ -206,7 +206,7 @@ Only read API_REFERENCE.md when:
 **[docs/MCP_TEST_PLAN.md](./docs/MCP_TEST_PLAN.md)**
 
 This includes:
-- Step-by-step test cases for all 28 MCP tools
+- Step-by-step test cases for all 29 MCP tools
 - Authentication and basic operations tests
 - Source management and Drive sync tests
 - Studio content generation tests (audio, video, infographics, etc.)

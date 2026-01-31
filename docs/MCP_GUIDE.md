@@ -1,6 +1,6 @@
 # MCP Guide
 
-Complete reference for the NotebookLM MCP server - **28 tools** for AI assistants.
+Complete reference for the NotebookLM MCP server - **29 tools** for AI assistants.
 
 ## Installation
 
@@ -119,14 +119,19 @@ source_add(
 | `research_status` | Poll research progress |
 | `research_import` | Import discovered sources |
 
-### Notes (4 tools)
+### Notes (1 unified tool)
 
 | Tool | Description |
 |------|-------------|
-| `note_list` | List notes in notebook |
-| `note_create` | Create a note |
-| `note_update` | Update note content/title |
-| `note_delete` | Delete note (requires `confirm=True`) |
+| `note` | **Unified** - Manage notes (action: list, create, update, delete) |
+
+**`note` actions:**
+```python
+note(notebook_id, action="list")             # List all notes
+note(notebook_id, action="create", content="...", title="...")
+note(notebook_id, action="update", note_id="...", content="...")
+note(notebook_id, action="delete", note_id="...", confirm=True)
+```
 
 ### Sharing (3 tools)
 
@@ -142,6 +147,12 @@ source_add(
 |------|-------------|
 | `refresh_auth` | Reload auth tokens |
 | `save_auth_tokens` | Save cookies (fallback method) |
+
+### Server (1 tool)
+
+| Tool | Description |
+|------|-------------|
+| `server_info` | Get version and check for updates |
 
 ---
 
@@ -198,7 +209,7 @@ studio_create(notebook_id, artifact_type="report", report_format="Study Guide", 
 
 ## Context Window Tips
 
-This MCP has **28 tools** which consume context. Best practices:
+This MCP has **29 tools** which consume context. Best practices:
 
 - **Disable when not using**: In Claude Code, use `@notebooklm-mcp` to toggle
 - **Use unified tools**: `source_add`, `studio_create`, `download_artifact` handle multiple operations each
