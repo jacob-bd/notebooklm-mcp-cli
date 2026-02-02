@@ -868,10 +868,19 @@ def research_status(
             result = client.poll_research(notebook_id, target_task_id=task_id)
 
             if not result:
-                # If specific task requested but not found, keep waiting (it might appear)
+                # If specific task requested but not found, check timeout before retrying
                 if task_id:
-                     time.sleep(poll_interval)
-                     continue
+                    elapsed = time.time() - start_time
+                    if max_wait == 0 or elapsed >= max_wait:
+                        return {
+                            "status": "error",
+                            "error": f"Task {task_id} not found after {round(elapsed, 1)}s. "
+                                     "The research may have completed - check NotebookLM UI.",
+                            "polls_made": polls,
+                            "wait_time_seconds": round(elapsed, 1),
+                        }
+                    time.sleep(poll_interval)
+                    continue
                 return {"status": "error", "error": "Failed to poll research status"}
 
             # If completed or no research found, return immediately
