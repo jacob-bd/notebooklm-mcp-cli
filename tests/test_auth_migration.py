@@ -33,10 +33,10 @@ class TestCDPModule:
         """run_headless_auth should have expected parameters."""
         import inspect
         from notebooklm_tools.utils.cdp import run_headless_auth
-        
+
         sig = inspect.signature(run_headless_auth)
         params = list(sig.parameters.keys())
-        
+
         # Should have port, timeout, and profile_name params
         assert "port" in params
         assert "timeout" in params
@@ -87,14 +87,8 @@ class TestNoAuthCLIImports:
 
     def test_no_auth_cli_in_mcp_server(self):
         """MCP server.py should import from cdp, not auth_cli."""
-        import notebooklm_mcp.server as server
+        import notebooklm_tools.mcp.server as server
         source = Path(server.__file__).read_text()
-        assert "from .auth_cli import" not in source
-
-    def test_no_auth_cli_in_mcp_api_client(self):
-        """MCP api_client.py should import from cdp, not auth_cli."""
-        import notebooklm_mcp.api_client as api_client
-        source = Path(api_client.__file__).read_text()
         assert "from .auth_cli import" not in source
 
     def test_no_auth_cli_in_mcp_tools_auth(self):
@@ -114,13 +108,6 @@ class TestAuthCLIRemoved:
         auth_cli_path = core_dir / "auth_cli.py"
         assert not auth_cli_path.exists(), f"auth_cli.py still exists at {auth_cli_path}"
 
-    def test_mcp_auth_cli_removed(self):
-        """notebooklm_mcp/auth_cli.py should not exist."""
-        import notebooklm_mcp
-        mcp_dir = Path(notebooklm_mcp.__file__).parent
-        auth_cli_path = mcp_dir / "auth_cli.py"
-        assert not auth_cli_path.exists(), f"auth_cli.py still exists at {auth_cli_path}"
-
 
 class TestErrorMessages:
     """Test that error messages reference nlm login, not notebooklm-mcp-auth."""
@@ -134,15 +121,6 @@ class TestErrorMessages:
         # Should NOT have notebooklm-mcp-auth references
         assert "notebooklm-mcp-auth" not in source
 
-    def test_mcp_server_error_messages(self):
-        """MCP server.py error messages should reference nlm login."""
-        import notebooklm_mcp.server as server
-        source = Path(server.__file__).read_text()
-        # Should have nlm login references
-        assert "nlm login" in source
-        # Should NOT have notebooklm-mcp-auth references
-        assert "notebooklm-mcp-auth" not in source
-
 
 class TestMCPServerImports:
     """Test that MCP server still works with the new imports."""
@@ -150,7 +128,7 @@ class TestMCPServerImports:
     def test_mcp_server_imports(self):
         """MCP server should import without errors."""
         # This will fail if any imports are broken
-        import notebooklm_mcp.server
+        import notebooklm_tools.mcp.server
 
     def test_mcp_tools_import(self):
         """MCP tools should import without errors."""
@@ -161,6 +139,4 @@ class TestMCPServerImports:
     def test_client_imports(self):
         """Client modules should import without errors."""
         from notebooklm_tools.core.client import NotebookLMClient
-        from notebooklm_mcp.api_client import NotebookLMClient as MCPClient
         assert NotebookLMClient is not None
-        assert MCPClient is not None

@@ -8,8 +8,8 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from notebooklm_tools.core.alias import get_alias_manager
-from notebooklm_tools.core.client import NotebookLMClient
 from notebooklm_tools.core.exceptions import NLMError
+from notebooklm_tools.cli.utils import get_client
 
 console = Console()
 
@@ -61,16 +61,24 @@ def run_chat_repl(notebook_id: str, profile: str | None = None) -> None:
     notebook_id = get_alias_manager().resolve(notebook_id)
     
     try:
-        with NotebookLMClient(profile=profile) as client:
+        with get_client(profile) as client:
             # Get notebook info for welcome banner
             notebook = client.get_notebook(notebook_id)
             if not notebook:
                 console.print("[red]Error:[/red] Notebook not found.")
                 raise typer.Exit(1)
-            
-            notebook_title = notebook.title or "Notebook"
-            source_count = len(notebook.sources) if notebook.sources else 0
-            sources_list = notebook.sources or []
+
+            # Handle dict, list, or Notebook object returns
+            if isinstance(notebook, dict):
+                notebook_title = notebook.get("title", "Notebook")
+                sources_list = notebook.get("sources", [])
+            elif isinstance(notebook, list):
+                notebook_title = f"Notebook {notebook_id[:8]}"
+                sources_list = []
+            else:
+                notebook_title = notebook.title or "Notebook"
+                sources_list = notebook.sources or []
+            source_count = len(sources_list)
             
             # Welcome banner
             console.print(Panel(

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-02-04
+
+### Fixed
+- **Chat REPL command broken** - Fixed `nlm chat start` failing with `TypeError: BaseClient.__init__() got an unexpected keyword argument 'profile'`. Now uses proper `get_client(profile)` utility and handles dict/list API responses correctly. Thanks to **@eng-M-A-AbelLatif** for the detailed bug report and fix in issue #25!
+
+### Removed
+- **Dead code cleanup** - Removed unused `src/notebooklm_mcp/` directory. This legacy code was not packaged or distributed but caused confusion (e.g., PR #29 targeted it thinking it was active). The active MCP server is `notebooklm_tools.mcp.server`. Thanks to **@NOirBRight** for PR #29 which helped identify this dead code.
+
+### Changed
+- **Updated tests** - Removed references to deleted `notebooklm_mcp` package from test suite.
+
+### Community Contributors
+This release also acknowledges past community contributions that weren't properly thanked:
+- **@latuannetnam** for HTTP transport support, debug logging, and query timeout configuration (PR #12)
+- **@davidszp** for Linux Chrome detection fix (PR #6) and source_get_content tool (PR #1)
+- **@saitrogen** for the research polling query fallback fix (PR #15)
+
 ## [0.2.14] - 2026-02-03
 
 ### Fixed
