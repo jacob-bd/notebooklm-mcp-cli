@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- **Generated**: 2026-01-24 18:49
-- **Repo SHA**: 5ed058c
+- **Generated**: 2026-02-04 08:41
+- **Repo SHA**: 9c11d2d
 - **Generator**: generate-project-primer v1.0.0
 - **Source Docs**:
   - README.md
@@ -1000,9 +1000,9 @@ Use at your own risk for personal/experimental purposes.
 
 ## Related Documentation
 
-- [QUICKSTART.md](QUICKSTART.md) - Get running in 5 minutes
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design details
-- [OPERATIONS.md](OPERATIONS.md) - Day-to-day operation
+- [QUICKSTART.md](docs/notebooklm_mcp/QUICKSTART.md) - Get running in 5 minutes
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design details
+- [OPERATIONS.md](docs/notebooklm_mcp/OPERATIONS.md) - Day-to-day operation
 
 
 ---
@@ -1180,10 +1180,10 @@ After upgrading, restart your AI tool.
 
 ## Next Steps
 
-- [OPERATIONS.md](OPERATIONS.md) - Day-to-day workflows
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
-- [CODE_TOUR.md](CODE_TOUR.md) - Navigate the codebase
-- [../TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - Detailed troubleshooting
+- [OPERATIONS.md](docs/notebooklm_mcp/OPERATIONS.md) - Day-to-day workflows
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design
+- [CODE_TOUR.md](docs/notebooklm_mcp/CODE_TOUR.md) - Navigate the codebase
+- [../TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Detailed troubleshooting
 
 
 ---
@@ -1427,9 +1427,9 @@ notebook_delete(notebook_id, confirm=True)
 
 ## Related Documentation
 
-- [CODE_TOUR.md](CODE_TOUR.md) - Navigate the codebase
-- [OPERATIONS.md](OPERATIONS.md) - Day-to-day operation
-- [../API_REFERENCE.md](../API_REFERENCE.md) - Detailed API documentation
+- [CODE_TOUR.md](docs/notebooklm_mcp/CODE_TOUR.md) - Navigate the codebase
+- [OPERATIONS.md](docs/notebooklm_mcp/OPERATIONS.md) - Day-to-day operation
+- [../API_REFERENCE.md](docs/API_REFERENCE.md) - Detailed API documentation
 
 
 ---
@@ -1675,10 +1675,10 @@ uv run pytest tests/test_file.py::test_function -v
 
 ## Related Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
-- [OPERATIONS.md](OPERATIONS.md) - Day-to-day operation
-- [../API_REFERENCE.md](../API_REFERENCE.md) - API details
-- [../MCP_TEST_PLAN.md](../MCP_TEST_PLAN.md) - Test cases
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design
+- [OPERATIONS.md](docs/notebooklm_mcp/OPERATIONS.md) - Day-to-day operation
+- [../API_REFERENCE.md](docs/API_REFERENCE.md) - API details
+- [../MCP_TEST_PLAN.md](docs/MCP_TEST_PLAN.md) - Test cases
 
 
 ---
@@ -1924,10 +1924,10 @@ pip install --upgrade notebooklm-mcp-server
 
 ## Related Documentation
 
-- [QUICKSTART.md](QUICKSTART.md) - Initial setup
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
-- [../TROUBLESHOOTING.md](../TROUBLESHOOTING.md) - Detailed troubleshooting
-- [../AUTHENTICATION.md](../AUTHENTICATION.md) - Auth deep dive
+- [QUICKSTART.md](docs/notebooklm_mcp/QUICKSTART.md) - Initial setup
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design
+- [../TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Detailed troubleshooting
+- [../AUTHENTICATION.md](docs/AUTHENTICATION.md) - Auth deep dive
 
 
 ---
@@ -2124,9 +2124,9 @@ cookies.txt
 
 ## Related Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
-- [OPERATIONS.md](OPERATIONS.md) - Day-to-day operation
-- [../AUTHENTICATION.md](../AUTHENTICATION.md) - Auth details
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design
+- [OPERATIONS.md](docs/notebooklm_mcp/OPERATIONS.md) - Day-to-day operation
+- [../AUTHENTICATION.md](docs/AUTHENTICATION.md) - Auth details
 
 
 ---
@@ -2355,10 +2355,10 @@ If you encounter an unresolved question:
 
 ## Related Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design context
-- [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md) - Security decisions
-- [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) - Known bugs
-- [../API_REFERENCE.md](../API_REFERENCE.md) - API details
+- [ARCHITECTURE.md](docs/notebooklm_mcp/ARCHITECTURE.md) - System design context
+- [SECURITY_AND_PRIVACY.md](docs/notebooklm_mcp/SECURITY_AND_PRIVACY.md) - Security decisions
+- [../KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) - Known bugs
+- [../API_REFERENCE.md](docs/API_REFERENCE.md) - API details
 
 
 ---
