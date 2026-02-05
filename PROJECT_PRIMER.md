@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- **Generated**: 2026-02-04 08:41
-- **Repo SHA**: 9c11d2d
+- **Generated**: 2026-02-04 20:58
+- **Repo SHA**: 33cfccf
 - **Generator**: generate-project-primer v1.0.0
 - **Source Docs**:
   - README.md

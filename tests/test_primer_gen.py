@@ -7,8 +7,12 @@ from pathlib import Path
 import pytest
 
 from notebooklm_mcp.doc_refresh.models import Tier
-from notebooklm_mcp.primer_gen.render import _render_quick_facts
-from notebooklm_mcp.primer_gen.sources import RepoSources
+from notebooklm_mcp.primer_gen.render import (
+    _render_quick_facts,
+    _render_tier3_sections,
+    _rewrite_relative_links,
+)
+from notebooklm_mcp.primer_gen.sources import RepoSources, SourceDoc
 
 
 def _make_sources(meta_yaml: dict | None = None) -> RepoSources:
@@ -99,3 +103,73 @@ class TestQuickFactsOwner:
         })
         output = _render_quick_facts(sources)
         assert "| **Owner** | unknown |" in output
+
+
+class TestRewriteRelativeLinks:
+    """Tests for _rewrite_relative_links()."""
+
+    def test_rewrite_links_doc_at_root(self):
+        """Doc at repo root returns content unchanged."""
+        content = "See [ops](OPERATIONS.md) for details."
+        result = _rewrite_relative_links(content, Path("ARCHITECTURE.md"))
+        assert result == content
+
+    def test_rewrite_links_sibling_file(self):
+        """Sibling link in subdirectory gets prefixed with doc's dir."""
+        content = "See [ops](OPERATIONS.md) for details."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](docs/ti/OPERATIONS.md)" in result
+
+    def test_rewrite_links_parent_traversal(self):
+        """Parent traversal ../  is resolved correctly."""
+        content = "See [api](../API_REF.md) for details."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](docs/API_REF.md)" in result
+
+    def test_rewrite_links_preserves_urls(self):
+        """HTTP/HTTPS URLs are left unchanged."""
+        content = "See [example](https://example.com) and [http](http://foo.bar)."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](https://example.com)" in result
+        assert "](http://foo.bar)" in result
+
+    def test_rewrite_links_preserves_anchors(self):
+        """Pure anchor links are left unchanged."""
+        content = "See [section](#setup) for details."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](#setup)" in result
+
+    def test_rewrite_links_with_fragment(self):
+        """Link with anchor fragment preserves the fragment."""
+        content = "See [ops](OPERATIONS.md#setup) for details."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](docs/ti/OPERATIONS.md#setup)" in result
+
+    def test_rewrite_links_escaping_repo_root(self):
+        """Links that escape repo root are left unchanged (safety)."""
+        content = "See [secret](../../../secret.md) for details."
+        result = _rewrite_relative_links(content, Path("docs/ti/ARCHITECTURE.md"))
+        assert "](../../../secret.md)" in result
+
+    def test_render_tier3_rewrites_links(self):
+        """Integration: _render_tier3_sections rewrites links in embedded docs."""
+        doc = SourceDoc(
+            path=Path("docs/terminal_insights/ARCHITECTURE.md"),
+            tier=3,
+            name="ARCHITECTURE.md",
+            content="# Architecture\n\nSee [ops](OPERATIONS.md) and [api](../API_REF.md).",
+            purpose="Architecture docs",
+        )
+        sources = RepoSources(
+            repo_id="C018_terminal-insights",
+            repo_path=Path("/fake/path"),
+            tier=Tier.KITTED,
+            repo_sha="abc1234",
+            docs=[doc],
+        )
+        output = _render_tier3_sections(sources)
+        assert "](docs/terminal_insights/OPERATIONS.md)" in output
+        assert "](docs/API_REF.md)" in output
+        # H1 should be stripped, but ## header should be present
+        assert "\n# Architecture\n" not in output
+        assert "## Architecture" in output

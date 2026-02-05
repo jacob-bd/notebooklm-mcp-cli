@@ -4,7 +4,10 @@ Primer markdown rendering.
 Generates PROJECT_PRIMER.md content from gathered sources.
 """
 
+import posixpath
+import re
 from datetime import datetime
+from pathlib import Path, PurePosixPath
 from typing import Any, Optional
 
 from ..doc_refresh.models import Tier
@@ -583,6 +586,47 @@ def _render_canonical_extracts(sources: RepoSources) -> str:
     return "\n".join(parts) if parts else ""
 
 
+def _rewrite_relative_links(content: str, doc_path: Path) -> str:
+    """Rewrite relative markdown links to be valid from repo root.
+
+    When Tier 3 doc content is embedded in the primer at repo root,
+    relative links need adjusting from the doc's original directory.
+    """
+    doc_dir = str(PurePosixPath(doc_path.parent))
+
+    if doc_dir == '.':
+        return content  # Already at repo root
+
+    def _rewrite(match):
+        target = match.group(1)
+
+        # Skip URLs, anchors, absolute paths
+        if target.startswith(('http://', 'https://', '#', 'mailto:', '/')):
+            return match.group(0)
+
+        # Handle targets with anchors: path.md#section
+        if '#' in target:
+            path_part, fragment = target.split('#', 1)
+            fragment = '#' + fragment
+        else:
+            path_part = target
+            fragment = ''
+
+        if not path_part:
+            return match.group(0)  # Pure anchor
+
+        # Resolve relative to doc's directory, normalize away ../
+        resolved = posixpath.normpath(posixpath.join(doc_dir, path_part))
+
+        # Safety: if resolved goes above repo root, leave unchanged
+        if resolved.startswith('..'):
+            return match.group(0)
+
+        return f']({resolved}{fragment})'
+
+    return re.sub(r'\]\(([^)]+)\)', _rewrite, content)
+
+
 def _render_tier3_sections(sources: RepoSources) -> str:
     """Render all Tier 3 sections for kitted repos."""
     tier3_names = [
@@ -604,6 +648,9 @@ def _render_tier3_sections(sources: RepoSources) -> str:
             lines = content.split("\n")
             if lines and lines[0].startswith("# "):
                 content = "\n".join(lines[1:]).lstrip()
+
+            # Rewrite relative links from doc's directory to repo root
+            content = _rewrite_relative_links(content, doc.path)
 
             parts.append(f"""## {title}
 
