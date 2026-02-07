@@ -1,0 +1,7 @@
+CLAUDE.md
+*.md
+.git
+.gitignore
+.cursor
+.specstory
+tests/
