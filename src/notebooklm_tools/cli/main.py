@@ -469,9 +469,6 @@ def cli_main():
     """Main CLI entry point with error handling."""
     try:
         app()
-        # Check for updates after successful command execution
-        from notebooklm_tools.cli.utils import print_update_notification
-        print_update_notification()
     except Exception as e:
         # Import here to avoid circular dependencies
         from notebooklm_tools.core.exceptions import (
@@ -498,6 +495,10 @@ def cli_main():
         # For unexpected errors, show the traceback
         else:
             raise
+    finally:
+        # Check for updates after command execution (runs even on typer.Exit)
+        from notebooklm_tools.cli.utils import print_update_notification
+        print_update_notification()
 
 
 if __name__ == "__main__":
