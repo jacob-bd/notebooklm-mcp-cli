@@ -14,6 +14,8 @@ from notebooklm_tools.cli.commands.source import app as source_app
 from notebooklm_tools.cli.commands.alias import app as alias_app
 from notebooklm_tools.cli.commands.config import app as config_app
 from notebooklm_tools.cli.commands.skill import app as skill_app
+from notebooklm_tools.cli.commands.setup import app as setup_app
+from notebooklm_tools.cli.commands.doctor import app as doctor_app
 from notebooklm_tools.cli.commands.studio import (
     app as studio_app,
     audio_app,
@@ -389,6 +391,8 @@ app.add_typer(download_app, name="download", help="Download artifacts (audio, vi
 app.add_typer(share_app, name="share", help="Manage notebook sharing")
 app.add_typer(export_app, name="export", help="Export artifacts to Google Docs/Sheets")
 app.add_typer(skill_app, name="skill", help="Install skills for AI tools")
+app.add_typer(setup_app, name="setup", help="Configure MCP server for AI tools")
+app.add_typer(doctor_app, name="doctor", help="Diagnose installation and configuration")
 
 # Generation commands as top-level
 app.add_typer(audio_app, name="audio", help="Create audio overviews")
