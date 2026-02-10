@@ -24,6 +24,7 @@ import httpx
 from .base import BaseClient, SOURCE_ADD_TIMEOUT
 from . import constants
 from .exceptions import FileUploadError, FileValidationError
+from .retry import execute_with_retry
 
 
 class SourceMixin(BaseClient):
@@ -88,8 +89,11 @@ class SourceMixin(BaseClient):
         body = self._build_request_body(self.RPC_CHECK_FRESHNESS, params)
         url = self._build_url(self.RPC_CHECK_FRESHNESS)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        def _do_request():
+            resp = client.post(url, content=body)
+            resp.raise_for_status()
+            return resp
+        response = execute_with_retry(_do_request)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_CHECK_FRESHNESS)
@@ -110,8 +114,11 @@ class SourceMixin(BaseClient):
         body = self._build_request_body(self.RPC_SYNC_DRIVE, params)
         url = self._build_url(self.RPC_SYNC_DRIVE)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        def _do_request():
+            resp = client.post(url, content=body)
+            resp.raise_for_status()
+            return resp
+        response = execute_with_retry(_do_request)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_SYNC_DRIVE)
@@ -158,8 +165,11 @@ class SourceMixin(BaseClient):
         body = self._build_request_body(self.RPC_DELETE_SOURCE, params)
         url = self._build_url(self.RPC_DELETE_SOURCE)
 
-        response = client.post(url, content=body)
-        response.raise_for_status()
+        def _do_request():
+            resp = client.post(url, content=body)
+            resp.raise_for_status()
+            return resp
+        response = execute_with_retry(_do_request)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_DELETE_SOURCE)
@@ -272,8 +282,11 @@ class SourceMixin(BaseClient):
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-            response.raise_for_status()
+            def _do_request():
+                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+                resp.raise_for_status()
+                return resp
+            response = execute_with_retry(_do_request)
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
@@ -330,8 +343,11 @@ class SourceMixin(BaseClient):
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-            response.raise_for_status()
+            def _do_request():
+                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+                resp.raise_for_status()
+                return resp
+            response = execute_with_retry(_do_request)
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
@@ -392,8 +408,11 @@ class SourceMixin(BaseClient):
         url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            response = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-            response.raise_for_status()
+            def _do_request():
+                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
+                resp.raise_for_status()
+                return resp
+            response = execute_with_retry(_do_request)
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
@@ -447,8 +466,11 @@ class SourceMixin(BaseClient):
         source_path = f"/notebook/{notebook_id}"
         url = self._build_url(self.RPC_ADD_SOURCE_FILE, source_path)
 
-        response = client.post(url, content=body, timeout=60.0)
-        response.raise_for_status()
+        def _do_request():
+            resp = client.post(url, content=body, timeout=60.0)
+            resp.raise_for_status()
+            return resp
+        response = execute_with_retry(_do_request)
 
         parsed = self._parse_response(response.text)
         result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE_FILE)
@@ -514,8 +536,11 @@ class SourceMixin(BaseClient):
         })
 
         with httpx.Client(timeout=60.0, cookies=cookies) as client:
-            response = client.post(url, headers=headers, content=body)
-            response.raise_for_status()
+            def _do_request():
+                resp = client.post(url, headers=headers, content=body)
+                resp.raise_for_status()
+                return resp
+            response = execute_with_retry(_do_request)
 
             upload_url = response.headers.get("x-goog-upload-url")
             if not upload_url:
@@ -555,8 +580,11 @@ class SourceMixin(BaseClient):
                     yield chunk
 
         with httpx.Client(timeout=300.0, cookies=cookies) as client:
-            response = client.post(upload_url, headers=headers, content=file_stream())
-            response.raise_for_status()
+            def _do_upload():
+                resp = client.post(upload_url, headers=headers, content=file_stream())
+                resp.raise_for_status()
+                return resp
+            execute_with_retry(_do_upload)
 
     def add_file(
         self,

@@ -173,6 +173,7 @@ def get_source(
 @app.command("describe")
 def describe_source(
     source_id: str = typer.Argument(..., help="Source ID"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Get AI-generated source summary with keywords."""
@@ -181,12 +182,9 @@ def describe_source(
         with get_client(profile) as client:
             summary = client.get_source_guide(source_id)
         
-        console.print("[bold]Summary:[/bold]")
-        console.print(summary["summary"])
-        
-        if summary.get("keywords"):
-            console.print("\n[bold]Keywords:[/bold]")
-            console.print(", ".join(summary["keywords"]))
+        fmt = detect_output_format(json_output)
+        formatter = get_formatter(fmt, console)
+        formatter.format_item(summary, title="Source Summary")
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:
@@ -197,6 +195,7 @@ def describe_source(
 @app.command("content")
 def get_source_content(
     source_id: str = typer.Argument(..., help="Source ID"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Write content to file"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
@@ -212,12 +211,9 @@ def get_source_content(
             Path(output).write_text(content["content"])
             console.print(f"[green]✓[/green] Wrote {content['char_count']:,} characters to {output}")
         else:
-            # Display to console
-            console.print(f"[bold]Title:[/bold] {content['title']}")
-            console.print(f"[bold]Type:[/bold] {content['source_type']}")
-            console.print(f"[bold]Characters:[/bold] {content['char_count']:,}")
-            console.print("\n[bold]Content:[/bold]")
-            console.print(content["content"])
+            fmt = detect_output_format(json_output)
+            formatter = get_formatter(fmt, console)
+            formatter.format_item(content, title="Source Content")
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:

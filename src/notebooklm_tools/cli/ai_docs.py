@@ -32,12 +32,17 @@ Validates credentials by making a real API call (lists notebooks).
 Shows: `✓ Authenticated` with notebook count, or error if expired.
 
 ### Auto-Authentication Recovery (Automatic)
-The CLI includes 3-layer automatic recovery:
+The CLI includes automatic recovery for both auth and server errors:
+
+**Auth Recovery (3-layer):**
 1. **CSRF/Session Refresh**: Automatically refreshes tokens on 401 errors
 2. **Token Reload**: Reloads tokens from disk if updated externally (e.g., by another session)
 3. **Headless Auth**: If Chrome profile has saved login, attempts headless authentication
 
-This means most session expirations are handled automatically. You only need to manually run `nlm login` if all recovery layers fail.
+**Server Error Retry:**
+Transient server errors (429, 500, 502, 503, 504) are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s). This handles Google API flakiness transparently.
+
+This means most errors are handled automatically. You only need to manually run `nlm login` if all recovery layers fail.
 
 ### Session Expired?
 If ANY command returns:
@@ -183,9 +188,11 @@ nlm notebook list --full               # All columns
 nlm notebook create "Title"            # Create new notebook
 nlm notebook get <id>                  # Get notebook details
 nlm notebook describe <id>             # AI summary with topics
+nlm notebook describe <id> --json      # JSON output
 nlm notebook rename <id> "New Title"   # Rename notebook
 nlm notebook delete <id> --confirm     # Delete permanently
 nlm notebook query <id> "question"     # Chat with sources
+nlm notebook query <id> "question" --json  # JSON output
 nlm notebook query <id> "follow up" --conversation-id <cid>
 nlm notebook query <id> "question" --source-ids <id1,id2>
 ```
@@ -223,8 +230,11 @@ nlm source add <notebook-id> --drive <doc-id> --type slides  # Add Drive slides
 # Supported file types: PDF, TXT, MP3, WAV, M4A
 
 nlm source get <source-id>             # Get source metadata
+nlm source get <source-id> --json      # JSON output
 nlm source describe <source-id>        # AI summary + keywords
+nlm source describe <source-id> --json # JSON output
 nlm source content <source-id>         # Raw text content
+nlm source content <source-id> --json  # JSON output
 nlm source content <source-id> --output file.txt  # Export to file
 nlm source delete <source-id> --confirm  # Delete source
 nlm source stale <notebook-id>         # List stale Drive sources
@@ -676,16 +686,18 @@ nlm setup remove <client>               # Remove MCP from client
 
 ## Output Formats
 
-List commands support multiple formats:
+Many commands support `--json` for structured output:
 
-| Flag | Description |
-|------|-------------|
-| (none) | Rich table (human-readable) |
-| `--json` | JSON output (for parsing) |
-| `--quiet` | IDs only (for piping) |
-| `--title` | "ID: Title" format |
-| `--url` | "ID: URL" format (sources only) |
-| `--full` | All columns/details |
+| Flag | Description | Available On |
+|------|-------------|------|
+| (none) | Rich table (human-readable) | All |
+| `--json` | JSON output (for parsing/piping) | list, get, describe, query, content, status |
+| `--quiet` | IDs only (for piping) | list |
+| `--title` | "ID: Title" format | notebook list |
+| `--url` | "ID: URL" format | source list |
+| `--full` | All columns/details | list, status |
+
+**Auto-detection:** When stdout is not a TTY (e.g., piping to `jq`), JSON output is used automatically.
 
 ---
 
@@ -697,7 +709,8 @@ List commands support multiple formats:
 | "authentication may have expired" | Session expired | Run `nlm login` |
 | "Notebook not found" | Invalid ID | Run `nlm notebook list` |
 | "Source not found" | Invalid ID | Run `nlm source list <notebook-id>` |
-| "Rate limit exceeded" | Too many API calls | Wait 30 seconds, retry |
+| "Rate limit exceeded" | Too many API calls | Auto-retried (up to 3x with backoff) |
+| Server 503/502/500 | Google API flaky | Auto-retried (up to 3x with backoff) |
 | "Research already in progress" | Pending research | Use `--force` or import first |
 
 ---

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19] - 2026-02-10
+
+### Added
+- **Automatic retry on server errors** — Transient errors (429, 500, 502, 503, 504) are now retried up to 3 times with exponential backoff. Special thanks to **@sebsnyk** for the suggestion in #42.
+- **`--json` flag for more commands** — Added structured JSON output to `notebook describe`, `notebook query`, `source describe`, and `source content`. JSON output is also auto-detected when piping. Thanks to **@sebsnyk** for the request in #43.
+
+### Changed
+- **Error handling priority** — Server error retry now executes *before* authentication recovery.
+- **AI docs & Skills updated** — specific documentation on retry behavior and expanded `--json` flags.
+
 ## [0.2.18] - 2026-02-09
 
 ### Added

@@ -89,6 +89,7 @@ def get_notebook(
 @app.command("describe")
 def describe_notebook(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Get AI-generated notebook summary with suggested topics."""
@@ -97,17 +98,9 @@ def describe_notebook(
         with get_client(profile) as client:
             result = client.get_notebook_summary(notebook_id)
         
-        console.print("[bold]Summary:[/bold]")
-        console.print(result.get("summary", "No summary available."))
-        
-        topics = result.get("suggested_topics", [])
-        if topics:
-            console.print("\n[bold]Suggested Topics:[/bold]")
-            for topic in topics:
-                if isinstance(topic, dict):
-                    console.print(f"  • {topic.get('question', topic)}")
-                else:
-                    console.print(f"  • {topic}")
+        fmt = detect_output_format(json_output)
+        formatter = get_formatter(fmt, console)
+        formatter.format_item(result, title="Notebook Summary")
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:
@@ -169,6 +162,7 @@ def delete_notebook(
 def query_notebook(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
     question: str = typer.Argument(..., help="Question to ask"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     conversation_id: Optional[str] = typer.Option(
         None, "--conversation-id", "-c",
         help="Conversation ID for follow-up questions",
@@ -194,21 +188,9 @@ def query_notebook(
             )
         
         if response:
-            console.print(response.get("answer", "No response"))
-            
-            # Print citations footer
-            sources = response.get("sources", [])
-            if sources:
-                console.print("\n[bold]Sources:[/bold]")
-                for i, src in enumerate(sources, 1):
-                    title = src.get("title", "Untitled")
-                    # Try to be smart about alignment if list is long, but simple is fine for now
-                    console.print(f"  [dim][{i}] {title}[/dim]")
-            
-            conv_id = response.get("conversation_id")
-            if conv_id:
-                console.print(f"\n[dim]Conversation ID: {conv_id}[/dim]")
-                console.print("[dim]Use --conversation-id for follow-up questions[/dim]")
+            fmt = detect_output_format(json_output)
+            formatter = get_formatter(fmt, console)
+            formatter.format_item(response, title="Query Response")
         else:
             console.print("[yellow]No response received[/yellow]")
     except NLMError as e:

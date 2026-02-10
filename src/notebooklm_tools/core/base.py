@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 
 from . import constants
+from .retry import is_retryable_error, DEFAULT_MAX_RETRIES, DEFAULT_BASE_DELAY, DEFAULT_MAX_DELAY
 from .data_types import ConversationTurn
 from .errors import ClientAuthenticationError as AuthenticationError
 from .utils import (
@@ -477,6 +478,7 @@ class BaseClient:
         timeout: float | None = None,
         _retry: bool = False,
         _deep_retry: bool = False,
+        _server_retry: int = 0,
     ) -> Any:
         """Execute an RPC call and return the extracted result.
 
@@ -543,35 +545,61 @@ class BaseClient:
             
             return result
 
-        except (httpx.HTTPStatusError, AuthenticationError) as e:
-            # Check for auth failures (401/403 HTTP or RPC Error 16)
-            is_http_auth = isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (401, 403)
-            is_rpc_auth = isinstance(e, AuthenticationError)
-            
-            if not (is_http_auth or is_rpc_auth):
-                # Not an auth error, re-raise immediately
+        except httpx.HTTPStatusError as e:
+            # Retry on transient server errors (5xx, 429) with exponential backoff
+            if is_retryable_error(e):
+                import time as _time
+                status = e.response.status_code
+                # Use _server_retry to track retries across recursive calls
+                if _server_retry < DEFAULT_MAX_RETRIES:
+                    delay = min(DEFAULT_BASE_DELAY * (2 ** _server_retry), DEFAULT_MAX_DELAY)
+                    logger.warning(
+                        f"Server error {status} on attempt {_server_retry + 1}/{DEFAULT_MAX_RETRIES + 1}, "
+                        f"retrying in {delay:.1f}s..."
+                    )
+                    _time.sleep(delay)
+                    return self._call_rpc(
+                        rpc_id, params, path, timeout, _retry, _deep_retry,
+                        _server_retry=_server_retry + 1,
+                    )
+                # Exhausted retries, re-raise
+                raise
+
+            # Check for auth failures (401/403 HTTP)
+            is_http_auth = e.response.status_code in (401, 403)
+            if not is_http_auth:
+                # Not a retryable or auth error, re-raise immediately
                 raise
             
-            # Layer 1: Refresh CSRF/session tokens (first retry only)
-            if not _retry:
-                try:
-                    self._refresh_auth_tokens()
-                    self._client = None
-                    return self._call_rpc(rpc_id, params, path, timeout, _retry=True)
-                except ValueError:
-                    # CSRF refresh failed (cookies expired) - continue to layer 2
-                    pass
-            
-            # Layer 2 & 3: Reload from disk or run headless auth (deep retry)
-            if not _deep_retry:
-                if self._try_reload_or_headless_auth():
-                    self._client = None
-                    return self._call_rpc(rpc_id, params, path, timeout, _retry=True, _deep_retry=True)
-            
-            # All recovery attempts failed
-            raise AuthenticationError(
-                "Authentication expired. Run 'nlm login' in your terminal to re-authenticate."
-            )
+            # Fall through to auth recovery below
+            pass
+
+        except AuthenticationError:
+            # RPC Error 16 - fall through to auth recovery below
+            pass
+
+        # -- Auth recovery (reached only for 401/403 HTTP or RPC Error 16) --
+
+        # Layer 1: Refresh CSRF/session tokens (first retry only)
+        if not _retry:
+            try:
+                self._refresh_auth_tokens()
+                self._client = None
+                return self._call_rpc(rpc_id, params, path, timeout, _retry=True)
+            except ValueError:
+                # CSRF refresh failed (cookies expired) - continue to layer 2
+                pass
+        
+        # Layer 2 & 3: Reload from disk or run headless auth (deep retry)
+        if not _deep_retry:
+            if self._try_reload_or_headless_auth():
+                self._client = None
+                return self._call_rpc(rpc_id, params, path, timeout, _retry=True, _deep_retry=True)
+        
+        # All recovery attempts failed
+        raise AuthenticationError(
+            "Authentication expired. Run 'nlm login' in your terminal to re-authenticate."
+        )
 
     # =========================================================================
     # Authentication Management
