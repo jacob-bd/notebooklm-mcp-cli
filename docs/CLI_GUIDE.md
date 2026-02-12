@@ -205,6 +205,47 @@ nlm list skills
 
 **Supported Tools:** `claude-code`, `cursor`, `codex`, `opencode`, `gemini-cli`, `antigravity`, `other`
 
+### Setup (MCP Server Configuration)
+
+Configure the NotebookLM MCP server for AI tools in one command:
+
+```bash
+nlm setup add claude-code       # Configure via `claude mcp add`
+nlm setup add claude-desktop    # Write claude_desktop_config.json
+nlm setup add gemini            # Write ~/.gemini/settings.json
+nlm setup add cursor            # Write ~/.cursor/mcp.json
+nlm setup add windsurf          # Write mcp_config.json
+
+nlm setup remove claude-desktop # Remove MCP configuration
+nlm setup remove gemini         # Remove from Gemini CLI
+
+nlm setup list                  # Show all clients and config status
+```
+
+**Supported Clients:** `claude-code`, `claude-desktop`, `gemini`, `cursor`, `windsurf`
+
+> **Note:** `nlm setup` configures the MCP server transport. Use `nlm skill install` to install skill/reference docs for AI tools that don't use MCP.
+
+### Doctor (Diagnostics)
+
+Run diagnostics to troubleshoot installation, authentication, and configuration issues:
+
+```bash
+nlm doctor              # Run all checks
+nlm doctor --verbose    # Include additional details (Python version, paths, etc.)
+```
+
+**Checks performed:**
+
+| Category | What it checks |
+|----------|---------------|
+| Installation | Package version, `nlm` and `notebooklm-mcp` binary paths |
+| Authentication | Profile status, cookies present, CSRF token, account email |
+| Chrome | Browser installed, saved Chrome profiles for headless auth |
+| AI Tools | MCP configuration status for each supported client |
+
+Each issue includes a suggested fix (e.g., "Run `nlm login` to authenticate").
+
 ---
 
 ## Output Formats
@@ -222,8 +263,9 @@ nlm list skills
 ## Complete Workflow Example
 
 ```bash
-# 1. Authenticate
+# 1. Authenticate and configure
 nlm login
+nlm setup add claude-code       # One-time MCP setup
 
 # 2. Create notebook and set alias
 nlm notebook create "AI Research"
@@ -254,3 +296,5 @@ nlm download audio ai <artifact-id> --output podcast.mp3
 - Audio/video takes 1-5 minutes; poll with `nlm studio status`
 - Use `nlm login switch <name>` to change the default profile
 - Run `nlm login profile list` to see all profiles with their associated email addresses
+- Run `nlm doctor` to diagnose installation, auth, or config issues
+- Use `nlm setup add <client>` to quickly configure MCP for your AI tool

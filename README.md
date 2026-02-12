@@ -275,7 +275,31 @@ For detailed instructions and troubleshooting, see **[docs/AUTHENTICATION.md](do
 
 > **⚠️ Context Window Warning:** This MCP provides **29 tools**. Disable it when not using NotebookLM to preserve context. In Claude Code: `@notebooklm-mcp` to toggle.
 
-### Quick Setup
+### Quick Setup (Recommended)
+
+Use `nlm setup` to configure the MCP server in one command:
+
+```bash
+nlm setup add claude-code      # Configures via `claude mcp add`
+nlm setup add claude-desktop    # Writes claude_desktop_config.json
+nlm setup add gemini            # Writes ~/.gemini/settings.json
+nlm setup add cursor            # Writes ~/.cursor/mcp.json
+nlm setup add windsurf          # Writes mcp_config.json
+```
+
+Check which tools are configured:
+```bash
+nlm setup list
+```
+
+Remove a configuration:
+```bash
+nlm setup remove claude-desktop
+```
+
+### Manual Setup
+
+If you prefer to configure manually:
 
 **Claude Code / Gemini CLI:**
 ```bash
@@ -386,6 +410,25 @@ You can also call `refresh_auth()` to explicitly reload tokens.
 If automatic refresh fails (Google login fully expired), run `nlm login` again.
 
 ## Troubleshooting
+
+### Run Diagnostics
+
+Use `nlm doctor` to check your installation, authentication, Chrome profile, and AI tool configurations:
+
+```bash
+nlm doctor            # Run all checks
+nlm doctor --verbose  # Show additional details
+```
+
+It checks:
+- **Installation** — package version, binary paths
+- **Authentication** — profile status, cookies, CSRF token
+- **Chrome** — browser installed, saved profiles for headless auth
+- **AI Tools** — which clients have MCP configured
+
+Each issue includes a suggested fix.
+
+---
 
 ### `uv tool upgrade` Not Installing Latest Version
 
