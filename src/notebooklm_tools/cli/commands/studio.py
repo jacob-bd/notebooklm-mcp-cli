@@ -533,9 +533,13 @@ def create_infographic(
                     source_ids=parse_source_ids(source_ids),
                 )
         
+        if not result or not result.get("artifact_id"):
+            console.print("[red]Error:[/red] NotebookLM rejected infographic creation (no artifact returned).")
+            console.print("[dim]The backend returned a generic UserDisplayableError. Try again later or create from NotebookLM UI for diagnosis.[/dim]")
+            raise typer.Exit(1)
+
         console.print(f"[green]✓[/green] Infographic generation started")
-        if result:
-            console.print(f"  Artifact ID: {result.get('artifact_id', 'unknown')}")
+        console.print(f"  Artifact ID: {result.get('artifact_id', 'unknown')}")
         console.print(f"\n[dim]Run 'nlm studio status {notebook_id}' to check progress.[/dim]")
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")

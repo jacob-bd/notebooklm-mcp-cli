@@ -331,7 +331,12 @@ class StudioMixin(BaseClient):
                     self.STUDIO_TYPE_DATA_TABLE: "data_table",
                 }
                 artifact_type = "quiz" if is_quiz else type_map.get(type_code, "unknown")
-                status = "in_progress" if status_code == 1 else "completed" if status_code == 3 else "unknown"
+                status_map = {
+                    1: "in_progress",
+                    3: "completed",
+                    4: "failed",
+                }
+                status = status_map.get(status_code, "unknown")
 
                 # Extract custom_instructions (focus prompt) if present
                 # Custom prompt is stored at artifact_data[STUDIO_ARTIFACT_FOCUS_INDEX][1][0] for artifacts that have one

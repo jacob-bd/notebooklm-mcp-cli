@@ -97,6 +97,14 @@ def login_callback(
         None, "--file", "-f",
         help="Path to file containing cookies (for manual mode)",
     ),
+    provider: str = typer.Option(
+        "builtin", "--provider",
+        help="Auth provider: builtin (default) or openclaw",
+    ),
+    cdp_url: str = typer.Option(
+        "http://127.0.0.1:18800", "--cdp-url",
+        help="CDP endpoint URL for external provider mode",
+    ),
 ) -> None:
     """
     Authenticate with NotebookLM.
@@ -104,6 +112,8 @@ def login_callback(
     Default: Uses Chrome DevTools Protocol to extract cookies automatically.
     Use --manual to import cookies from a file.
     Use --check to validate existing credentials.
+    Use --provider openclaw --cdp-url <url> to read auth from an existing
+    OpenClaw-managed browser CDP endpoint.
     """
     from notebooklm_tools.core.auth import AuthManager
     from notebooklm_tools.core.exceptions import NLMError
@@ -174,42 +184,66 @@ def login_callback(
             raise typer.Exit(1)
         return
 
-    # Default: CDP mode - Chrome DevTools Protocol
-    console.print("[bold]Launching Chrome for authentication...[/bold]")
-    console.print("[dim]Using Chrome DevTools Protocol[/dim]\n")
+    provider = (provider or "builtin").strip().lower()
+    if provider not in {"builtin", "openclaw"}:
+        console.print(f"[red]Error:[/red] Unsupported provider '{provider}'")
+        console.print("[dim]Supported values: builtin, openclaw[/dim]")
+        raise typer.Exit(1)
 
     try:
-        from notebooklm_tools.utils.cdp import extract_cookies_via_cdp, terminate_chrome
-        from notebooklm_tools.utils.config import check_migration_sources, run_migration, get_storage_dir
-
-        # Check if we need to migrate from legacy packages
-        # IMPORTANT: Don't use get_chrome_profile_dir() here as it creates the directory,
-        # which would prevent migration from running
-        chrome_profile = get_storage_dir() / "chrome-profile"
-        profile_exists = chrome_profile.exists() and (
-            (chrome_profile / "Default").exists() or (chrome_profile / "Local State").exists()
+        from notebooklm_tools.utils.cdp import (
+            extract_cookies_via_cdp,
+            extract_cookies_via_existing_cdp,
+            terminate_chrome,
         )
 
-        if not profile_exists:
-            sources = check_migration_sources()
-            if sources["chrome_profiles"]:
-                console.print("[yellow]Found Chrome profile from legacy installation![/yellow]")
-                for src in sources["chrome_profiles"]:
-                    console.print(f"  [dim]{src}[/dim]")
-                console.print("[dim]Migrating to new location...[/dim]")
+        launched_local_chrome = False
 
-                actions = run_migration(dry_run=False)
-                for action in actions:
-                    console.print(f"  [green]✓[/green] {action}")
-                console.print()
+        if provider == "openclaw":
+            console.print("[bold]Using external CDP authentication provider[/bold]")
+            console.print(f"[dim]Provider: openclaw | CDP: {cdp_url}[/dim]\n")
 
-        console.print("Starting Chrome...")
-        result = extract_cookies_via_cdp(
-            auto_launch=True,
-            wait_for_login=True,
-            login_timeout=300,
-            profile_name=profile,
-        )
+            result = extract_cookies_via_existing_cdp(
+                cdp_url=cdp_url,
+                wait_for_login=True,
+                login_timeout=300,
+            )
+        else:
+            # Default: builtin CDP mode - managed Chrome profile
+            console.print("[bold]Launching Chrome for authentication...[/bold]")
+            console.print("[dim]Using Chrome DevTools Protocol[/dim]\n")
+
+            from notebooklm_tools.utils.config import check_migration_sources, run_migration, get_storage_dir
+
+            # Check if we need to migrate from legacy packages
+            # IMPORTANT: Don't use get_chrome_profile_dir() here as it creates the directory,
+            # which would prevent migration from running
+            chrome_profile = get_storage_dir() / "chrome-profile"
+            profile_exists = chrome_profile.exists() and (
+                (chrome_profile / "Default").exists() or (chrome_profile / "Local State").exists()
+            )
+
+            if not profile_exists:
+                sources = check_migration_sources()
+                if sources["chrome_profiles"]:
+                    console.print("[yellow]Found Chrome profile from legacy installation![/yellow]")
+                    for src in sources["chrome_profiles"]:
+                        console.print(f"  [dim]{src}[/dim]")
+                    console.print("[dim]Migrating to new location...[/dim]")
+
+                    actions = run_migration(dry_run=False)
+                    for action in actions:
+                        console.print(f"  [green]✓[/green] {action}")
+                    console.print()
+
+            console.print("Starting Chrome...")
+            result = extract_cookies_via_cdp(
+                auto_launch=True,
+                wait_for_login=True,
+                login_timeout=300,
+                profile_name=profile,
+            )
+            launched_local_chrome = True
 
         cookies = result["cookies"]
         csrf_token = result.get("csrf_token", "")
@@ -224,12 +258,14 @@ def login_callback(
             email=email,
         )
 
-        # Close Chrome to release profile lock (enables headless auth later)
-        console.print("[dim]Closing Chrome...[/dim]")
-        terminate_chrome()
+        # Close builtin auth Chrome to release profile lock (enables headless auth later)
+        if launched_local_chrome:
+            console.print("[dim]Closing Chrome...[/dim]")
+            terminate_chrome()
 
         console.print(f"\n[green]✓[/green] Successfully authenticated!")
         console.print(f"  Profile: {profile}")
+        console.print(f"  Provider: {provider}")
         console.print(f"  Cookies: {len(cookies)} extracted")
         console.print(f"  CSRF Token: {'Yes' if csrf_token else 'No (will be auto-extracted)'}")
         if email:
