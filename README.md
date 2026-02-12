@@ -445,4 +445,4 @@ Special thanks to:
 
 ## License
 
-MIT License
+[MIT License](LICENSE)
