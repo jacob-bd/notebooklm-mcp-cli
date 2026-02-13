@@ -8,6 +8,7 @@ from rich.console import Console
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.cli.utils import get_client
+from notebooklm_tools.services import exports as export_service, ServiceError
 
 console = Console()
 app = typer.Typer(
@@ -38,19 +39,15 @@ def export_artifact(
         nlm export artifact NOTEBOOK_ID ARTIFACT_ID --type docs
         nlm export artifact NOTEBOOK_ID ARTIFACT_ID --type sheets --title "My Data"
     """
-    # Validate export type
-    if export_type.lower() not in ("docs", "sheets"):
-        console.print(f"[red]Error:[/red] Invalid export type '{export_type}'. Must be 'docs' or 'sheets'.")
-        raise typer.Exit(1)
-    
     try:
         notebook_id = get_alias_manager().resolve(notebook)
         with get_client(profile) as client:
-            result = client.export_artifact(
+            result = export_service.export_artifact(
+                client=client,
                 notebook_id=notebook_id,
                 artifact_id=artifact_id,
-                title=title or "NotebookLM Export",
-                export_type=export_type.lower(),
+                export_type=export_type,
+                title=title,
             )
         
         if json_output:
@@ -58,20 +55,16 @@ def export_artifact(
             console.print(json.dumps(result, indent=2))
             return
         
-        if result.get("url"):
-            export_label = "Google Docs" if export_type.lower() == "docs" else "Google Sheets"
-            console.print(f"[green]✓[/green] Exported to {export_label}")
-            console.print(f"[bold]URL:[/bold] {result['url']}")
-        else:
-            console.print(f"[red]✗[/red] Export failed: {result.get('message', 'Unknown error')}")
-            raise typer.Exit(1)
+        console.print(f"[green]✓[/green] {result['message']}")
+        console.print(f"[bold]URL:[/bold] {result['url']}")
+
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.user_message}")
+        raise typer.Exit(1)
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:
             console.print(f"\n[dim]Hint: {e.hint}[/dim]")
-        raise typer.Exit(1)
-    except ValueError as e:
-        console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
 
 
@@ -95,18 +88,20 @@ def export_to_docs(
     try:
         notebook_id = get_alias_manager().resolve(notebook)
         with get_client(profile) as client:
-            result = client.export_report_to_docs(
+            result = export_service.export_artifact(
+                client=client,
                 notebook_id=notebook_id,
                 artifact_id=artifact_id,
-                title=title or "Report Export",
+                export_type="docs",
+                title=title,
             )
         
-        if result.get("url"):
-            console.print(f"[green]✓[/green] Exported to Google Docs")
-            console.print(f"[bold]URL:[/bold] {result['url']}")
-        else:
-            console.print(f"[red]✗[/red] Export failed: {result.get('message', 'Unknown error')}")
-            raise typer.Exit(1)
+        console.print(f"[green]✓[/green] {result['message']}")
+        console.print(f"[bold]URL:[/bold] {result['url']}")
+
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.user_message}")
+        raise typer.Exit(1)
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:
@@ -132,18 +127,20 @@ def export_to_sheets(
     try:
         notebook_id = get_alias_manager().resolve(notebook)
         with get_client(profile) as client:
-            result = client.export_data_table_to_sheets(
+            result = export_service.export_artifact(
+                client=client,
                 notebook_id=notebook_id,
                 artifact_id=artifact_id,
-                title=title or "Data Table Export",
+                export_type="sheets",
+                title=title,
             )
         
-        if result.get("url"):
-            console.print(f"[green]✓[/green] Exported to Google Sheets")
-            console.print(f"[bold]URL:[/bold] {result['url']}")
-        else:
-            console.print(f"[red]✗[/red] Export failed: {result.get('message', 'Unknown error')}")
-            raise typer.Exit(1)
+        console.print(f"[green]✓[/green] {result['message']}")
+        console.print(f"[bold]URL:[/bold] {result['url']}")
+
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.user_message}")
+        raise typer.Exit(1)
     except NLMError as e:
         console.print(f"[red]Error:[/red] {e.message}")
         if e.hint:

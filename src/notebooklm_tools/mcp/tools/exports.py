@@ -3,6 +3,7 @@
 from typing import Any
 
 from ._utils import get_client, logged_tool
+from ...services import exports as export_service, ServiceError
 
 
 @logged_tool()
@@ -28,31 +29,15 @@ def export_artifact(
     """
     try:
         client = get_client()
-        
-        result = client.export_artifact(
+        result = export_service.export_artifact(
+            client=client,
             notebook_id=notebook_id,
             artifact_id=artifact_id,
-            title=title or "NotebookLM Export",
             export_type=export_type,
+            title=title,
         )
-
-        if result.get("url"):
-            export_type_label = "Google Docs" if export_type == "docs" else "Google Sheets"
-            return {
-                "status": "success",
-                "notebook_id": notebook_id,
-                "artifact_id": artifact_id,
-                "export_type": export_type,
-                "url": result["url"],
-                "message": f"Exported to {export_type_label}: {result['url']}",
-            }
-        else:
-            return {
-                "status": "error",
-                "error": result.get("message", "Export failed - no document URL returned"),
-            }
-    except ValueError as e:
-        # Invalid export type
-        return {"status": "error", "error": str(e)}
+        return result
+    except ServiceError as e:
+        return {"status": "error", "error": e.user_message}
     except Exception as e:
         return {"status": "error", "error": str(e)}
