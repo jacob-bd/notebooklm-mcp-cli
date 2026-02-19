@@ -78,7 +78,7 @@ def find_available_port(starting_from: int = 9222, max_attempts: int = 10) -> in
         port = starting_from + offset
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('localhost', port))
+                s.bind(('127.0.0.1', port))
                 return port
         except OSError:
             continue
@@ -127,7 +127,20 @@ def find_existing_nlm_chrome(port_range: range = CDP_PORT_RANGE) -> int | None:
     Returns:
         The port number if found, None otherwise
     """
+    import socket
     for port in port_range:
+        # First check if the port is in use. If `bind` succeeds, the port is unused, 
+        # meaning Chrome is NOT listening there. This avoids a 2-second timeout 
+        # on OSes that drop packets instead of actively refusing connection.
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('127.0.0.1', port))
+                # Port is available (not in use), so move to the next one
+                continue
+        except OSError:
+            # Port is in use, let's see if it's a Chrome DevTools endpoint
+            pass
+            
         try:
             response = httpx.get(f"http://localhost:{port}/json/version", timeout=2)
             if response.status_code == 200:
@@ -194,20 +207,35 @@ def terminate_chrome() -> bool:
     Returns:
         True if Chrome was terminated, False if no process to terminate.
     """
-    global _chrome_process
+    global _chrome_process, _chrome_port
     if _chrome_process is None:
         return False
-    
+        
+    # Attempt graceful shutdown via CDP to prevent "Restore Pages" warnings on next launch
+    if _chrome_port:
+        try:
+            ws_url = get_debugger_url(_chrome_port)
+            if ws_url:
+                execute_cdp_command(ws_url, "Browser.close")
+        except Exception:
+            pass # Ignore connection drops or failures during close
+            
     try:
-        _chrome_process.terminate()
+        # Wait up to 5 seconds for the graceful shutdown to finish
         _chrome_process.wait(timeout=5)
     except Exception:
+        # If it didn't close in time, force terminate
         try:
-            _chrome_process.kill()
+            _chrome_process.terminate()
+            _chrome_process.wait(timeout=5)
         except Exception:
-            pass
+            try:
+                _chrome_process.kill()
+            except Exception:
+                pass
     
     _chrome_process = None
+    _chrome_port = None
     return True
 
 
@@ -828,12 +856,25 @@ def run_headless_auth(
         # IMPORTANT: Only terminate Chrome if we launched it
         # Don't terminate if we connected to existing Chrome instance
         if chrome_process and not chrome_was_running:
+            # Try graceful shutdown via CDP first
             try:
-                chrome_process.terminate()
+                ws_url = get_debugger_url(port)
+                if ws_url:
+                    execute_cdp_command(ws_url, "Browser.close")
+            except Exception:
+                pass
+
+            try:
+                # Wait for graceful shutdown
                 chrome_process.wait(timeout=5)
             except Exception:
-                # Force kill if terminate didn't work
+                # Fallback to terminate
                 try:
-                    chrome_process.kill()
+                    chrome_process.terminate()
+                    chrome_process.wait(timeout=5)
                 except Exception:
-                    pass
+                    # Force kill if terminate didn't work
+                    try:
+                        chrome_process.kill()
+                    except Exception:
+                        pass
