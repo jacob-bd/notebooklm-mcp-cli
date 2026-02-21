@@ -303,7 +303,7 @@ def find_or_create_notebooklm_page(port: int = CDP_DEFAULT_PORT) -> dict | None:
     """Find an existing NotebookLM page or create a new one."""
     return find_or_create_notebooklm_page_by_cdp_url(f"http://localhost:{port}")
 
-def execute_cdp_command(ws_url: str, method: str, params: dict | None = None) -> dict:
+def execute_cdp_command(ws_url: str, method: str, params: dict | None = None, *, retry: bool = True) -> dict:
     """Execute a CDP command via WebSocket.
     
     Args:
@@ -315,6 +315,14 @@ def execute_cdp_command(ws_url: str, method: str, params: dict | None = None) ->
         The result of the CDP command
     """
     global _cached_ws, _cached_ws_url
+
+    if retry:
+        # Retry once in case of stale cached connection
+        try:
+            execute_cdp_command(ws_url, method, params, retry=False)
+        except Exception:
+            # Try again without the cached connection
+            _cached_ws = _cached_ws_url = None
 
     if ws_url != _cached_ws_url or not _cached_ws:
         if _cached_ws:
