@@ -508,10 +508,12 @@ def extract_cookies_via_cdp(
     """
     # Check if Chrome is running with debugging
     # First, try to find an existing instance on any port in our range
+    reused_existing = False
     existing_port = find_existing_nlm_chrome()
     if existing_port:
         port = existing_port
         debugger_url = get_debugger_url(port)
+        reused_existing = True
     else:
         debugger_url = None
     
@@ -613,6 +615,7 @@ def extract_cookies_via_cdp(
         "csrf_token": csrf_token,
         "session_id": session_id,
         "email": email,
+        "reused_existing": reused_existing,
     }
 
 

@@ -258,6 +258,12 @@ def login_callback(
             )
             launched_local_chrome = True
 
+        if result.get("reused_existing"):
+            console.print(
+                "[yellow]Warning:[/yellow] Connected to an already-running Chrome instance. "
+                "Profile isolation may not apply — verify the account is correct."
+            )
+
         cookies = result["cookies"]
         csrf_token = result.get("csrf_token", "")
         session_id = result.get("session_id", "")
