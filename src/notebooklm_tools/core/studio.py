@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """StudioMixin for NotebookLM client - studio content creation and status."""
 
+import os
 from typing import Callable
 
 from . import constants
@@ -55,10 +56,12 @@ class StudioMixin(BaseClient):
         source_ids: list[str] | None = None,
         format_code: int = 1,  # AUDIO_FORMAT_DEEP_DIVE
         length_code: int = 2,  # AUDIO_LENGTH_DEFAULT
-        language: str = "en",
+        language: str = "",
         focus_prompt: str = "",
     ) -> dict | None:
         """Create an Audio Overview (podcast) for a notebook."""
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified
@@ -131,10 +134,12 @@ class StudioMixin(BaseClient):
         source_ids: list[str] | None = None,
         format_code: int = 1,  # VIDEO_FORMAT_EXPLAINER
         visual_style_code: int = 1,  # VIDEO_STYLE_AUTO_SELECT
-        language: str = "en",
+        language: str = "",
         focus_prompt: str = "",
     ) -> dict | None:
         """Create a Video Overview for a notebook."""
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified
@@ -502,10 +507,12 @@ class StudioMixin(BaseClient):
         source_ids: list[str] | None = None,
         orientation_code: int = 1,  # INFOGRAPHIC_ORIENTATION_LANDSCAPE
         detail_level_code: int = 2,  # INFOGRAPHIC_DETAIL_STANDARD
-        language: str = "en",
+        language: str = "",
         focus_prompt: str = "",
     ) -> dict | None:
         """Create an Infographic from notebook sources."""
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified
@@ -568,10 +575,12 @@ class StudioMixin(BaseClient):
         source_ids: list[str] | None = None,
         format_code: int = 1,  # SLIDE_DECK_FORMAT_DETAILED
         length_code: int = 3,  # SLIDE_DECK_LENGTH_DEFAULT
-        language: str = "en",
+        language: str = "",
         focus_prompt: str = "",
     ) -> dict | None:
         """Create a Slide Deck from notebook sources."""
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified
@@ -633,9 +642,11 @@ class StudioMixin(BaseClient):
         source_ids: list[str] | None = None,
         report_format: str = "Briefing Doc",
         custom_prompt: str = "",
-        language: str = "en",
+        language: str = "",
     ) -> dict | None:
         """Create a Report from notebook sources."""
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified
@@ -901,7 +912,7 @@ class StudioMixin(BaseClient):
         notebook_id: str,
         source_ids: list[str] | None = None,
         description: str = "",
-        language: str = "en",
+        language: str = "",
     ) -> dict | None:
         """Create Data Table from notebook sources.
 
@@ -909,8 +920,10 @@ class StudioMixin(BaseClient):
             notebook_id: Notebook UUID
             source_ids: List of source UUIDs (defaults to all sources)
             description: Description of the data table to create
-            language: Language code (default: "en")
+            language: Language code (defaults to NOTEBOOKLM_HL env var or "en")
         """
+        if not language:
+            language = os.environ.get("NOTEBOOKLM_HL", "en")
         client = self._get_client()
 
         # Default to all sources if not specified

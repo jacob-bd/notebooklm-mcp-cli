@@ -103,7 +103,7 @@ Environment Variables:
   NOTEBOOKLM_MCP_PATH          MCP endpoint path (default: /mcp)
   NOTEBOOKLM_MCP_STATELESS     Enable stateless mode for scaling (true/false)
   NOTEBOOKLM_MCP_DEBUG         Enable debug logging (true/false)
-  NOTEBOOKLM_HL                NotebookLM interface language (default: en)
+  NOTEBOOKLM_HL                Interface language and default artifact language (default: en)
   NOTEBOOKLM_QUERY_TIMEOUT     Query timeout in seconds (default: 120.0)
 
 Examples:

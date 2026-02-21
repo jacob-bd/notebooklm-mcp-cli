@@ -1,9 +1,15 @@
 """Studio tools - Artifact creation with consolidated studio_create."""
 
+import os
 from typing import Any
 
 from ._utils import get_client, logged_tool
 from ...services import studio as studio_service, ServiceError, ValidationError
+
+
+def _default_language() -> str:
+    """Return the default language from NOTEBOOKLM_HL env var, falling back to 'en'."""
+    return os.environ.get("NOTEBOOKLM_HL", "en")
 
 
 @logged_tool()
@@ -30,7 +36,7 @@ def studio_create(
     question_count: int = 2,
     # Shared options
     difficulty: str = "medium",
-    language: str = "en",
+    language: str = "",
     focus_prompt: str = "",
     # Mind map options
     title: str = "Mind Map",
@@ -68,13 +74,16 @@ def studio_create(
         - mind_map: title
 
         Common options:
-        - language: BCP-47 code (en, es, fr, de, ja)
+        - language: BCP-47 code (en, es, fr, de, ja). Defaults to NOTEBOOKLM_HL env var or 'en'
         - focus_prompt: Optional focus text
 
     Example:
         studio_create(notebook_id="abc", artifact_type="audio", confirm=True)
         studio_create(notebook_id="abc", artifact_type="quiz", question_count=5, confirm=True)
     """
+    if not language:
+        language = _default_language()
+
     # Validate type early (before confirmation check)
     try:
         studio_service.validate_artifact_type(artifact_type)
