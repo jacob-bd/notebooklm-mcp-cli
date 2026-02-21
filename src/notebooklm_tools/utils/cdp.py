@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 from httpx import Client
-httpx = Client()
+httpx_client = Client()
 import websocket
 
 _cached_ws: websocket.WebSocket | None = None
@@ -147,7 +147,7 @@ def find_existing_nlm_chrome(port_range: range = CDP_PORT_RANGE) -> int | None:
             pass
             
         try:
-            response = httpx.get(f"http://localhost:{port}/json/version", timeout=2)
+            response = httpx_client.get(f"http://localhost:{port}/json/version", timeout=2)
             if response.status_code == 200:
                 # Found a Chrome DevTools endpoint
                 return port
@@ -249,7 +249,7 @@ def terminate_chrome() -> bool:
 def get_debugger_url(port: int = CDP_DEFAULT_PORT) -> str | None:
     """Get the WebSocket debugger URL for Chrome."""
     try:
-        response = httpx.get(f"http://localhost:{port}/json/version", timeout=5)
+        response = httpx_client.get(f"http://localhost:{port}/json/version", timeout=5)
         data = response.json()
         return data.get("webSocketDebuggerUrl")
     except Exception:
@@ -259,7 +259,7 @@ def get_debugger_url(port: int = CDP_DEFAULT_PORT) -> str | None:
 def get_pages_by_cdp_url(cdp_http_url: str) -> list[dict]:
     """Get list of open pages from an arbitrary CDP HTTP endpoint."""
     try:
-        response = httpx.get(f"{cdp_http_url}/json", timeout=5)
+        response = httpx_client.get(f"{cdp_http_url}/json", timeout=5)
         return response.json()
     except Exception:
         return []
@@ -276,7 +276,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
 
     try:
         encoded_url = quote(NOTEBOOKLM_URL, safe="")
-        response = httpx.put(
+        response = httpx_client.put(
             f"{cdp_http_url}/json/new?{encoded_url}",
             timeout=15,
         )
@@ -284,7 +284,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
             return response.json()
 
         # Fallback: create blank page then navigate
-        response = httpx.put(f"{cdp_http_url}/json/new", timeout=10)
+        response = httpx_client.put(f"{cdp_http_url}/json/new", timeout=10)
         if response.status_code == 200 and response.text.strip():
             page = response.json()
             ws_url = page.get("webSocketDebuggerUrl")
@@ -538,7 +538,7 @@ def extract_cookies_via_existing_cdp(
         raise AuthenticationError(message=str(e)) from e
 
     try:
-        version = httpx.get(f"{cdp_http_url}/json/version", timeout=8)
+        version = httpx_client.get(f"{cdp_http_url}/json/version", timeout=8)
         version.raise_for_status()
     except Exception as e:
         raise AuthenticationError(
