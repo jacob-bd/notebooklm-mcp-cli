@@ -106,6 +106,10 @@ def login_callback(
         "http://127.0.0.1:18800", "--cdp-url",
         help="CDP endpoint URL for external provider mode",
     ),
+    force: bool = typer.Option(
+        False, "--force",
+        help="Force overwrite even if profile has credentials for a different account",
+    ),
 ) -> None:
     """
     Authenticate with NotebookLM.
@@ -117,7 +121,7 @@ def login_callback(
     OpenClaw-managed browser CDP endpoint.
     """
     from notebooklm_tools.core.auth import AuthManager
-    from notebooklm_tools.core.exceptions import NLMError
+    from notebooklm_tools.core.exceptions import AccountMismatchError, NLMError
     from notebooklm_tools.utils.config import get_config
 
     # If a subcommand is invoked, don't run login logic
@@ -129,6 +133,14 @@ def login_callback(
         profile = get_config().auth.default_profile
 
     auth = AuthManager(profile)
+
+    # Show which profile is being authenticated
+    if not check and ctx.invoked_subcommand is None:
+        try:
+            existing = auth.load_profile()
+            console.print(f"[dim]Authenticating profile: {profile} ({existing.email})[/dim]")
+        except Exception:
+            console.print(f"[dim]Authenticating profile: {profile}[/dim]")
 
     if check:
         # Check existing auth by making a real API call
@@ -257,6 +269,7 @@ def login_callback(
             csrf_token=csrf_token,
             session_id=session_id,
             email=email,
+            force=force,
         )
 
         # Close builtin auth Chrome to release profile lock (enables headless auth later)
@@ -273,6 +286,10 @@ def login_callback(
             console.print(f"  Account: {email}")
         console.print(f"  Credentials saved to: {auth.profile_dir}")
 
+    except AccountMismatchError as e:
+        console.print(f"\n[red]Error:[/red] {e.message}")
+        console.print(f"\n[yellow]Hint:[/yellow] {e.hint}")
+        raise typer.Exit(1)
     except NLMError as e:
         console.print(f"\n[red]Error:[/red] {e.message}")
         if e.hint:
