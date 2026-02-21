@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
-import httpx
+from httpx import Client
+httpx = Client()
+import websocket
+
+_cached_ws: websocket.WebSocket | None = None
+_cached_ws_url: str | None = None
 
 from notebooklm_tools.core.exceptions import AuthenticationError
 
@@ -179,8 +184,6 @@ def launch_chrome_process(port: int = CDP_DEFAULT_PORT, headless: bool = False, 
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        # Wait for Chrome to start
-        time.sleep(3)
         return process
     except Exception:
         return None
@@ -207,7 +210,7 @@ def terminate_chrome() -> bool:
     Returns:
         True if Chrome was terminated, False if no process to terminate.
     """
-    global _chrome_process, _chrome_port
+    global _chrome_process, _chrome_port, _cached_ws, _cached_ws_url
     if _chrome_process is None:
         return False
         
@@ -219,7 +222,11 @@ def terminate_chrome() -> bool:
                 execute_cdp_command(ws_url, "Browser.close")
         except Exception:
             pass # Ignore connection drops or failures during close
-            
+
+    if _cached_ws:
+        _cached_ws.close()
+    _cached_ws = _cached_ws_url = None
+
     try:
         # Wait up to 5 seconds for the graceful shutdown to finish
         _chrome_process.wait(timeout=5)
@@ -249,15 +256,6 @@ def get_debugger_url(port: int = CDP_DEFAULT_PORT) -> str | None:
         return None
 
 
-def get_pages(port: int = CDP_DEFAULT_PORT) -> list[dict]:
-    """Get list of open pages in Chrome."""
-    try:
-        response = httpx.get(f"http://localhost:{port}/json", timeout=5)
-        return response.json()
-    except Exception:
-        return []
-
-
 def get_pages_by_cdp_url(cdp_http_url: str) -> list[dict]:
     """Get list of open pages from an arbitrary CDP HTTP endpoint."""
     try:
@@ -285,6 +283,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
         if response.status_code == 200 and response.text.strip():
             return response.json()
 
+        # Fallback: create blank page then navigate
         response = httpx.put(f"{cdp_http_url}/json/new", timeout=10)
         if response.status_code == 200 and response.text.strip():
             page = response.json()
@@ -300,37 +299,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
 
 def find_or_create_notebooklm_page(port: int = CDP_DEFAULT_PORT) -> dict | None:
     """Find an existing NotebookLM page or create a new one."""
-    pages = get_pages(port)
-    
-    # Look for existing NotebookLM page
-    for page in pages:
-        url = page.get("url", "")
-        if "notebooklm.google.com" in url:
-            return page
-    
-    # Create a new page
-    try:
-        encoded_url = quote(NOTEBOOKLM_URL, safe="")
-        response = httpx.put(
-            f"http://localhost:{port}/json/new?{encoded_url}",
-            timeout=15
-        )
-        if response.status_code == 200 and response.text.strip():
-            return response.json()
-        
-        # Fallback: create blank page then navigate
-        response = httpx.put(f"http://localhost:{port}/json/new", timeout=10)
-        if response.status_code == 200 and response.text.strip():
-            page = response.json()
-            ws_url = page.get("webSocketDebuggerUrl")
-            if ws_url:
-                navigate_to_url(ws_url, NOTEBOOKLM_URL)
-            return page
-        
-        return None
-    except Exception:
-        return None
-
+    return find_or_create_notebooklm_page_by_cdp_url(f"http://localhost:{port}")
 
 def execute_cdp_command(ws_url: str, method: str, params: dict | None = None) -> dict:
     """Execute a CDP command via WebSocket.
@@ -343,36 +312,37 @@ def execute_cdp_command(ws_url: str, method: str, params: dict | None = None) ->
     Returns:
         The result of the CDP command
     """
-    try:
-        import websocket
-    except ImportError:
-        raise AuthenticationError(
-            message="websocket-client package not installed",
-            hint="Run 'pip install websocket-client' to install it.",
-        )
-    
-    # suppress_origin=True is required for some managed Chrome/CDP endpoints
-    # (e.g. OpenClaw browser profile) that reject default Origin headers.
-    try:
-        ws = websocket.create_connection(ws_url, timeout=30, suppress_origin=True)
-    except TypeError:
-        # Older websocket-client versions may not support suppress_origin.
-        ws = websocket.create_connection(ws_url, timeout=30)
-    try:
-        command = {
-            "id": 1,
-            "method": method,
-            "params": params or {}
-        }
-        ws.send(json.dumps(command))
-        
-        # Wait for response with matching ID
-        while True:
-            response = json.loads(ws.recv())
-            if response.get("id") == 1:
-                return response.get("result", {})
-    finally:
-        ws.close()
+    global _cached_ws, _cached_ws_url
+
+    if ws_url != _cached_ws_url or not _cached_ws:
+        if _cached_ws:
+            _cached_ws.close()
+            _cached_ws = None
+
+        # suppress_origin=True is required for some managed Chrome/CDP endpoints
+        # (e.g. OpenClaw browser profile) that reject default Origin headers.
+        try:
+            ws = websocket.create_connection(ws_url, timeout=30, suppress_origin=True)
+        except TypeError:
+            # Older websocket-client versions may not support suppress_origin.
+            ws = websocket.create_connection(ws_url, timeout=30)
+        _cached_ws = ws
+        _cached_ws_url = ws_url
+    else:
+        ws = _cached_ws
+
+    command = {
+        "id": 1,
+        "method": method,
+        "params": params or {}
+    }
+    ws.send(json.dumps(command))
+
+    # Wait for response with matching ID
+    while True:
+        response = json.loads(ws.recv())
+        if response.get("id") == 1:
+            return response.get("result", {})
 
 
 def get_page_cookies(ws_url: str) -> list[dict]:
@@ -430,7 +400,6 @@ def navigate_to_url(ws_url: str, url: str) -> None:
     """Navigate the page to a URL."""
     execute_cdp_command(ws_url, "Page.enable")
     execute_cdp_command(ws_url, "Page.navigate", {"url": url})
-    time.sleep(3)  # Wait for page to load
 
 
 def is_logged_in(url: str) -> bool:
@@ -551,70 +520,7 @@ def extract_cookies_via_cdp(
             message=f"Cannot connect to Chrome on port {port}",
             hint="Use 'nlm login --manual' to import cookies from a file.",
         )
-    
-    # Find or create NotebookLM page
-    page = find_or_create_notebooklm_page(port)
-    if not page:
-        raise AuthenticationError(
-            message="Failed to open NotebookLM page",
-            hint="Try manually navigating to notebooklm.google.com in Chrome.",
-        )
-    
-    ws_url = page.get("webSocketDebuggerUrl")
-    if not ws_url:
-        raise AuthenticationError(
-            message="No WebSocket URL for page",
-            hint="Chrome may need to be restarted.",
-        )
-    
-    # Navigate to NotebookLM if needed
-    current_url = page.get("url", "")
-    if "notebooklm.google.com" not in current_url:
-        navigate_to_url(ws_url, NOTEBOOKLM_URL)
-    
-    # Check login status
-    current_url = get_current_url(ws_url)
-    
-    if not is_logged_in(current_url) and wait_for_login:
-        # Wait for login
-        start_time = time.time()
-        while time.time() - start_time < login_timeout:
-            time.sleep(5)
-            try:
-                current_url = get_current_url(ws_url)
-                if is_logged_in(current_url):
-                    break
-            except Exception:
-                pass
-        
-        if not is_logged_in(current_url):
-            raise AuthenticationError(
-                message="Login timeout",
-                hint="Please log in to NotebookLM in the Chrome window.",
-            )
-    
-    # Extract cookies
-    cookies = get_page_cookies(ws_url)
-    
-    if not cookies:
-        raise AuthenticationError(
-            message="No cookies extracted",
-            hint="Make sure you're fully logged in.",
-        )
-    
-    # Get page HTML for CSRF, session ID, and email
-    html = get_page_html(ws_url)
-    csrf_token = extract_csrf_token(html)
-    session_id = extract_session_id(html)
-    email = extract_email(html)
-    
-    return {
-        "cookies": cookies,
-        "csrf_token": csrf_token,
-        "session_id": session_id,
-        "email": email,
-    }
-
+    return extract_cookies_from_page(f"http://localhost:{port}", wait_for_login, login_timeout)
 
 def extract_cookies_via_existing_cdp(
     cdp_url: str,
@@ -639,12 +545,19 @@ def extract_cookies_via_existing_cdp(
             message=f"Cannot connect to CDP endpoint: {cdp_http_url}",
             hint="Ensure the browser is running and CDP is reachable.",
         ) from e
+    return extract_cookies_from_page(cdp_http_url, wait_for_login, login_timeout)
+
+def extract_cookies_from_page(
+    cdp_http_url: str,
+    wait_for_login: bool = True,
+    login_timeout: int = 300,
+) -> dict[str, Any]:
 
     page = find_or_create_notebooklm_page_by_cdp_url(cdp_http_url)
     if not page:
         raise AuthenticationError(
-            message="Failed to open NotebookLM page on external CDP endpoint",
-            hint="Open notebooklm.google.com in that browser and try again.",
+            message="Failed to open NotebookLM page",
+            hint="Try manually navigating to notebooklm.google.com and try again.",
         )
 
     ws_url = page.get("webSocketDebuggerUrl")
@@ -654,15 +567,18 @@ def extract_cookies_via_existing_cdp(
             hint="The target browser may need a restart.",
         )
 
+    # Navigate to NotebookLM if needed
     current_url = page.get("url", "")
     if "notebooklm.google.com" not in current_url:
         navigate_to_url(ws_url, NOTEBOOKLM_URL)
 
+    # Check login status
     current_url = get_current_url(ws_url)
+
     if not is_logged_in(current_url) and wait_for_login:
         start_time = time.time()
         while time.time() - start_time < login_timeout:
-            time.sleep(5)
+            time.sleep(.5)
             try:
                 current_url = get_current_url(ws_url)
                 if is_logged_in(current_url):
@@ -676,13 +592,16 @@ def extract_cookies_via_existing_cdp(
                 hint="Please log in to NotebookLM in the connected browser window.",
             )
 
+    # Extract cookies
     cookies = get_page_cookies(ws_url)
+
     if not cookies:
         raise AuthenticationError(
             message="No cookies extracted",
             hint="Make sure you're fully logged in.",
         )
 
+    # Get page HTML for CSRF, session ID, and email
     html = get_page_html(ws_url)
     csrf_token = extract_csrf_token(html)
     session_id = extract_session_id(html)
