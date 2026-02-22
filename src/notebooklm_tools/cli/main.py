@@ -241,7 +241,7 @@ def login_callback(
                 (chrome_profile / "Default").exists() or (chrome_profile / "Local State").exists()
             )
 
-            if not profile_exists:
+            if not profile_exists and not clear:
                 sources = check_migration_sources()
                 if sources["chrome_profiles"]:
                     console.print("[yellow]Found Chrome profile from legacy installation![/yellow]")
