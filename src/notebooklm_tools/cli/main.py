@@ -523,12 +523,7 @@ def main(
         
         # Check for updates when showing version
         update_available, latest = check_for_updates()
-        if update_available and latest:
-            console.print(
-                f"\n[dim]🔔 Update available:[/dim] [green]{latest}[/green]. "
-                f"[dim]Run[/dim] [bold]uv tool upgrade notebooklm-mcp-cli[/bold] [dim]to update.[/dim]"
-            )
-        else:
+        if not (update_available and latest):
             console.print(f"[dim]You are on the latest version.[/dim]")
         raise typer.Exit()
     
