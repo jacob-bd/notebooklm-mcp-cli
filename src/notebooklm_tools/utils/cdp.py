@@ -494,10 +494,14 @@ def extract_cookies_via_cdp(
         profile_dir = get_chrome_profile_dir(profile_name)
         if profile_dir.exists():
             shutil.rmtree(profile_dir, ignore_errors=True)
+            
     # Check if Chrome is running with debugging
     # First, try to find an existing instance on any port in our range
     reused_existing = False
-    existing_port, debugger_url = find_existing_nlm_chrome()
+    existing_port, debugger_url = None, None
+    if not clear_profile:
+        existing_port, debugger_url = find_existing_nlm_chrome()
+        
     if existing_port:
         port = existing_port
         reused_existing = True
