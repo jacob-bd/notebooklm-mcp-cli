@@ -147,3 +147,89 @@ class TestSaveProfileMismatchGuard:
             email="first@gmail.com",
         )
         assert profile.email == "first@gmail.com"
+
+
+class TestBuildLabelExtraction:
+    """Test build label extraction and profile round-trip."""
+
+    def test_extract_build_label_from_html(self):
+        """extract_build_label finds cfb2h key in page HTML."""
+        from notebooklm_tools.utils.cdp import extract_build_label
+
+        html = 'var config={"cfb2h":"boq_labs-tailwind-frontend_20260219.16_p2","other":"val"};'
+        assert extract_build_label(html) == "boq_labs-tailwind-frontend_20260219.16_p2"
+
+    def test_extract_build_label_missing(self):
+        """extract_build_label returns empty string when key is absent."""
+        from notebooklm_tools.utils.cdp import extract_build_label
+
+        assert extract_build_label("<html>no config here</html>") == ""
+
+    def test_auth_tokens_build_label_round_trip(self):
+        """AuthTokens preserves build_label through to_dict/from_dict."""
+        from notebooklm_tools.core.auth import AuthTokens
+
+        tokens = AuthTokens(
+            cookies={"SID": "abc"},
+            csrf_token="csrf",
+            session_id="sid",
+            build_label="boq_labs-tailwind-frontend_20260219.16_p2",
+            extracted_at=1000.0,
+        )
+        d = tokens.to_dict()
+        assert d["build_label"] == "boq_labs-tailwind-frontend_20260219.16_p2"
+
+        restored = AuthTokens.from_dict(d)
+        assert restored.build_label == "boq_labs-tailwind-frontend_20260219.16_p2"
+
+    def test_auth_tokens_build_label_defaults_empty(self):
+        """AuthTokens.from_dict handles missing build_label gracefully."""
+        from notebooklm_tools.core.auth import AuthTokens
+
+        tokens = AuthTokens.from_dict({"cookies": {"SID": "abc"}})
+        assert tokens.build_label == ""
+
+    def test_profile_build_label_round_trip(self, tmp_path, monkeypatch):
+        """Profile save/load preserves build_label in metadata."""
+        from notebooklm_tools.core.auth import AuthManager
+
+        monkeypatch.setattr(
+            "notebooklm_tools.utils.config.get_profile_dir",
+            lambda name: tmp_path / name,
+        )
+
+        manager = AuthManager("bl-test")
+        manager.save_profile(
+            cookies={"SID": "abc"},
+            csrf_token="csrf",
+            email="test@gmail.com",
+            build_label="boq_labs-tailwind-frontend_20260219.16_p2",
+        )
+
+        manager._profile = None
+        loaded = manager.load_profile()
+        assert loaded.build_label == "boq_labs-tailwind-frontend_20260219.16_p2"
+
+    def test_profile_build_label_defaults_none_for_old_profiles(self, tmp_path, monkeypatch):
+        """Old profiles without build_label in metadata load with None."""
+        from notebooklm_tools.core.auth import AuthManager
+        import json
+
+        monkeypatch.setattr(
+            "notebooklm_tools.utils.config.get_profile_dir",
+            lambda name: tmp_path / name,
+        )
+
+        # Simulate an old profile without build_label
+        profile_dir = tmp_path / "old-profile"
+        profile_dir.mkdir(parents=True)
+        (profile_dir / "cookies.json").write_text(json.dumps({"SID": "abc"}))
+        (profile_dir / "metadata.json").write_text(json.dumps({
+            "csrf_token": "csrf",
+            "session_id": "sid",
+            "email": "test@gmail.com",
+        }))
+
+        manager = AuthManager("old-profile")
+        loaded = manager.load_profile()
+        assert loaded.build_label is None

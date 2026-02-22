@@ -212,7 +212,7 @@ The `f.req` structure:
 |-------|-------------|
 | `rpcids` | The RPC ID being called |
 | `source-path` | Current page path (e.g., `/notebook/<id>`) |
-| `bl` | Build/version string (e.g., `boq_labs-tailwind-frontend_20251217.10_p0`) |
+| `bl` | Build label, auto-extracted from page HTML (`cfb2h` key). Override via `NOTEBOOKLM_BL` env var. |
 | `f.sid` | Session ID |
 | `hl` | Language code (e.g., `en`) |
 | `_reqid` | Request counter |

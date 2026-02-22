@@ -73,6 +73,7 @@ save_auth_tokens(cookies=<cookie_header>)
 | `NOTEBOOKLM_COOKIES` | Yes | Full cookie header from Chrome DevTools |
 | `NOTEBOOKLM_CSRF_TOKEN` | No | (DEPRECATED - auto-extracted) |
 | `NOTEBOOKLM_SESSION_ID` | No | (DEPRECATED - auto-extracted) |
+| `NOTEBOOKLM_BL` | No | Override for build label / bl URL param (auto-extracted from page) |
 | `NOTEBOOKLM_HL` | No | Interface language and default artifact language (default: `en`) |
 
 ### Token Expiration
@@ -80,6 +81,7 @@ save_auth_tokens(cookies=<cookie_header>)
 - **Cookies**: Stable for weeks, but some rotate on each request
 - **CSRF token**: Auto-refreshed on each client initialization
 - **Session ID**: Auto-refreshed on each client initialization
+- **Build label (bl)**: Auto-extracted during login and CSRF refresh; stays current with Google's build
 
 When API calls fail with auth errors, re-extract fresh cookies from Chrome DevTools.
 

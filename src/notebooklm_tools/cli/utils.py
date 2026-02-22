@@ -35,6 +35,7 @@ def get_client(profile: str | None = None) -> NotebookLMClient:
             cookies=p.cookies,
             csrf_token=p.csrf_token or "",
             session_id=p.session_id or "",
+            build_label=p.build_label or "",
         )
     except Exception:
         # No valid profile found

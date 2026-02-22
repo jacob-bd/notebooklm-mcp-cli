@@ -53,6 +53,7 @@ class BaseClient:
     BASE_URL = "https://notebooklm.google.com"
     BATCHEXECUTE_URL = f"{BASE_URL}/_/LabsTailwindUi/data/batchexecute"
     UPLOAD_URL = "https://notebooklm.google.com/upload/_/"
+    _BL_FALLBACK = "boq_labs-tailwind-frontend_20260108.06_p0"
 
     # =========================================================================
     # Known RPC IDs
@@ -237,7 +238,7 @@ class BaseClient:
     # Lifecycle Methods
     # =========================================================================
 
-    def __init__(self, cookies: dict[str, str] | list[dict], csrf_token: str = "", session_id: str = ""):
+    def __init__(self, cookies: dict[str, str] | list[dict], csrf_token: str = "", session_id: str = "", build_label: str = ""):
         """
         Initialize the base client.
 
@@ -245,11 +246,13 @@ class BaseClient:
             cookies: Dict of Google auth cookies or List of cookie dicts (from CDP)
             csrf_token: CSRF token (optional - will be auto-extracted from page if not provided)
             session_id: Session ID (optional - will be auto-extracted from page if not provided)
+            build_label: Build label / bl param (optional - auto-extracted from page if not provided)
         """
         self.cookies = cookies
         self.csrf_token = csrf_token
         self._client: httpx.Client | None = None
         self._session_id = session_id
+        self._bl = build_label
 
         # Conversation cache for follow-up queries
         # Key: conversation_id, Value: list of ConversationTurn objects
@@ -394,7 +397,7 @@ class BaseClient:
         params = {
             "rpcids": rpc_id,
             "source-path": source_path,
-            "bl": os.environ.get("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_20260108.06_p0"),
+            "bl": os.environ.get("NOTEBOOKLM_BL") or getattr(self, "_bl", "") or self._BL_FALLBACK,
             "hl": os.environ.get("NOTEBOOKLM_HL", "en"),
             "rt": "c",
         }
@@ -659,6 +662,11 @@ class BaseClient:
             if sid_match:
                 self._session_id = sid_match.group(1)
 
+            # Extract build label (cfb2h) - keeps bl param current
+            bl_match = re.search(r'"cfb2h":"([^"]+)"', html)
+            if bl_match:
+                self._bl = bl_match.group(1)
+
             # Cache the extracted tokens to avoid re-fetching the page on next request
             self._update_cached_tokens()
 
@@ -678,12 +686,15 @@ class BaseClient:
                 # Update existing cache with new tokens
                 cached.csrf_token = self.csrf_token
                 cached.session_id = self._session_id
+                if self._bl:
+                    cached.build_label = self._bl
             else:
                 # Create new cache entry
                 cached = AuthTokens(
                     cookies=self.cookies,
                     csrf_token=self.csrf_token,
                     session_id=self._session_id,
+                    build_label=self._bl,
                     extracted_at=time.time(),
                 )
 

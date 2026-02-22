@@ -27,6 +27,7 @@ class AuthTokens:
     cookies: dict[str, str]
     csrf_token: str = ""  # Optional - auto-extracted from page
     session_id: str = ""  # Optional - auto-extracted from page
+    build_label: str = ""  # Optional - auto-extracted from page (cfb2h key)
     extracted_at: float = 0.0
 
     def to_dict(self) -> dict:
@@ -34,6 +35,7 @@ class AuthTokens:
             "cookies": self.cookies,
             "csrf_token": self.csrf_token,
             "session_id": self.session_id,
+            "build_label": self.build_label,
             "extracted_at": self.extracted_at,
         }
 
@@ -41,8 +43,9 @@ class AuthTokens:
     def from_dict(cls, data: dict) -> "AuthTokens":
         return cls(
             cookies=data["cookies"],
-            csrf_token=data.get("csrf_token", ""),  # May be empty
-            session_id=data.get("session_id", ""),  # May be empty
+            csrf_token=data.get("csrf_token", ""),
+            session_id=data.get("session_id", ""),
+            build_label=data.get("build_label", ""),
             extracted_at=data.get("extracted_at", 0),
         )
 
@@ -256,6 +259,7 @@ class Profile:
         session_id: str | None = None,
         email: str | None = None,
         last_validated: "datetime | None" = None,
+        build_label: str | None = None,
     ) -> None:
         self.name = name
         self.cookies = cookies
@@ -263,6 +267,7 @@ class Profile:
         self.session_id = session_id
         self.email = email
         self.last_validated = last_validated
+        self.build_label = build_label
 
     def to_dict(self) -> dict:
         """Convert profile to dictionary for serialization."""
@@ -349,6 +354,7 @@ class AuthManager:
                 email=metadata.get("email"),
                 last_validated=datetime.fromisoformat(metadata["last_validated"])
                 if metadata.get("last_validated") else None,
+                build_label=metadata.get("build_label"),
             )
             return self._profile
         except Exception as e:
@@ -364,6 +370,7 @@ class AuthManager:
         session_id: str | None = None,
         email: str | None = None,
         force: bool = False,
+        build_label: str | None = None,
     ) -> Profile:
         """Save credentials to the current profile.
 
@@ -402,6 +409,7 @@ class AuthManager:
             "csrf_token": csrf_token,
             "session_id": session_id,
             "email": email,
+            "build_label": build_label,
             "last_validated": datetime.now().isoformat(),
         }
         self.metadata_file.write_text(json.dumps(metadata, indent=2))
@@ -414,6 +422,7 @@ class AuthManager:
             session_id=session_id,
             email=email,
             last_validated=datetime.now(),
+            build_label=build_label,
         )
         return self._profile
 

@@ -152,3 +152,54 @@ def test_constants_available():
     # Check constant re-exports
     assert hasattr(BaseClient, 'STUDIO_TYPE_AUDIO')
     assert hasattr(BaseClient, 'AUDIO_FORMAT_DEEP_DIVE')
+
+
+class TestBuildLabelPriority:
+    """Test build label (bl) resolution priority in _build_url()."""
+
+    def test_bl_uses_extracted_value(self):
+        """Extracted build label is used when no env var override."""
+        from notebooklm_tools.core.base import BaseClient
+
+        with patch.object(BaseClient, '_refresh_auth_tokens'):
+            client = BaseClient(
+                cookies={}, csrf_token="token",
+                build_label="boq_labs-tailwind-frontend_20260219.16_p2",
+            )
+        url = client._build_url("testRpc")
+        assert "boq_labs-tailwind-frontend_20260219.16_p2" in url
+
+    def test_bl_env_var_overrides_extracted(self):
+        """NOTEBOOKLM_BL env var takes precedence over extracted value."""
+        from notebooklm_tools.core.base import BaseClient
+        import os
+
+        with patch.object(BaseClient, '_refresh_auth_tokens'):
+            client = BaseClient(
+                cookies={}, csrf_token="token",
+                build_label="extracted_value",
+            )
+        with patch.dict(os.environ, {"NOTEBOOKLM_BL": "env_override_value"}):
+            url = client._build_url("testRpc")
+        assert "env_override_value" in url
+        assert "extracted_value" not in url
+
+    def test_bl_falls_back_to_hardcoded(self):
+        """Falls back to hardcoded default when nothing else is available."""
+        from notebooklm_tools.core.base import BaseClient
+
+        with patch.object(BaseClient, '_refresh_auth_tokens'):
+            client = BaseClient(cookies={}, csrf_token="token")
+        url = client._build_url("testRpc")
+        assert BaseClient._BL_FALLBACK in url
+
+    def test_bl_stored_on_init(self):
+        """build_label parameter is stored as _bl on the client."""
+        from notebooklm_tools.core.base import BaseClient
+
+        with patch.object(BaseClient, '_refresh_auth_tokens'):
+            client = BaseClient(
+                cookies={}, csrf_token="token",
+                build_label="test_bl_value",
+            )
+        assert client._bl == "test_bl_value"

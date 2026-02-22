@@ -425,6 +425,17 @@ def is_logged_in(url: str) -> bool:
     return False
 
 
+def extract_build_label(html: str) -> str:
+    """Extract the build label (bl) from page HTML.
+
+    Google embeds the current build label under the 'cfb2h' key in the page's
+    inline configuration JSON. This value is used as the 'bl' URL parameter
+    in batchexecute and query requests.
+    """
+    match = re.search(r'"cfb2h":"([^"]+)"', html)
+    return match.group(1) if match else ""
+
+
 def extract_csrf_token(html: str) -> str:
     """Extract CSRF token from page HTML."""
     match = re.search(r'"SNlM0e":"([^"]+)"', html)
@@ -625,17 +636,19 @@ def extract_cookies_from_page(
             hint="Make sure you're fully logged in.",
         )
 
-    # Get page HTML for CSRF, session ID, and email
+    # Get page HTML for CSRF, session ID, email, and build label
     html = get_page_html(ws_url)
     csrf_token = extract_csrf_token(html)
     session_id = extract_session_id(html)
     email = extract_email(html)
+    build_label = extract_build_label(html)
 
     return {
         "cookies": cookies,
         "csrf_token": csrf_token,
         "session_id": session_id,
         "email": email,
+        "build_label": build_label,
     }
 
 

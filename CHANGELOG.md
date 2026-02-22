@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11] - 2026-02-22
+
+### Added
+- **Auto-extract build label (`bl`)** - The `bl` URL parameter is now automatically extracted from the NotebookLM page during `nlm login` and CSRF token refresh, instead of using a hardcoded value that goes stale every few weeks. This keeps API requests current with Google's latest build without any manual steps. The `NOTEBOOKLM_BL` env var still works as an override. The `save_auth_tokens` MCP tool also extracts `bl` from the `request_url` parameter when provided.
+
+### Fixed
+- **`sources_used` now populated in query responses** - The `sources_used` field was always returning `[]` even when the AI's answer contained citation markers like `[1]`, `[2]`. Google's response includes citation-to-source mapping data that was present but never parsed. Query responses now correctly return `sources_used` (list of cited source IDs) and `citations` (dict mapping each citation number to its parent source ID). This also enables the REPL's citation legend feature. Thanks to **@MinhDung2209** for reporting (issue #57).
+
 ## [0.3.10] - 2026-02-22
 
 ### Added

@@ -39,6 +39,8 @@ def get_client() -> NotebookLMClient:
         csrf_token = os.environ.get("NOTEBOOKLM_CSRF_TOKEN", "")
         session_id = os.environ.get("NOTEBOOKLM_SESSION_ID", "")
 
+        build_label = ""
+
         if cookie_header:
             # Use environment variables
             cookies = extract_cookies_from_chrome_export(cookie_header)
@@ -49,6 +51,7 @@ def get_client() -> NotebookLMClient:
                 cookies = cached.cookies
                 csrf_token = csrf_token or cached.csrf_token
                 session_id = session_id or cached.session_id
+                build_label = cached.build_label or ""
             else:
                 raise ValueError(
                     "No authentication found. Either:\n"
@@ -60,6 +63,7 @@ def get_client() -> NotebookLMClient:
             cookies=cookies,
             csrf_token=csrf_token,
             session_id=session_id,
+            build_label=build_label,
         )
     return _client
 

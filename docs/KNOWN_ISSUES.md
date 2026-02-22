@@ -4,31 +4,25 @@ This document describes known limitations and potential failure points in the No
 
 ---
 
-## 1. Hardcoded `bl` Version String
+## 1. Build Label (`bl`) Parameter
 
 ### What it is
 The `bl` (build label) parameter is a frontend version identifier required by NotebookLM's batchexecute API. It looks like:
 ```
-boq_labs-tailwind-frontend_20251221.14_p0
+boq_labs-tailwind-frontend_20260219.16_p2
 ```
 
-### When it breaks
-Google deploys new frontend versions periodically. When this happens, the hardcoded `bl` value may become stale. Symptoms:
-- API calls return errors or unexpected responses
-- Operations that previously worked start failing
+### Current status (v0.3.11+)
+**Resolved.** The `bl` value is now auto-extracted from the NotebookLM page during `nlm login` and during CSRF token refresh. It stays current automatically without manual intervention.
 
-### How to fix
-Set the `NOTEBOOKLM_BL` environment variable to override the default:
+### Manual override
+If you need to force a specific value, set the `NOTEBOOKLM_BL` environment variable:
 
 ```bash
-export NOTEBOOKLM_BL="boq_labs-tailwind-frontend_YYYYMMDD.XX_p0"
+export NOTEBOOKLM_BL="boq_labs-tailwind-frontend_YYYYMMDD.XX_pN"
 ```
 
-To find the current value:
-1. Open Chrome DevTools on `notebooklm.google.com`
-2. Go to Network tab
-3. Find any request to `/_/LabsTailwindUi/data/batchexecute`
-4. Look for the `bl=` parameter in the URL
+The priority order is: env var > auto-extracted > hardcoded fallback.
 
 ---
 

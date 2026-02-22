@@ -108,11 +108,18 @@ def save_auth_tokens(
                 sid_part = request_url.split("f.sid=")[1].split("&")[0]
                 session_id = urllib.parse.unquote(sid_part)
 
+        # Try to extract build label from request URL if provided
+        build_label = ""
+        if request_url and "bl=" in request_url:
+            bl_part = request_url.split("bl=")[1].split("&")[0]
+            build_label = urllib.parse.unquote(bl_part)
+
         # Create and save tokens
         tokens = AuthTokens(
             cookies=cookie_dict,
             csrf_token=csrf_token,
             session_id=session_id,
+            build_label=build_label,
             extracted_at=time.time(),
         )
         save_tokens_to_cache(tokens)

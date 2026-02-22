@@ -169,6 +169,7 @@ def login_callback(
                 csrf_token=p.csrf_token,
                 session_id=p.session_id,
                 email=p.email,
+                build_label=p.build_label,
             )
 
             console.print(f"[green]✓[/green] Authentication valid!")
@@ -274,6 +275,7 @@ def login_callback(
         csrf_token = result.get("csrf_token", "")
         session_id = result.get("session_id", "")
         email = result.get("email", "")
+        build_label = result.get("build_label", "")
 
         # Save to profile
         auth.save_profile(
@@ -282,6 +284,7 @@ def login_callback(
             session_id=session_id,
             email=email,
             force=force,
+            build_label=build_label,
         )
 
         # Close builtin auth Chrome to release profile lock (enables headless auth later)
@@ -390,6 +393,7 @@ def profile_rename(
             csrf_token=profile_data.csrf_token,
             session_id=profile_data.session_id,
             email=profile_data.email,
+            build_label=profile_data.build_label,
         )
 
         # Delete old profile
