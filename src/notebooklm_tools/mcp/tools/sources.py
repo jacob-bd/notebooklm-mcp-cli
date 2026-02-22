@@ -112,6 +112,25 @@ def source_sync_drive(source_ids: list[str], confirm: bool = False) -> dict[str,
 
 
 @logged_tool()
+def source_rename(notebook_id: str, source_id: str, new_title: str) -> dict[str, Any]:
+    """Rename a source in a notebook.
+
+    Args:
+        notebook_id: Notebook UUID containing the source
+        source_id: Source UUID to rename
+        new_title: New display title for the source
+    """
+    try:
+        client = get_client()
+        result = sources_service.rename_source(client, notebook_id, source_id, new_title)
+        return {"status": "success", **result}
+    except ServiceError as e:
+        return {"status": "error", "error": e.user_message}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
 def source_delete(source_id: str, confirm: bool = False) -> dict[str, Any]:
     """Delete source permanently. IRREVERSIBLE. Requires confirm=True.
 

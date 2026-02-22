@@ -216,6 +216,32 @@ def get_source_content(
         raise typer.Exit(1)
 
 
+@app.command("rename")
+def rename_source(
+    source_id: str = typer.Argument(..., help="Source ID"),
+    title: str = typer.Argument(..., help="New title"),
+    notebook_id: str = typer.Option(..., "--notebook", "-n", help="Notebook ID containing the source"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Rename a source."""
+    source_id = get_alias_manager().resolve(source_id)
+    notebook_id = get_alias_manager().resolve(notebook_id)
+
+    try:
+        with get_client(profile) as client:
+            result = sources_service.rename_source(client, notebook_id, source_id, title)
+        console.print(f"[green]✓[/green] Renamed source to: {result['title']}")
+        console.print(f"[dim]Source ID: {result['source_id']}[/dim]")
+    except ServiceError as e:
+        console.print(f"[red]Error:[/red] {e.user_message}")
+        raise typer.Exit(1)
+    except NLMError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
+        if e.hint:
+            console.print(f"\n[dim]Hint: {e.hint}[/dim]")
+        raise typer.Exit(1)
+
+
 @app.command("delete")
 def delete_source(
     source_id: str = typer.Argument(..., help="Source ID"),

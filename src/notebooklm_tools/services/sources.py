@@ -48,6 +48,12 @@ class SourceContentResult(TypedDict):
     char_count: int
 
 
+class RenameResult(TypedDict):
+    """Result of renaming a source."""
+    source_id: str
+    title: str
+
+
 class DescribeResult(TypedDict):
     """Result of describing a source."""
     summary: str
@@ -260,6 +266,50 @@ def sync_drive_sources(
             results.append({"source_id": source_id, "synced": False, "error": str(e)})
 
     return results
+
+
+def rename_source(
+    client: NotebookLMClient,
+    notebook_id: str,
+    source_id: str,
+    new_title: str,
+) -> RenameResult:
+    """Rename a source in a notebook.
+
+    Args:
+        client: Authenticated NotebookLM client
+        notebook_id: Notebook UUID containing the source
+        source_id: Source UUID to rename
+        new_title: New display title
+
+    Returns:
+        RenameResult with source_id and new title
+
+    Raises:
+        ValidationError: If new_title is empty
+        ServiceError: If rename fails
+    """
+    if not new_title or not new_title.strip():
+        raise ValidationError("new_title cannot be empty.")
+
+    try:
+        result = client.rename_source(notebook_id, source_id, new_title.strip())
+        if not result:
+            raise ServiceError(
+                f"Rename returned no data for source {source_id}",
+                user_message="Failed to rename source.",
+            )
+        return {
+            "source_id": result["id"],
+            "title": result["title"],
+        }
+    except (ValidationError, ServiceError):
+        raise
+    except Exception as e:
+        raise ServiceError(
+            f"Failed to rename source {source_id}: {e}",
+            user_message="Failed to rename source.",
+        )
 
 
 def delete_source(

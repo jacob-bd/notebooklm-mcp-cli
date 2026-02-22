@@ -72,6 +72,7 @@ class BaseClient:
     RPC_CHECK_FRESHNESS = "yR9Yof"  # Check if Drive source is stale
     RPC_SYNC_DRIVE = "FLmJqe"  # Sync Drive source with latest content
     RPC_DELETE_SOURCE = "tGMBJ"  # Delete a source from notebook
+    RPC_RENAME_SOURCE = "b7Wfje"  # Rename a source
     
     # Misc
     RPC_GET_CONVERSATIONS = "hPTbtc"

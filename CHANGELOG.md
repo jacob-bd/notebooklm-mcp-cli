@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10] - 2026-02-22
+
+### Added
+- **Source Rename (`source_rename`)** — Rename any source within a notebook via new RPC `b7Wfje`.
+  - MCP tool: `source_rename` with `notebook_id`, `source_id`, and `new_title` params
+  - CLI: `nlm source rename <source-id> <title> --notebook <notebook-id>`
+  - Verb-first alias: `nlm rename source <source-id> <title> --notebook <notebook-id>`
+
 ## [0.3.9] - 2026-02-22
 
 ### Added

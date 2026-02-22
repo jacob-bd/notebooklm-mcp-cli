@@ -145,6 +145,29 @@ class SourceMixin(BaseClient):
                 }
         return None
 
+    def rename_source(self, notebook_id: str, source_id: str, new_title: str) -> dict | None:
+        """Rename a source in a notebook.
+
+        Args:
+            notebook_id: The notebook containing the source
+            source_id: The source UUID to rename
+            new_title: The new display title
+
+        Returns:
+            Dict with source_id and title on success, None on failure
+        """
+        params = [None, [source_id], [[[new_title]]]]
+        path = f"/notebook/{notebook_id}"
+        result = self._call_rpc(self.RPC_RENAME_SOURCE, params, path)
+
+        if result and isinstance(result, list) and len(result) > 0:
+            source_data = result[0]
+            if isinstance(source_data, list) and len(source_data) >= 2:
+                returned_id = source_data[0][0] if source_data[0] else source_id
+                returned_title = source_data[1] if len(source_data) > 1 else new_title
+                return {"id": returned_id, "title": returned_title}
+        return None
+
     def delete_source(self, source_id: str) -> bool:
         """Delete a source from a notebook permanently.
 

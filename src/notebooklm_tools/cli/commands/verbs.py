@@ -28,6 +28,7 @@ from notebooklm_tools.cli.commands.source import (
     get_source,
     describe_source,
     get_source_content,
+    rename_source,
     delete_source,
     list_stale_sources,
     sync_sources,
@@ -506,6 +507,17 @@ def rename_notebook_verb(
 ) -> None:
     """Rename a notebook."""
     rename_notebook(notebook_id=notebook, new_title=title, profile=profile)
+
+
+@rename_app.command("source")
+def rename_source_verb(
+    source_id: str = typer.Argument(..., help="Source ID"),
+    title: str = typer.Argument(..., help="New title"),
+    notebook_id: str = typer.Option(..., "--notebook", "-n", help="Notebook ID containing the source"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Rename a source."""
+    rename_source(source_id=source_id, title=title, notebook_id=notebook_id, profile=profile)
 
 
 @rename_app.command("studio")
