@@ -111,6 +111,10 @@ def login_callback(
         False, "--force",
         help="Force overwrite even if profile has credentials for a different account",
     ),
+    clear: bool = typer.Option(
+        False, "--clear",
+        help="Delete the localized Chrome profile data before logging in, to switch Google accounts",
+    ),
 ) -> None:
     """
     Authenticate with NotebookLM.
@@ -256,6 +260,7 @@ def login_callback(
                 wait_for_login=True,
                 login_timeout=300,
                 profile_name=profile,
+                clear_profile=clear,
             )
             launched_local_chrome = True
 

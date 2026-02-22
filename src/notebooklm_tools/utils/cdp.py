@@ -468,6 +468,7 @@ def extract_cookies_via_cdp(
     wait_for_login: bool = True,
     login_timeout: int = 300,
     profile_name: str = "default",
+    clear_profile: bool = False,
 ) -> dict[str, Any]:
     """Extract cookies and tokens from Chrome via CDP.
     
@@ -479,6 +480,7 @@ def extract_cookies_via_cdp(
         wait_for_login: If True, wait for user to log in
         login_timeout: Max seconds to wait for login
         profile_name: NLM profile name (each gets its own Chrome user-data-dir)
+        clear_profile: If True, delete the Chrome user-data-dir before launching
     
     Returns:
         Dict with cookies, csrf_token, session_id, and email
@@ -486,6 +488,12 @@ def extract_cookies_via_cdp(
     Raises:
         AuthenticationError: If extraction fails
     """
+    if clear_profile:
+        from notebooklm_tools.utils.config import get_chrome_profile_dir
+        import shutil
+        profile_dir = get_chrome_profile_dir(profile_name)
+        if profile_dir.exists():
+            shutil.rmtree(profile_dir, ignore_errors=True)
     # Check if Chrome is running with debugging
     # First, try to find an existing instance on any port in our range
     reused_existing = False
