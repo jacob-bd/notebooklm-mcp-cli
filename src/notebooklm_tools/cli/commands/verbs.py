@@ -595,6 +595,7 @@ def query_notebook_verb(
     conversation_id: Optional[str] = typer.Option(None, "--conversation-id", "-c", help="Conversation ID for follow-up questions"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", "-s", help="Comma-separated source IDs to query (default: all)"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", "-t", help="Query timeout in seconds (default: 120)"),
 ) -> None:
     """Chat with notebook sources."""
     query_notebook(
@@ -602,7 +603,8 @@ def query_notebook_verb(
         question=question,
         conversation_id=conversation_id,
         source_ids=source_ids,
-        profile=profile
+        profile=profile,
+        timeout=timeout,
     )
 
 

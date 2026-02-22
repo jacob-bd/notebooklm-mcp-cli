@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-02-22
+
+### Added
+- **Query Timeout Flag** - `nlm notebook query` and `nlm query notebook` now accept `--timeout` / `-t` to set query timeout in seconds (default: 120). Useful for long extraction prompts that need more processing time (closes #57).
+
 ## [0.3.5] - 2026-02-21
 
 ### Added

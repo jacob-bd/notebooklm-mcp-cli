@@ -188,17 +188,19 @@ def query_notebook(
         help="Comma-separated source IDs to query (default: all)",
     ),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", "-t", help="Query timeout in seconds (default: 120)"),
 ) -> None:
     """Chat with notebook sources."""
     try:
         sources = source_ids.split(",") if source_ids else None
         notebook_id = get_alias_manager().resolve(notebook_id)
-        
+
         with get_client(profile) as client:
             result = chat_service.query(
                 client, notebook_id, question,
                 source_ids=sources,
                 conversation_id=conversation_id,
+                timeout=timeout,
             )
         
         fmt = detect_output_format(json_output)
