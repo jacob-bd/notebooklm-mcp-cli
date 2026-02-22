@@ -448,9 +448,9 @@ def extract_email(html: str) -> str:
     """Extract user email from page HTML."""
     # Try various patterns Google uses to embed the email
     patterns = [
-        r'"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"',  # Generic email in quotes
-        r'data-email="([^"]+)"',  # data-email attribute
         r'"oPEP7c":"([^"]+@[^"]+)"',  # Google's internal email field
+        r'data-email="([^"]+)"',  # data-email attribute
+        r'"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"',  # Generic email in quotes
     ]
     for pattern in patterns:
         matches = re.findall(pattern, html)
