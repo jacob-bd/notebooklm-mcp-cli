@@ -139,7 +139,7 @@ nlm login profile rename <old> <new> # Rename a profile
 
 **Session lifetime**: ~20 minutes. Re-authenticate when commands fail with auth errors.
 
-**Switching default profile**: Use `nlm login switch <name>` to quickly change the default profile without typing `--profile` for every command.
+**Switching MCP Accounts**: The MCP server always uses the active default profile. If you need to switch which Google account the MCP server is communicating with, you MUST use the CLI: run `nlm login switch <name>`. Your next MCP tool call will instantly use the new account.
 
 **Note**: Both MCP and CLI share the same authentication backend, so authenticating with one works for both.
 
