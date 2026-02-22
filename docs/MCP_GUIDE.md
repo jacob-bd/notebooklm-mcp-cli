@@ -204,6 +204,7 @@ studio_create(notebook_id, artifact_type="report", report_format="Study Guide", 
 | `NOTEBOOKLM_MCP_TRANSPORT` | Transport type |
 | `NOTEBOOKLM_MCP_PORT` | HTTP/SSE port |
 | `NOTEBOOKLM_MCP_DEBUG` | Enable debug logging |
+| `NOTEBOOKLM_HL` | Interface language and default artifact language (default: en) |
 | `NOTEBOOKLM_QUERY_TIMEOUT` | Query timeout (seconds) |
 
 ---

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-02-22
+
+### Added
+- **Configurable Interface Language (`NOTEBOOKLM_HL`)** - Set `NOTEBOOKLM_HL` env var to control both the API's `hl` URL parameter and the default artifact creation language. Explicit `--language` flags still take priority. Thanks to **@beausea** for this contribution (PR #59, closes #58).
+
 ## [0.3.6] - 2026-02-22
 
 ### Added
