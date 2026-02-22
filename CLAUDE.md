@@ -73,6 +73,7 @@ save_auth_tokens(cookies=<cookie_header>)
 | `NOTEBOOKLM_COOKIES` | Yes | Full cookie header from Chrome DevTools |
 | `NOTEBOOKLM_CSRF_TOKEN` | No | (DEPRECATED - auto-extracted) |
 | `NOTEBOOKLM_SESSION_ID` | No | (DEPRECATED - auto-extracted) |
+| `NOTEBOOKLM_HL` | No | Interface language and default artifact language (default: `en`) |
 
 ### Token Expiration
 

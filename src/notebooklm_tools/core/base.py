@@ -394,7 +394,7 @@ class BaseClient:
             "rpcids": rpc_id,
             "source-path": source_path,
             "bl": os.environ.get("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_20260108.06_p0"),
-            "hl": "en",
+            "hl": os.environ.get("NOTEBOOKLM_HL", "en"),
             "rt": "c",
         }
 

@@ -11,6 +11,7 @@ from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.cli.formatters import detect_output_format, get_formatter
 from notebooklm_tools.cli.utils import get_client
 from notebooklm_tools.services import studio as studio_service, ServiceError, ValidationError
+from notebooklm_tools.utils.config import get_default_language
 
 console = Console()
 
@@ -88,6 +89,9 @@ def _run_create(
     CLI-specific concerns (confirmation, arg parsing) happen in each command.
     This helper handles the common pattern of spinner → create → print result.
     """
+    if not kwargs.get("language"):
+        kwargs["language"] = get_default_language()
+
     try:
         notebook_id = get_alias_manager().resolve(notebook_id)
         with Progress(
@@ -214,8 +218,8 @@ def create_audio(
         help="Length (short, default, long)",
     ),
     language: str = typer.Option(
-        "en", "--language",
-        help="BCP-47 language code (en, es, fr, de, ja)",
+        "", "--language",
+        help="BCP-47 language code (default: NOTEBOOKLM_HL or en)",
     ),
     focus: Optional[str] = typer.Option(
         None, "--focus",
@@ -251,7 +255,7 @@ def create_report(
         help="Format: 'Briefing Doc', 'Study Guide', 'Blog Post', 'Create Your Own'",
     ),
     prompt: str = typer.Option("", "--prompt", help="Custom prompt (required for 'Create Your Own')"),
-    language: str = typer.Option("en", "--language", help="BCP-47 language code"),
+    language: str = typer.Option("", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", "-s", help="Comma-separated source IDs"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
@@ -378,7 +382,7 @@ def create_slides(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
     format: str = typer.Option("detailed_deck", "--format", "-f", help="Format: detailed_deck, presenter_slides"),
     length: str = typer.Option("default", "--length", "-l", help="Length: short, default"),
-    language: str = typer.Option("en", "--language", help="BCP-47 language code"),
+    language: str = typer.Option("", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"),
     focus: str = typer.Option("", "--focus", help="Optional focus topic"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", "-s", help="Comma-separated source IDs"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
@@ -472,7 +476,7 @@ def create_infographic(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
     orientation: str = typer.Option("landscape", "--orientation", "-o", help="Orientation: landscape, portrait, square"),
     detail: str = typer.Option("standard", "--detail", "-d", help="Detail level: concise, standard, detailed"),
-    language: str = typer.Option("en", "--language", help="BCP-47 language code"),
+    language: str = typer.Option("", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"),
     focus: str = typer.Option("", "--focus", help="Optional focus topic"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", "-s", help="Comma-separated source IDs"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
@@ -501,7 +505,7 @@ def create_video(
         "auto_select", "--style", "-s",
         help="Visual style: auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",
     ),
-    language: str = typer.Option("en", "--language", help="BCP-47 language code"),
+    language: str = typer.Option("", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"),
     focus: str = typer.Option("", "--focus", help="Optional focus topic"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", help="Comma-separated source IDs"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
@@ -526,7 +530,7 @@ def create_video(
 def create_data_table(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
     description: str = typer.Argument(..., help="Description of the data table to create"),
-    language: str = typer.Option("en", "--language", help="BCP-47 language code"),
+    language: str = typer.Option("", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"),
     source_ids: Optional[str] = typer.Option(None, "--source-ids", "-s", help="Comma-separated source IDs"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),

@@ -166,7 +166,7 @@ class ConversationMixin(BaseClient):
         self._reqid_counter += 100000  # Increment counter
         url_params = {
             "bl": os.environ.get("NOTEBOOKLM_BL", "boq_labs-tailwind-frontend_20260108.06_p0"),
-            "hl": "en",
+            "hl": os.environ.get("NOTEBOOKLM_HL", "en"),
             "_reqid": str(self._reqid_counter),
             "rt": "c",
         }
