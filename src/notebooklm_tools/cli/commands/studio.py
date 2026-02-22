@@ -397,6 +397,74 @@ def create_slides(
     )
 
 
+@slides_app.command("revise")
+def revise_slides(
+    artifact_id: str = typer.Argument(..., help="Artifact ID of the slide deck to revise"),
+    slide: list[str] = typer.Option(
+        ..., "--slide",
+        help='Slide revision in format: SLIDE_NUM "instruction" (e.g., --slide 1 "Make title larger")',
+    ),
+    confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Revise individual slides in an existing slide deck.
+
+    Creates a NEW slide deck with revisions applied. The original is not modified.
+
+    Examples:
+        nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
+        nlm slides revise <artifact-id> --slide '1 Make title larger' --slide '3 Remove the image' --confirm
+    """
+    artifact_id = get_alias_manager().resolve(artifact_id)
+
+    # Parse --slide arguments: each is "NUMBER instruction text"
+    instructions: list[dict] = []
+    for s in slide:
+        parts = s.strip().split(None, 1)
+        if len(parts) < 2:
+            console.print(f"[red]Error:[/red] Invalid --slide format: '{s}'. Expected: NUMBER \"instruction\"")
+            raise typer.Exit(1)
+        try:
+            slide_num = int(parts[0])
+        except ValueError:
+            console.print(f"[red]Error:[/red] Invalid slide number: '{parts[0]}'. Must be an integer >= 1.")
+            raise typer.Exit(1)
+        instructions.append({"slide": slide_num, "instruction": parts[1]})
+
+    if not confirm:
+        console.print("[bold]Slides to revise:[/bold]")
+        for inst in instructions:
+            console.print(f"  Slide {inst['slide']}: {inst['instruction']}")
+        console.print("\n[dim]This creates a NEW slide deck. The original is not modified.[/dim]")
+        typer.confirm("Proceed with revision?", abort=True)
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            progress.add_task("Revising slide deck...", total=None)
+            with get_client(profile) as client:
+                result = studio_service.revise_artifact(
+                    client, artifact_id, instructions,
+                )
+
+        console.print("[green]✓[/green] Slide deck revision started")
+        console.print(f"  New Artifact ID: {result.get('artifact_id', 'unknown')}")
+        console.print(f"  Original: {artifact_id}")
+        console.print(f"\n[dim]Run 'nlm studio status <notebook-id>' to check progress.[/dim]")
+    except (ValidationError, ServiceError) as e:
+        msg = e.user_message if isinstance(e, ServiceError) else str(e)
+        console.print(f"[red]Error:[/red] {msg}")
+        raise typer.Exit(1)
+    except NLMError as e:
+        console.print(f"[red]Error:[/red] {e.message}")
+        if e.hint:
+            console.print(f"\n[dim]Hint: {e.hint}[/dim]")
+        raise typer.Exit(1)
+
+
 # ========== Infographic ==========
 
 @infographic_app.command("create")

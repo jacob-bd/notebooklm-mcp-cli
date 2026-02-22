@@ -71,6 +71,7 @@ Then use natural language: *"Create a notebook about quantum computing and gener
 | Add Sources (URL, Text, Drive, File) | `nlm source add` | `source_add` |
 | Query notebook (AI chat) | `nlm notebook query` | `notebook_query` |
 | Create Studio Content (Audio, Video, etc.) | `nlm studio create` | `studio_create` |
+| Revise slide decks | `nlm slides revise` | `studio_revise` |
 | Download artifacts | `nlm download <type>` | `download_artifact` |
 | Web/Drive research | `nlm research start` | `research_start` |
 | Share notebook | `nlm share public/invite` | `notebook_share_*` |
@@ -81,7 +82,7 @@ Then use natural language: *"Create a notebook about quantum computing and gener
 
 📚 **More Documentation:**
 - **[CLI Guide](docs/CLI_GUIDE.md)** — Complete command reference
-- **[MCP Guide](docs/MCP_GUIDE.md)** — All 29 MCP tools with examples
+- **[MCP Guide](docs/MCP_GUIDE.md)** — All 30 MCP tools with examples
 - **[Authentication](docs/AUTHENTICATION.md)** — Setup and troubleshooting
 - **[API Reference](docs/API_REFERENCE.md)** — Internal API docs for contributors
 

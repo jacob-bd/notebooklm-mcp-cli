@@ -93,6 +93,7 @@ class BaseClient:
     RPC_DELETE_STUDIO = "V5N4be"   # Delete Audio or Video Overview
     RPC_RENAME_ARTIFACT = "rc3d8d" # Rename any studio artifact (Audio, Video, etc.)
     RPC_GET_INTERACTIVE_HTML = "v9rmvd"  # Fetch quiz/flashcard HTML content
+    RPC_REVISE_SLIDE_DECK = "KmcKPe"  # Revise existing slide deck with per-slide instructions
 
     # Mind map RPCs
     RPC_GENERATE_MIND_MAP = "yyryJe"  # Generate mind map JSON from sources

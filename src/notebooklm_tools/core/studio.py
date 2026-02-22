@@ -488,13 +488,55 @@ class StudioMixin(BaseClient):
         # Payload structure discovered via browser network intercept:
         # [[ "<artifact_id>", "<new_title>" ], [["title"]]]
         params = [[artifact_id, new_title], [["title"]]]
-        
+
         try:
             result = self._call_rpc(self.RPC_RENAME_ARTIFACT, params)
             return result is not None
         except Exception:
             return False
 
+    def revise_slide_deck(
+        self,
+        artifact_id: str,
+        slide_instructions: list[tuple[int, str]],
+    ) -> dict | None:
+        """Revise an existing slide deck with per-slide instructions.
+
+        Creates a NEW slide deck artifact with the requested changes applied.
+        The original artifact is not modified.
+
+        Args:
+            artifact_id: UUID of the existing slide deck to revise
+            slide_instructions: List of (0-based_index, instruction) tuples.
+                Each tuple specifies which slide to change and how.
+
+        Returns:
+            Dict with new artifact_id, title, and status, or None on failure
+        """
+        # RPC KmcKPe params: [[2], artifact_id, [[[slide_index, instruction], ...]]]
+        instruction_pairs = [[idx, text] for idx, text in slide_instructions]
+        params = [[2], artifact_id, [instruction_pairs]]
+
+        result = self._call_rpc(
+            self.RPC_REVISE_SLIDE_DECK,
+            params,
+        )
+
+        if result and isinstance(result, list) and len(result) > 0:
+            artifact_data = result[0]
+            if isinstance(artifact_data, list) and len(artifact_data) > 0:
+                new_artifact_id = artifact_data[0]
+                title = artifact_data[2] if len(artifact_data) > 2 else None
+                status_code = artifact_data[4] if len(artifact_data) > 4 else None
+
+                return {
+                    "artifact_id": new_artifact_id,
+                    "title": title,
+                    "original_artifact_id": artifact_id,
+                    "status": "in_progress" if status_code == 1 else "completed" if status_code == 3 else "unknown",
+                }
+
+        return None
 
     def create_infographic(
         self,

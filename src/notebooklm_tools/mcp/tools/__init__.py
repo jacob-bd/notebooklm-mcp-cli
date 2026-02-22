@@ -33,6 +33,7 @@ from .studio import (
     studio_create,
     studio_status,
     studio_delete,
+    studio_revise,
 )
 from .chat import (
     notebook_query,
@@ -72,10 +73,11 @@ __all__ = [
     "research_start",
     "research_status",
     "research_import",
-    # Studio (3 - consolidated create)
+    # Studio (4 - consolidated create + revise)
     "studio_create",
     "studio_status",
     "studio_delete",
+    "studio_revise",
     # Chat (2)
     "notebook_query",
     "chat_configure",

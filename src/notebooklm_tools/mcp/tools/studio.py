@@ -234,3 +234,66 @@ def studio_delete(
         return {"status": "error", "error": e.user_message}
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def studio_revise(
+    notebook_id: str,
+    artifact_id: str,
+    slide_instructions: list,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Revise individual slides in an existing slide deck. Creates a NEW artifact.
+
+    Only slide decks support revision. The original artifact is not modified.
+    Poll studio_status after calling to check when the new deck is ready.
+
+    Args:
+        notebook_id: Notebook UUID
+        artifact_id: UUID of the existing slide deck to revise (from studio_status)
+        slide_instructions: List of revision instructions, each with:
+            - slide: Slide number (1-based, slide 1 = first slide)
+            - instruction: Text describing the desired change
+            Example: [{"slide": 1, "instruction": "Make the title larger"}]
+        confirm: Must be True after user approval
+
+    Example:
+        studio_revise(
+            notebook_id="abc",
+            artifact_id="xyz",
+            slide_instructions=[
+                {"slide": 1, "instruction": "Make the title larger"},
+                {"slide": 3, "instruction": "Remove the image"}
+            ],
+            confirm=True
+        )
+    """
+    if not confirm:
+        return {
+            "status": "pending_confirmation",
+            "message": "Please confirm before revising slide deck:",
+            "settings": {
+                "notebook_id": notebook_id,
+                "artifact_id": artifact_id,
+                "slides_to_revise": [
+                    f"Slide {s.get('slide', '?')}: {s.get('instruction', '')}"
+                    for s in slide_instructions
+                ] if slide_instructions else [],
+            },
+            "note": "This creates a NEW slide deck with revisions applied. The original is not modified. Set confirm=True after user approves.",
+        }
+
+    try:
+        client = get_client()
+        result = studio_service.revise_artifact(
+            client, artifact_id, slide_instructions,
+        )
+        return {
+            "status": "success",
+            "notebook_url": f"https://notebooklm.google.com/notebook/{notebook_id}",
+            **result,
+        }
+    except (ValidationError, ServiceError) as e:
+        return {"status": "error", "error": e.user_message if isinstance(e, ServiceError) else str(e)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}

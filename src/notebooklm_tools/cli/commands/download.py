@@ -60,6 +60,7 @@ def _streaming_download(
     no_progress: bool,
     default_suffix: str,
     description: str,
+    slide_deck_format: str = "pdf",
 ) -> None:
     """Common pattern for streaming (async with progress) downloads."""
     notebook_id = get_alias_manager().resolve(notebook_id)
@@ -75,6 +76,7 @@ def _streaming_download(
                     client, notebook_id, artifact_type, path,
                     artifact_id=artifact_id,
                     progress_callback=cb,
+                    slide_deck_format=slide_deck_format,
                 )
             )["path"],
             description,
@@ -186,12 +188,22 @@ def download_video(
 @app.command("slide-deck")
 def download_slide_deck(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output path (default: ./{notebook_id}_slides.pdf)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output path (default: ./{notebook_id}_slides.{ext})"),
     artifact_id: Optional[str] = typer.Option(None, "--id", help="Specific artifact ID"),
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar"),
+    format: str = typer.Option("pdf", "--format", "-f", help="File format: pdf (default) or pptx"),
 ):
-    """Download Slide Deck (PDF)."""
-    _streaming_download(notebook_id, "slide_deck", output, artifact_id, no_progress, "slides.pdf", "Downloading slide deck")
+    """Download Slide Deck (PDF or PPTX)."""
+    fmt = format.lower()
+    if fmt not in ("pdf", "pptx"):
+        err_console.print("[red]Error:[/red] --format must be 'pdf' or 'pptx'")
+        raise typer.Exit(1)
+    default_suffix = f"slides.{fmt}"
+    _streaming_download(
+        notebook_id, "slide_deck", output, artifact_id, no_progress,
+        default_suffix, "Downloading slide deck",
+        slide_deck_format=fmt,
+    )
 
 
 @app.command("infographic")

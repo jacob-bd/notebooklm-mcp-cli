@@ -135,6 +135,7 @@ async def download_async(
     artifact_id: Optional[str] = None,
     output_format: str = "json",
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    slide_deck_format: str = "pdf",
 ) -> DownloadResult:
     """Download a streaming artifact asynchronously.
 
@@ -148,6 +149,7 @@ async def download_async(
         artifact_id: Specific artifact ID (optional)
         output_format: For quiz/flashcards: json|markdown|html
         progress_callback: Called with (current, total) for progress tracking
+        slide_deck_format: For slide_deck only: "pdf" (default) or "pptx"
 
     Returns:
         DownloadResult with artifact_type and path
@@ -166,6 +168,7 @@ async def download_async(
             client, notebook_id, artifact_type,
             output_path, artifact_id, output_format,
             progress_callback,
+            slide_deck_format=slide_deck_format,
         )
     except (ValidationError, ServiceError):
         raise
@@ -214,6 +217,7 @@ async def _dispatch_async(
     artifact_id: Optional[str],
     output_format: str,
     progress_callback: Optional[Callable[[int, int], None]],
+    slide_deck_format: str = "pdf",
 ) -> str:
     """Route to the correct async client method."""
     if artifact_type == "audio":
@@ -230,6 +234,7 @@ async def _dispatch_async(
         return await client.download_slide_deck(
             notebook_id, output_path, artifact_id,
             progress_callback=progress_callback,
+            file_format=slide_deck_format,
         )
     elif artifact_type == "infographic":
         return await client.download_infographic(

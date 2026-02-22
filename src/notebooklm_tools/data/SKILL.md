@@ -255,6 +255,12 @@ Use `studio_create` with `artifact_type` and type-specific options. All require 
 
 **Common options**: `source_ids`, `language` (BCP-47 code), `focus_prompt`
 
+**Revise Slides:** Use `studio_revise` to revise individual slides in an existing slide deck.
+- Requires `artifact_id` (from `studio_status`) and `slide_instructions`
+- Creates a NEW artifact — the original is not modified
+- Slide numbers are 1-based (slide 1 = first slide)
+- Poll `studio_status` after calling to check when the new deck is ready
+
 #### CLI Commands
 
 All generation commands share these flags:
@@ -300,6 +306,8 @@ nlm mindmap list <id>  # List existing mind maps
 nlm slides create <id> --confirm
 nlm slides create <id> --format presenter --length short --confirm
 # Formats: detailed, presenter | Lengths: short, default
+nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
+# Creates a NEW deck with revisions. Original unchanged.
 
 # Infographic
 nlm infographic create <id> --confirm
@@ -335,6 +343,8 @@ nlm studio status <nb-id> --json                   # JSON output
 nlm download audio <nb-id> --output podcast.mp3
 nlm download video <nb-id> --output video.mp4
 nlm download report <nb-id> --output report.md
+nlm download slide-deck <nb-id> --output slides.pdf           # PDF (default)
+nlm download slide-deck <nb-id> --output slides.pptx --format pptx  # PPTX
 nlm download quiz <nb-id> --output quiz.json --format json
 
 # Export to Google Docs/Sheets

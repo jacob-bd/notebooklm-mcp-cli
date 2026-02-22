@@ -156,6 +156,7 @@ src/notebooklm_tools/
 | `export_artifact` | Export Data Tables to Google Sheets or Reports to Google Docs |
 | `studio_status` | Check studio artifact generation status |
 | `studio_delete` | Delete studio artifacts (REQUIRES confirmation) |
+| `studio_revise` | Revise slides in an existing slide deck (creates new artifact, REQUIRES confirmation) |
 | `notebook_share_status` | Get sharing settings and collaborators |
 | `notebook_share_public` | Enable/disable public link access |
 | `notebook_share_invite` | Invite collaborator by email |
@@ -172,6 +173,7 @@ src/notebooklm_tools/
 - `source_sync_drive` requires `confirm=True` - always show stale sources first via `source_list_drive`
 - All studio creation tools require `confirm=True` - show settings and get user approval first
 - `studio_delete` requires `confirm=True` - list artifacts first via `studio_status`, deletion is IRREVERSIBLE
+- `studio_revise` requires `confirm=True` - creates a new artifact with revisions applied
 - `note_delete` requires `confirm=True` - deletion is IRREVERSIBLE
 
 ## Features NOT Yet Implemented

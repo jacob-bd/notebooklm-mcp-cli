@@ -488,9 +488,11 @@ def extract_cookies_via_cdp(
     """
     # Check if Chrome is running with debugging
     # First, try to find an existing instance on any port in our range
+    reused_existing = False
     existing_port, debugger_url = find_existing_nlm_chrome()
     if existing_port:
         port = existing_port
+        reused_existing = True
     
     if not debugger_url and auto_launch:
         if is_profile_locked(profile_name):
@@ -528,7 +530,9 @@ def extract_cookies_via_cdp(
             message=f"Cannot connect to Chrome on port {port}",
             hint="Use 'nlm login --manual' to import cookies from a file.",
         )
-    return extract_cookies_from_page(f"http://localhost:{port}", wait_for_login, login_timeout)
+    result = extract_cookies_from_page(f"http://localhost:{port}", wait_for_login, login_timeout)
+    result["reused_existing"] = reused_existing
+    return result
 
 def extract_cookies_via_existing_cdp(
     cdp_url: str,

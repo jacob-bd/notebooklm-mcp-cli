@@ -363,10 +363,31 @@ class AuthManager:
         csrf_token: str | None = None,
         session_id: str | None = None,
         email: str | None = None,
+        force: bool = False,
     ) -> Profile:
-        """Save credentials to the current profile."""
+        """Save credentials to the current profile.
+
+        Raises:
+            AccountMismatchError: If the profile already has credentials for a
+                different email and force is False.
+        """
         from datetime import datetime
-        
+        from notebooklm_tools.core.exceptions import AccountMismatchError
+
+        # Guard: check for account mismatch before overwriting
+        if not force and email and self.metadata_file.exists():
+            try:
+                existing_metadata = json.loads(self.metadata_file.read_text())
+                stored_email = existing_metadata.get("email")
+                if stored_email and stored_email != email:
+                    raise AccountMismatchError(
+                        stored_email=stored_email,
+                        new_email=email,
+                        profile_name=self.profile_name,
+                    )
+            except (json.JSONDecodeError, KeyError):
+                pass  # Corrupted metadata, allow overwrite
+
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         
         # Set restrictive permissions on the directory

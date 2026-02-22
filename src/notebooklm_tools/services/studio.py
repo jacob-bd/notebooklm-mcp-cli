@@ -71,6 +71,15 @@ class RenameResult(TypedDict):
     new_title: str
 
 
+class ReviseResult(TypedDict):
+    """Result of revising a slide deck."""
+    artifact_type: str          # "slide_deck"
+    artifact_id: str            # new artifact UUID
+    original_artifact_id: str   # original artifact UUID
+    status: str                 # "in_progress"
+    message: str
+
+
 # ---------- Validation ----------
 
 def validate_artifact_type(artifact_type: str) -> None:
@@ -483,3 +492,77 @@ def delete_artifact(
             f"Failed to delete artifact: {e}",
             user_message="Could not delete artifact.",
         )
+
+
+# ---------- Revise ----------
+
+def revise_artifact(
+    client: "NotebookLMClient",
+    artifact_id: str,
+    slide_instructions: list[dict],
+) -> ReviseResult:
+    """Revise a slide deck with per-slide instructions.
+
+    Creates a NEW artifact — the original is not modified.
+
+    Args:
+        client: NotebookLM client
+        artifact_id: UUID of the existing slide deck
+        slide_instructions: List of dicts with 'slide' (1-based) and 'instruction' keys
+            e.g. [{"slide": 1, "instruction": "Make the title larger"}]
+
+    Returns:
+        ReviseResult with new artifact details
+
+    Raises:
+        ValidationError: If inputs are invalid
+        ServiceError: If API call fails
+    """
+    if not artifact_id:
+        raise ValidationError("artifact_id is required")
+    if not slide_instructions:
+        raise ValidationError("slide_instructions must not be empty")
+
+    # Validate and convert 1-based slide numbers to 0-based
+    converted: list[tuple[int, str]] = []
+    for item in slide_instructions:
+        slide_num = item.get("slide")
+        instruction = item.get("instruction", "")
+        if not isinstance(slide_num, int) or slide_num < 1:
+            raise ValidationError(
+                f"Slide numbers must be integers >= 1 (got {slide_num!r}). "
+                f"Slide numbers are 1-based (slide 1 = first slide)."
+            )
+        if not instruction:
+            raise ValidationError(
+                f"Instruction for slide {slide_num} must not be empty."
+            )
+        converted.append((slide_num - 1, instruction))  # 0-based for API
+
+    try:
+        result = client.revise_slide_deck(
+            artifact_id=artifact_id,
+            slide_instructions=converted,
+        )
+    except Exception as e:
+        raise ServiceError(
+            f"Failed to revise slide deck: {e}",
+            user_message="Could not revise slide deck.",
+        )
+
+    if not result or not result.get("artifact_id"):
+        raise ServiceError(
+            "NotebookLM rejected slide deck revision — no artifact returned.",
+            user_message=(
+                "NotebookLM rejected slide deck revision. "
+                "Verify the artifact_id is a valid slide deck and try again."
+            ),
+        )
+
+    return ReviseResult(
+        artifact_type="slide_deck",
+        artifact_id=result["artifact_id"],
+        original_artifact_id=artifact_id,
+        status=result.get("status", "in_progress"),
+        message="Slide deck revision started. A new artifact will be created.",
+    )

@@ -406,14 +406,16 @@ class DownloadMixin(BaseClient):
         output_path: str,
         artifact_id: str | None = None,
         progress_callback: Callable[[int, int], None] | None = None,
+        file_format: str = "pdf",
     ) -> str:
-        """Download a Slide Deck to a file (PDF).
+        """Download a Slide Deck to a file (PDF or PPTX).
 
         Args:
             notebook_id: The notebook ID.
-            output_path: Path to save the PDF file.
+            output_path: Path to save the file.
             artifact_id: Specific artifact ID, or uses first completed slide deck.
             progress_callback: Optional callback(bytes_downloaded, total_bytes).
+            file_format: "pdf" (default) or "pptx".
 
         Returns:
             The output path.
@@ -438,20 +440,26 @@ class DownloadMixin(BaseClient):
         else:
             target = candidates[0]
 
-        # Extract PDF URL from target[16][3] (contribution.usercontent.google.com)
+        # Extract URL from target[16]: index 3 = PDF, index 4 = PPTX
         try:
             if len(target) <= 16 or target[16] is None:
                 raise ArtifactParseError("slide_deck", details="Invalid metadata structure")
 
             metadata = target[16]
-            if not isinstance(metadata, list) or len(metadata) < 4:
-                raise ArtifactParseError("slide_deck", details="No media URLs found in metadata")
+            if file_format == "pptx":
+                if not isinstance(metadata, list) or len(metadata) < 5:
+                    raise ArtifactParseError("slide_deck", details="No PPTX URL found in metadata")
+                url = metadata[4]
+                if not url or not isinstance(url, str):
+                    raise ArtifactDownloadError("slide_deck", details="No PPTX download URL found")
+            else:
+                if not isinstance(metadata, list) or len(metadata) < 4:
+                    raise ArtifactParseError("slide_deck", details="No PDF URL found in metadata")
+                url = metadata[3]
+                if not url or not isinstance(url, str):
+                    raise ArtifactDownloadError("slide_deck", details="No PDF download URL found")
 
-            pdf_url = metadata[3]
-            if not pdf_url or not isinstance(pdf_url, str):
-                raise ArtifactDownloadError("slide_deck", details="No download URL found")
-
-            return await self._download_url(pdf_url, output_path, progress_callback)
+            return await self._download_url(url, output_path, progress_callback)
 
         except (IndexError, TypeError, AttributeError) as e:
             raise ArtifactParseError("slide_deck", details=str(e)) from e

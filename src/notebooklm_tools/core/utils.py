@@ -37,6 +37,7 @@ RPC_NAMES = {
     "AH0mwd": "delete_mind_map",
     "QDyure": "share_notebook",
     "JFMDGd": "get_share_status",
+    "KmcKPe": "revise_slide_deck",
 }
 
 

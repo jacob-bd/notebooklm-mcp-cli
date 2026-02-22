@@ -258,6 +258,7 @@ The `f.req` structure:
 | `gArtLc` | Poll Studio Status | `[[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']` |
 | `V5N4be` | Delete Studio Content | `[[2], "artifact_id"]` |
 | `rc3d8d` | Rename Studio Artifact | `[["artifact_id", "new_title"], [["title"]]]` |
+| `KmcKPe` | Revise Slide Deck | `[[2], artifact_id, [[[0-based_index, "instruction"], ...]]]` |
 | `yyryJe` | Generate Mind Map | See Mind Map RPCs section |
 | `CYK0Xb` | Save Mind Map | See Mind Map RPCs section |
 | `cFji9` | List Mind Maps | `[notebook_id]` |
@@ -694,6 +695,38 @@ params = [["artifact_id", "New Title"], [["title"]]]
 ```
 
 **Note:** This RPC was discovered in v0.2.8. The second array `[["title"]]` specifies which field(s) to update.
+
+### `KmcKPe` - Revise Slide Deck
+
+Revises individual slides in an existing slide deck. Creates a **new** artifact — the original is not modified.
+
+#### Request
+```python
+params = [
+    [2],                           # Version/mode indicator (always [2])
+    artifact_id,                   # UUID of the existing slide deck
+    [
+        [                          # Array of slide revision instructions
+            [0, "Make the title larger"],   # [0-based slide index, instruction text]
+            [2, "Remove the image"],        # Multiple instructions supported
+        ]
+    ]
+]
+```
+
+#### Response
+Returns the same structure as `R7cb6c` (Create Studio Content):
+- `result[0][0]` — New artifact UUID
+- `result[0][2]` — Title (original title + " (2)")
+- `result[0][4]` — Status code (1 = in_progress, 3 = completed)
+- `result[0][20]` — Original artifact UUID
+
+#### Notes
+- Slide index is **0-based** (slide 1 = index 0)
+- Multiple slides can be revised in one call
+- Original deck settings (focus prompt, language, format, length) are preserved
+- Poll with `gArtLc` (studio_status) for completion
+- Only slide decks support revision (no other artifact types)
 
 ### Audio Options
 

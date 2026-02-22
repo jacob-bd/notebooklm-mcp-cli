@@ -39,6 +39,7 @@ mcp = FastMCP(
 Consolidated tools:
 - source_add(type=url|text|drive|file): Add any source type
 - studio_create(type=audio|video|...): Create any artifact type
+- studio_revise: Revise individual slides in an existing slide deck
 - download_artifact(type=audio|video|...): Download any artifact type
 - note_create/note_list/note_update/note_delete: Manage notes in notebooks""",
 )

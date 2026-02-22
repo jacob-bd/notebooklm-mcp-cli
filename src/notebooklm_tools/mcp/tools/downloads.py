@@ -13,6 +13,7 @@ async def download_artifact(
     output_path: str,
     artifact_id: str | None = None,
     output_format: str = "json",
+    slide_deck_format: str = "pdf",
 ) -> dict[str, Any]:
     """Download any NotebookLM artifact to a file.
 
@@ -27,7 +28,7 @@ async def download_artifact(
             - video: Video Overview (MP4)
             - report: Report (Markdown)
             - mind_map: Mind Map (JSON)
-            - slide_deck: Slide Deck (PDF)
+            - slide_deck: Slide Deck (PDF or PPTX)
             - infographic: Infographic (PNG)
             - data_table: Data Table (CSV)
             - quiz: Quiz (json|markdown|html)
@@ -35,6 +36,7 @@ async def download_artifact(
         output_path: Path to save the file
         artifact_id: Optional specific artifact ID (uses latest if not provided)
         output_format: For quiz/flashcards only: json|markdown|html (default: json)
+        slide_deck_format: For slide_deck only: pdf (default) or pptx
 
     Returns:
         dict with status and saved file path
@@ -42,6 +44,7 @@ async def download_artifact(
     Example:
         download_artifact(notebook_id="abc123", artifact_type="audio", output_path="podcast.mp3")
         download_artifact(notebook_id="abc123", artifact_type="quiz", output_path="quiz.html", output_format="html")
+        download_artifact(notebook_id="abc123", artifact_type="slide_deck", output_path="slides.pptx", slide_deck_format="pptx")
     """
     try:
         client = get_client()
@@ -50,6 +53,7 @@ async def download_artifact(
             output_path,
             artifact_id=artifact_id,
             output_format=output_format,
+            slide_deck_format=slide_deck_format,
         )
         return {"status": "success", **result}
     except ServiceError as e:

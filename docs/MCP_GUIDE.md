@@ -77,13 +77,14 @@ source_add(
 | `notebook_query` | Ask AI about sources in notebook |
 | `chat_configure` | Set chat goal and response length |
 
-### Studio Content (3 tools)
+### Studio Content (4 tools)
 
 | Tool | Description |
 |------|-------------|
 | `studio_create` | **Unified** - Create any artifact type |
 | `studio_status` | Check generation progress |
 | `studio_delete` | Delete artifact (requires `confirm=True`) |
+| `studio_revise` | Revise slides in existing deck (requires `confirm=True`) |
 
 **`studio_create` artifact types:**
 - `audio` - Podcast (formats: deep_dive, brief, critique, debate)

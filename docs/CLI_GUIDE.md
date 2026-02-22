@@ -103,6 +103,10 @@ nlm flashcards create <notebook> --difficulty hard --focus "Focus on definitions
 # Other
 nlm mindmap create <notebook> --confirm
 nlm slides create <notebook> --confirm
+
+# Revise slides (creates new deck)
+nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
+nlm slides revise <artifact-id> --slide '1 Fix title' --slide '3 Remove image' --confirm
 nlm infographic create <notebook> --orientation landscape --confirm
 nlm data-table create <notebook> --description "Sales by region" --confirm
 ```

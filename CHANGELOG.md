@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2026-02-21
+
+### Added
+- **Slide Deck Revision (`studio_revise`)** — Revise individual slides in an existing slide deck via new RPC `KmcKPe`. Creates a new artifact with revisions applied; original is never modified.
+  - MCP tool: `studio_revise` with `artifact_id`, `slide_instructions`, and `confirm` params
+  - CLI: `nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm`
+- **PPTX Download Support** — Download slide decks as PowerPoint (PPTX) in addition to PDF.
+  - CLI: `nlm download slide-deck <notebook> --format pptx`
+  - MCP: `download_artifact` with `slide_deck_format="pptx"`
+- **Login Profile Protection** — Account mismatch guard prevents accidentally overwriting a profile with credentials from a different Google account. Use `--force` to override.
+- **Reused Chrome Warning** — `nlm login` now warns when connecting to an existing Chrome instance instead of launching a fresh one.
+
+### Changed
+- **Faster Login** — Connection pooling and reduced sleep durations cut `nlm login` time from ~25s to under 3s. Thanks to **@pjeby** for this contribution (PR #54).
+
 ## [0.3.4] - 2026-02-19
 
 ### Fixed

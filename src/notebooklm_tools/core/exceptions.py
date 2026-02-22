@@ -107,6 +107,26 @@ class ProfileNotFoundError(NLMError):
         self.profile_name = profile_name
 
 
+class AccountMismatchError(NLMError):
+    """Raised when trying to save credentials for a different account than what's stored."""
+
+    def __init__(
+        self,
+        stored_email: str,
+        new_email: str,
+        profile_name: str,
+    ) -> None:
+        message = (
+            f"Account mismatch for profile '{profile_name}': "
+            f"stored account is '{stored_email}' but received credentials for '{new_email}'"
+        )
+        hint = "Use 'nlm login --force' to overwrite with the new account."
+        super().__init__(message, hint)
+        self.stored_email = stored_email
+        self.new_email = new_email
+        self.profile_name = profile_name
+
+
 class FileUploadError(NLMError):
     """Raised when file upload fails."""
 
