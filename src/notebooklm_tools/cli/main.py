@@ -539,6 +539,7 @@ def main(
 
 def cli_main():
     """Main CLI entry point with error handling."""
+    import sys
     try:
         app()
     except Exception as e:
@@ -555,14 +556,14 @@ def cli_main():
             console.print(f"\n[red]✗ Authentication Error[/red]")
             console.print(f"  {str(e)}")
             console.print(f"\n[yellow]→[/yellow] Run [cyan]nlm login[/cyan] to re-authenticate\n")
-            raise typer.Exit(1)
+            sys.exit(1)
 
         # Handle other NLM errors cleanly
         elif isinstance(e, NLMError):
             console.print(f"\n[red]✗ Error:[/red] {e.message}")
             if e.hint:
                 console.print(f"[dim]{e.hint}[/dim]\n")
-            raise typer.Exit(1)
+            sys.exit(1)
 
         # For unexpected errors, show the traceback
         else:
