@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-02-22
+
+### Added
+- **CLI `--debug` Flag** - `nlm --debug <command>` enables debug logging across all CLI commands, showing raw API responses and internal state. Useful for diagnosing API issues.
+
+### Fixed
+- **Google API errors no longer silently swallowed** - When Google returns an error response (e.g., `INVALID_ARGUMENT`, `UserDisplayableError`) instead of an answer, the CLI now surfaces a clear error message instead of returning an empty answer. Previously, queries would succeed with `{'answer': ''}` and no indication of what went wrong. Thanks to **@MinhDung2209** for the detailed debugging that uncovered this (issue #57).
+
 ## [0.3.7] - 2026-02-22
 
 ### Added

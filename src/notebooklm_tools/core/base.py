@@ -526,10 +526,9 @@ class BaseClient:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("-" * 70)
                 logger.debug(f"Response Status: {response.status_code}")
-                if response.status_code >= 400:
-                    logger.debug("Error Response Body:")
-                    logger.debug(response.text[:2000] if len(response.text) > 2000 else response.text)
-                    logger.debug("=" * 70)
+                logger.debug("Raw response (first 2000 chars): %s",
+                             response.text[:2000] if response.text else "(empty)")
+                logger.debug("=" * 70)
 
             response.raise_for_status()
 

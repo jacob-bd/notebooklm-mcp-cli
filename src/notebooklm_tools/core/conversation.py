@@ -6,12 +6,44 @@ and conversation-related operations.
 """
 
 import json
+import logging
 import os
 import urllib.parse
 from typing import Any
 
 from .base import BaseClient
 from .data_types import ConversationTurn
+from .errors import NotebookLMError
+
+logger = logging.getLogger("notebooklm_mcp.api")
+
+GOOGLE_ERROR_CODES = {
+    1: "CANCELLED",
+    2: "UNKNOWN",
+    3: "INVALID_ARGUMENT",
+    4: "DEADLINE_EXCEEDED",
+    5: "NOT_FOUND",
+    7: "PERMISSION_DENIED",
+    8: "RESOURCE_EXHAUSTED",
+    13: "INTERNAL",
+    14: "UNAVAILABLE",
+    16: "UNAUTHENTICATED",
+}
+
+
+class QueryRejectedError(NotebookLMError):
+    """Raised when Google returns an error response instead of an answer."""
+
+    def __init__(self, error_code: int, error_type: str = "", raw_detail: str = ""):
+        code_name = GOOGLE_ERROR_CODES.get(error_code, "UNKNOWN")
+        msg = f"Google rejected the query (error code {error_code}: {code_name})"
+        if error_type:
+            msg += f" [{error_type}]"
+        super().__init__(msg)
+        self.error_code = error_code
+        self.code_name = code_name
+        self.error_type = error_type
+        self.raw_detail = raw_detail
 
 
 class ConversationMixin(BaseClient):
@@ -179,6 +211,8 @@ class ConversationMixin(BaseClient):
         response = client.post(url, content=body, timeout=timeout)
         response.raise_for_status()
 
+        logger.debug("Raw query response (first 2000 chars): %s", response.text[:2000])
+
         # Parse streaming response
         answer_text = self._parse_query_response(response.text)
 
@@ -243,12 +277,16 @@ class ConversationMixin(BaseClient):
 
         Strategy: Find the LONGEST chunk that is marked as type 1 (actual answer).
         If no type 1 chunks found, fall back to longest overall.
+        If no answer at all but Google returned an error, raise QueryRejectedError.
 
         Args:
             response_text: Raw response text from the query endpoint
 
         Returns:
             The extracted answer text, or empty string if parsing fails
+
+        Raises:
+            QueryRejectedError: If Google returned an error instead of an answer
         """
         # Remove anti-XSSI prefix
         if response_text.startswith(")]}'"):
@@ -257,6 +295,7 @@ class ConversationMixin(BaseClient):
         lines = response_text.strip().split("\n")
         longest_answer = ""
         longest_thinking = ""
+        detected_errors: list[dict] = []
 
         # Parse chunks - prioritize type 1 (answers) over type 2 (thinking)
         i = 0
@@ -272,25 +311,91 @@ class ConversationMixin(BaseClient):
                 i += 1
                 if i < len(lines):
                     json_line = lines[i]
-                    text, is_answer = self._extract_answer_from_chunk(json_line)
+                    error = self._extract_error_from_chunk(json_line)
+                    if error:
+                        detected_errors.append(error)
+                    else:
+                        text, is_answer = self._extract_answer_from_chunk(json_line)
+                        if text:
+                            if is_answer and len(text) > len(longest_answer):
+                                longest_answer = text
+                            elif not is_answer and len(text) > len(longest_thinking):
+                                longest_thinking = text
+                i += 1
+            except ValueError:
+                # Not a byte count, try to parse as JSON directly
+                error = self._extract_error_from_chunk(line)
+                if error:
+                    detected_errors.append(error)
+                else:
+                    text, is_answer = self._extract_answer_from_chunk(line)
                     if text:
                         if is_answer and len(text) > len(longest_answer):
                             longest_answer = text
                         elif not is_answer and len(text) > len(longest_thinking):
                             longest_thinking = text
                 i += 1
-            except ValueError:
-                # Not a byte count, try to parse as JSON directly
-                text, is_answer = self._extract_answer_from_chunk(line)
-                if text:
-                    if is_answer and len(text) > len(longest_answer):
-                        longest_answer = text
-                    elif not is_answer and len(text) > len(longest_thinking):
-                        longest_thinking = text
-                i += 1
 
-        # Return answer if found, otherwise fall back to thinking
-        return longest_answer if longest_answer else longest_thinking
+        result = longest_answer if longest_answer else longest_thinking
+
+        if not result and detected_errors:
+            err = detected_errors[0]
+            raise QueryRejectedError(
+                error_code=err["code"],
+                error_type=err.get("type", ""),
+                raw_detail=err.get("raw", ""),
+            )
+
+        return result
+
+    def _extract_error_from_chunk(self, json_str: str) -> dict | None:
+        """Check if a JSON chunk contains a Google API error.
+
+        Error responses have item[2] as null/None and error info in item[5]:
+          [["wrb.fr", null, null, null, null, [3]]]
+          [["wrb.fr", null, null, null, null, [8, null, [["type.googleapis.com/...Error", [...]]]]]]
+
+        Returns:
+            Dict with 'code', 'type', 'raw' keys if error found, else None
+        """
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(data, list) or len(data) == 0:
+            return None
+
+        for item in data:
+            if not isinstance(item, list) or len(item) < 6:
+                continue
+            if item[0] != "wrb.fr":
+                continue
+            if item[2] is not None:
+                continue
+
+            error_info = item[5]
+            if not isinstance(error_info, list) or len(error_info) == 0:
+                continue
+
+            error_code = error_info[0]
+            if not isinstance(error_code, int):
+                continue
+
+            error_type = ""
+            if len(error_info) > 2 and isinstance(error_info[2], list):
+                for detail in error_info[2]:
+                    if isinstance(detail, list) and len(detail) > 0 and isinstance(detail[0], str):
+                        error_type = detail[0]
+                        break
+
+            return {
+                "code": error_code,
+                "type": error_type,
+                "raw": json_str[:500],
+            }
+
+        return None
 
     def _extract_answer_from_chunk(self, json_str: str) -> tuple[str | None, bool]:
         """Extract answer text from a single JSON chunk.

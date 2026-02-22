@@ -1,5 +1,6 @@
 """Main CLI application for NotebookLM Tools."""
 
+import logging
 from typing import Optional
 
 import typer
@@ -499,12 +500,23 @@ def main(
         False, "--ai",
         help="Output AI-friendly documentation for this CLI",
     ),
+    debug: bool = typer.Option(
+        False, "--debug",
+        help="Enable debug logging (shows raw API responses)",
+    ),
 ) -> None:
     """
     NLM - Command-line interface for Google NotebookLM.
     
     Use 'nlm <command> --help' for help on specific commands.
     """
+    if debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(name)s %(levelname)s: %(message)s",
+        )
+        logging.getLogger("notebooklm_mcp.api").setLevel(logging.DEBUG)
+
     if version:
         from notebooklm_tools.cli.utils import check_for_updates
         console.print(f"nlm version {__version__}")
