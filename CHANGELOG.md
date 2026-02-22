@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - Unreleased
+
+### Added
+- **`--clear` flag for `nlm login`** - Added a `--clear` flag that wipes the cached Chrome profile before logging in. This solves an issue where `nlm login` would auto-login to an old, cached account without letting the user switch profiles or emails.
+
+### Fixed
+- **Accurate Email Extraction** - Fixed a bug in `extract_email` where the CLI would sometimes grab a shared note author's email off the dashboard instead of the logged-in user. The regex now prioritizes actual internal Google account fields before falling back to generic matching.
+- **Skipping Migration on Clear** - Fixed an issue where using `--clear` would cause the CLI to mistakenly run a migration step from older CLI versions, reinstating the wrong account profile.
+
 ## [0.3.8] - 2026-02-22
 
 ### Added
