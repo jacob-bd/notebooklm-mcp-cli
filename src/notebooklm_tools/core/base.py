@@ -484,11 +484,25 @@ class BaseClient:
     ) -> Any:
         """Execute an RPC call and return the extracted result.
 
+        Always refreshes CSRF token before each call to prevent session conflicts
+        when the user also visits NotebookLM in their browser.
+
         Includes automatic retry on auth failures with three-layer recovery:
         1. Refresh CSRF/session tokens (fast, handles token expiry)
         2. Reload cookies from disk (handles external re-authentication)
         3. Run headless auth (auto-refresh if Chrome profile has saved login)
         """
+        # Always refresh CSRF token before each request to avoid conflicts
+        # with browser sessions. This adds ~1-2 sec latency but prevents
+        # "Authentication expired" errors when user visits NotebookLM in browser.
+        if not _retry:  # Don't double-refresh on retry
+            try:
+                self._refresh_auth_tokens()
+                self._client = None  # Force client recreation with new token
+            except ValueError:
+                # CSRF refresh failed - continue anyway, retry logic will handle it
+                pass
+
         client = self._get_client()
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)

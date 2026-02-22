@@ -34,37 +34,11 @@ class NotebookMixin(BaseClient):
     multiple inheritance in the final NotebookLMClient class.
     """
 
-    def list_notebooks(self, debug: bool = False) -> list[Notebook]:
+    def list_notebooks(self) -> list[Notebook]:
         """List all notebooks."""
-        client = self._get_client()
-
-        # [null, 1, null, [2]] - params for list notebooks
+        # Use _call_rpc for consistent auth recovery (CSRF refresh + retry)
         params = [None, 1, None, [2]]
-        body = self._build_request_body(self.RPC_LIST_NOTEBOOKS, params)
-        url = self._build_url(self.RPC_LIST_NOTEBOOKS)
-
-        if debug:
-            logger.debug(f"URL: {url}")
-            logger.debug(f"Body: {body[:200]}...")
-
-        response = client.post(url, content=body)
-        response.raise_for_status()
-
-        if debug:
-            logger.debug(f"Response status: {response.status_code}")
-            logger.debug(f"Response length: {len(response.text)} chars")
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_LIST_NOTEBOOKS)
-
-        if debug:
-            logger.debug(f"Parsed chunks: {len(parsed)}")
-            logger.debug(f"Result type: {type(result)}")
-            if result:
-                logger.debug(f"Result length: {len(result) if isinstance(result, list) else 'N/A'}")
-                if isinstance(result, list) and len(result) > 0:
-                    logger.debug(f"First item type: {type(result[0])}")
-                    logger.debug(f"First item: {str(result[0])[:500]}...")
+        result = self._call_rpc(self.RPC_LIST_NOTEBOOKS, params)
 
         notebooks = []
         if result and isinstance(result, list):
@@ -251,16 +225,7 @@ class NotebookMixin(BaseClient):
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
-
+        # Use _call_rpc for consistent auth recovery (CSRF refresh + retry)
         params = [[notebook_id], [2]]
-        body = self._build_request_body(self.RPC_DELETE_NOTEBOOK, params)
-        url = self._build_url(self.RPC_DELETE_NOTEBOOK)
-
-        response = client.post(url, content=body)
-        response.raise_for_status()
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_DELETE_NOTEBOOK)
-
+        result = self._call_rpc(self.RPC_DELETE_NOTEBOOK, params)
         return result is not None
