@@ -11,7 +11,6 @@ Centralizes:
 from __future__ import annotations
 
 import json
-import os
 from typing import TYPE_CHECKING, Optional, TypedDict
 
 from notebooklm_tools.core import constants
@@ -185,7 +184,7 @@ def create_artifact(
     question_count: int = 2,
     # Shared
     difficulty: str = "medium",
-    language: str = "",
+    language: str = "en",
     focus_prompt: str = "",
     # Mind map
     title: str = "Mind Map",
@@ -204,9 +203,6 @@ def create_artifact(
         ValidationError: Invalid artifact type, format, or missing required fields
         ServiceError: API call failures
     """
-    if not language:
-        language = os.environ.get("NOTEBOOKLM_HL", "en")
-
     validate_artifact_type(artifact_type)
     resolved_ids = _resolve_source_ids(client, notebook_id, source_ids)
 

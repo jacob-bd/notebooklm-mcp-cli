@@ -11,6 +11,7 @@ from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.cli.formatters import detect_output_format, get_formatter
 from notebooklm_tools.cli.utils import get_client
 from notebooklm_tools.services import studio as studio_service, ServiceError, ValidationError
+from notebooklm_tools.utils.config import get_default_language
 
 console = Console()
 
@@ -88,6 +89,9 @@ def _run_create(
     CLI-specific concerns (confirmation, arg parsing) happen in each command.
     This helper handles the common pattern of spinner → create → print result.
     """
+    if not kwargs.get("language"):
+        kwargs["language"] = get_default_language()
+
     try:
         notebook_id = get_alias_manager().resolve(notebook_id)
         with Progress(
@@ -214,8 +218,8 @@ def create_audio(
         help="Length (short, default, long)",
     ),
     language: str = typer.Option(
-        "en", "--language",
-        help="BCP-47 language code (en, es, fr, de, ja)",
+        "", "--language",
+        help="BCP-47 language code (default: NOTEBOOKLM_HL or en)",
     ),
     focus: Optional[str] = typer.Option(
         None, "--focus",

@@ -1,15 +1,10 @@
 """Studio tools - Artifact creation with consolidated studio_create."""
 
-import os
 from typing import Any
 
 from ._utils import get_client, logged_tool
 from ...services import studio as studio_service, ServiceError, ValidationError
-
-
-def _default_language() -> str:
-    """Return the default language from NOTEBOOKLM_HL env var, falling back to 'en'."""
-    return os.environ.get("NOTEBOOKLM_HL", "en")
+from ...utils.config import get_default_language
 
 
 @logged_tool()
@@ -82,7 +77,7 @@ def studio_create(
         studio_create(notebook_id="abc", artifact_type="quiz", question_count=5, confirm=True)
     """
     if not language:
-        language = _default_language()
+        language = get_default_language()
 
     # Validate type early (before confirmation check)
     try:

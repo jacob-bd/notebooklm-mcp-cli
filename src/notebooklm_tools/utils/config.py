@@ -21,6 +21,16 @@ from pydantic import BaseModel, Field
 STORAGE_DIR_NAME = ".notebooklm-mcp-cli"
 
 
+def get_default_language() -> str:
+    """Get default language from NOTEBOOKLM_HL env var, falling back to 'en'.
+
+    Mirrors NotebookLM web behavior: when creating artifacts, the notebook's
+    interface language (hl) is used as the default, so users don't need to
+    specify --language on every command.
+    """
+    return os.environ.get("NOTEBOOKLM_HL", "en")
+
+
 def get_storage_dir() -> Path:
     """Get the main storage directory (~/.notebooklm-mcp-cli/).
     
