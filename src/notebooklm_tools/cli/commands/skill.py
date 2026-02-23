@@ -63,8 +63,8 @@ TOOL_CONFIGS = {
         "description": "Cline CLI terminal agent",
     },
     "openclaw": {
-        "user": Path.home() / ".openclaw/workplace/skills/nlm-skill",
-        "project": Path(".openclaw/workplace/skills/nlm-skill"),
+        "user": Path.home() / ".openclaw/workspace/skills/nlm-skill",
+        "project": Path(".openclaw/workspace/skills/nlm-skill"),
         "format": "skill.md",
         "description": "OpenClaw AI agent framework",
     },
