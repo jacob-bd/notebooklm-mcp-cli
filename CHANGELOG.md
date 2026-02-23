@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Source additions bypassing Token Refresh** - Refactored `add_url_source`, `add_drive_source`, `add_text_source`, and multiple other methods in `core/sources.py` to use the unified `_call_rpc` mechanism instead of raw `client.post` requests. This ensures that adding sources now properly benefits from the automatic session/CSRF token refresh if authentication unexpectedly expires (Issue #62).
 - **OpenClaw skill path** - Fixed incorrect installation path for OpenClaw skills (`workplace` -> `workspace`) in code and documentation. Thanks to **@maxcanada** for reporting (Issue #63).
+- **`create slides` default format** - Fixed a bug where `create slides` would error because it used an invalid format fallback. It now correctly defaults to `detailed_deck`. Added comprehensive tests for all verb defaults. (PR #64)
 
 ## [0.3.11] - 2026-02-22
 
