@@ -615,7 +615,7 @@ nlm skill show                              # Display skill content
 - `gemini-cli` - Google Gemini CLI (`~/.gemini/skills/nlm-skill/`)
 - `antigravity` - Antigravity agent framework (`~/.gemini/antigravity/skills/nlm-skill/`)
 - `cline` - Cline CLI terminal agent (`~/.cline/skills/nlm-skill/`)
-- `openclaw` - OpenClaw AI agent framework (`~/.openclaw/workplace/skills/nlm-skill/`)
+- `openclaw` - OpenClaw AI agent framework (`~/.openclaw/workspace/skills/nlm-skill/`)
 - `codex` - Codex AI assistant (appends to `~/.codex/AGENTS.md`)
 - `other` - Export all formats to `./nlm-skill-export/` for manual installation
 
