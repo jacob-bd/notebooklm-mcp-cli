@@ -196,7 +196,7 @@ def create_infographic_verb(
 @create_app.command("slides")
 def create_slides_verb(
     notebook: str = typer.Argument(..., help="Notebook ID or alias"),
-    format_opt: Optional[str] = typer.Option(None, "--format", "-f", help="Format: detailed, presenter"),
+    format_opt: Optional[str] = typer.Option(None, "--format", "-f", help="Format: detailed_deck, presenter_slides"),
     length: Optional[str] = typer.Option(None, "--length", "-l", help="Length: short, default"),
     language: Optional[str] = typer.Option(None, "--language", help="BCP-47 language code"),
     focus: Optional[str] = typer.Option(None, "--focus", help="Optional focus topic"),
@@ -207,7 +207,7 @@ def create_slides_verb(
     """Create a slide deck."""
     create_slides(
         notebook_id=notebook,
-        format=format_opt or "detailed",
+        format=format_opt or "detailed_deck",
         length=length or "default",
         language=language or "",
         focus=focus or "",
