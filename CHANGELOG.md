@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased / 0.3.12]
+
+### Fixed
+- **Source additions bypassing Token Refresh** - Refactored `add_url_source`, `add_drive_source`, `add_text_source`, and multiple other methods in `core/sources.py` to use the unified `_call_rpc` mechanism instead of raw `client.post` requests. This ensures that adding sources now properly benefits from the automatic session/CSRF token refresh if authentication unexpectedly expires (Issue #62).
+- **OpenClaw skill path** - Fixed incorrect installation path for OpenClaw skills (`workplace` -> `workspace`) in code and documentation. Thanks to **@maxcanada** for reporting (Issue #63).
+
 ## [0.3.11] - 2026-02-22
 
 ### Added
@@ -72,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.3] - 2026-02-16
 
 ### Fixed
-- **OpenClaw skill path** - Fixed incorrect installation path for OpenClaw skills. Now correctly uses `~/.openclaw/workplace/skills/` instead of `~/.openclaw/skills/`.
+- **OpenClaw skill path** - Fixed incorrect installation path for OpenClaw skills. Now correctly uses `~/.openclaw/workspace/skills/` instead of `~/.openclaw/skills/`.
 
 ## [0.3.2] - 2026-02-14
 
@@ -89,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New AI Client Support** — Added `nlm skill install` support for:
   - **Cline** (`~/.cline/skills`) - Terminal-based AI agent
   - **Antigravity** (`~/.gemini/antigravity/skills`) - Advanced agentic framework
-  - **OpenClaw** (`~/.openclaw/workplace/skills`) - Autonomous AI agent
+  - **OpenClaw** (`~/.openclaw/workspace/skills`) - Autonomous AI agent
   - **Codex** (`~/.codex/AGENTS.md`) - Now with version tracking
 - **`nlm setup` support** — Added automatic MCP configuration for:
   - **Cline** (`nlm setup add cline`)

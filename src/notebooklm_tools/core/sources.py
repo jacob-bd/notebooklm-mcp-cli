@@ -83,20 +83,12 @@ class SourceMixin(BaseClient):
 
     def check_source_freshness(self, source_id: str) -> bool | None:
         """Check if a Drive source is fresh (up-to-date with Google Drive)."""
-        client = self._get_client()
-
         params = [None, [source_id], [2]]
-        body = self._build_request_body(self.RPC_CHECK_FRESHNESS, params)
-        url = self._build_url(self.RPC_CHECK_FRESHNESS)
 
-        def _do_request():
-            resp = client.post(url, content=body)
-            resp.raise_for_status()
-            return resp
-        response = execute_with_retry(_do_request)
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_CHECK_FRESHNESS)
+        result = self._call_rpc(
+            self.RPC_CHECK_FRESHNESS,
+            params
+        )
 
         # true = fresh, false = stale
         if result and isinstance(result, list) and len(result) > 0:
@@ -107,21 +99,13 @@ class SourceMixin(BaseClient):
 
     def sync_drive_source(self, source_id: str) -> dict | None:
         """Sync a Drive source with the latest content from Google Drive."""
-        client = self._get_client()
-
         # Sync params: [null, ["source_id"], [2]]
         params = [None, [source_id], [2]]
-        body = self._build_request_body(self.RPC_SYNC_DRIVE, params)
-        url = self._build_url(self.RPC_SYNC_DRIVE)
 
-        def _do_request():
-            resp = client.post(url, content=body)
-            resp.raise_for_status()
-            return resp
-        response = execute_with_retry(_do_request)
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_SYNC_DRIVE)
+        result = self._call_rpc(
+            self.RPC_SYNC_DRIVE,
+            params
+        )
 
         if result and isinstance(result, list) and len(result) > 0:
             source_data = result[0] if result else []
@@ -180,22 +164,14 @@ class SourceMixin(BaseClient):
         Returns:
             True on success, False on failure
         """
-        client = self._get_client()
-
         # Delete source params: [[["source_id"]], [2]]
         # Note: Extra nesting compared to delete_notebook
         params = [[[source_id]], [2]]
-        body = self._build_request_body(self.RPC_DELETE_SOURCE, params)
-        url = self._build_url(self.RPC_DELETE_SOURCE)
 
-        def _do_request():
-            resp = client.post(url, content=body)
-            resp.raise_for_status()
-            return resp
-        response = execute_with_retry(_do_request)
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_DELETE_SOURCE)
+        result = self._call_rpc(
+            self.RPC_DELETE_SOURCE,
+            params
+        )
 
         # Response is typically [] on success
         return result is not None
@@ -280,8 +256,6 @@ class SourceMixin(BaseClient):
         Returns:
             Source dict with id and title, or None on failure
         """
-        client = self._get_client()
-
         # URL position differs for YouTube vs regular websites:
         # - YouTube: position 7
         # - Regular websites: position 2
@@ -300,24 +274,20 @@ class SourceMixin(BaseClient):
             [2],
             [1, None, None, None, None, None, None, None, None, None, [1]]
         ]
-        body = self._build_request_body(self.RPC_ADD_SOURCE, params)
         source_path = f"/notebook/{notebook_id}"
-        url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            def _do_request():
-                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-                resp.raise_for_status()
-                return resp
-            response = execute_with_retry(_do_request)
+            result = self._call_rpc(
+                self.RPC_ADD_SOURCE,
+                params,
+                path=source_path,
+                timeout=SOURCE_ADD_TIMEOUT
+            )
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
                 "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s but may have succeeded.",
             }
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
 
         source_result = None
         if result and isinstance(result, list) and len(result) > 0:
@@ -351,8 +321,6 @@ class SourceMixin(BaseClient):
             wait: If True, block until source is ready
             wait_timeout: Seconds to wait if wait=True (default 120)
         """
-        client = self._get_client()
-
         # Text source params structure:
         source_data = [None, [title, text], None, 2, None, None, None, None, None, None, 1]
         params = [
@@ -361,24 +329,20 @@ class SourceMixin(BaseClient):
             [2],
             [1, None, None, None, None, None, None, None, None, None, [1]]
         ]
-        body = self._build_request_body(self.RPC_ADD_SOURCE, params)
         source_path = f"/notebook/{notebook_id}"
-        url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            def _do_request():
-                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-                resp.raise_for_status()
-                return resp
-            response = execute_with_retry(_do_request)
+            result = self._call_rpc(
+                self.RPC_ADD_SOURCE,
+                params,
+                path=source_path,
+                timeout=SOURCE_ADD_TIMEOUT
+            )
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
                 "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s.",
             }
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
 
         source_result = None
         if result and isinstance(result, list) and len(result) > 0:
@@ -414,8 +378,6 @@ class SourceMixin(BaseClient):
             wait: If True, block until source is ready
             wait_timeout: Seconds to wait if wait=True (default 120)
         """
-        client = self._get_client()
-
         source_data = [
             [document_id, mime_type, 1, title],
             None, None, None, None, None, None, None, None, None, 1
@@ -426,24 +388,20 @@ class SourceMixin(BaseClient):
             [2],
             [1, None, None, None, None, None, None, None, None, None, [1]]
         ]
-        body = self._build_request_body(self.RPC_ADD_SOURCE, params)
         source_path = f"/notebook/{notebook_id}"
-        url_endpoint = self._build_url(self.RPC_ADD_SOURCE, source_path)
 
         try:
-            def _do_request():
-                resp = client.post(url_endpoint, content=body, timeout=SOURCE_ADD_TIMEOUT)
-                resp.raise_for_status()
-                return resp
-            response = execute_with_retry(_do_request)
+            result = self._call_rpc(
+                self.RPC_ADD_SOURCE,
+                params,
+                path=source_path,
+                timeout=SOURCE_ADD_TIMEOUT
+            )
         except httpx.TimeoutException:
             return {
                 "status": "timeout",
                 "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s.",
             }
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE)
 
         source_result = None
         if result and isinstance(result, list) and len(result) > 0:
@@ -475,8 +433,6 @@ class SourceMixin(BaseClient):
         Raises:
             FileUploadError: If registration fails
         """
-        client = self._get_client()
-
         # Params: [[filename]], notebook_id, [2], [options]
         params = [
             [[filename]],
@@ -485,18 +441,13 @@ class SourceMixin(BaseClient):
             [1, None, None, None, None, None, None, None, None, None, [1]],
         ]
 
-        body = self._build_request_body(self.RPC_ADD_SOURCE_FILE, params)
         source_path = f"/notebook/{notebook_id}"
-        url = self._build_url(self.RPC_ADD_SOURCE_FILE, source_path)
-
-        def _do_request():
-            resp = client.post(url, content=body, timeout=60.0)
-            resp.raise_for_status()
-            return resp
-        response = execute_with_retry(_do_request)
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_ADD_SOURCE_FILE)
+        result = self._call_rpc(
+            self.RPC_ADD_SOURCE_FILE,
+            params,
+            path=source_path,
+            timeout=60.0
+        )
 
         # Extract SOURCE_ID from nested response
         def extract_id(data):
