@@ -58,7 +58,6 @@ nlm setup add cursor
 nlm setup add cline
 nlm setup add antigravity
 ```
-```
 
 Then use natural language: *"Create a notebook about quantum computing and generate a podcast"*
 
