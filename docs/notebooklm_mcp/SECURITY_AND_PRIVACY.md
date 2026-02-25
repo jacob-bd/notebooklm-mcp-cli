@@ -1,6 +1,6 @@
 # NotebookLM MCP Security & Privacy
 
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-02-25
 **Version**: 0.1.0
 
 Security model and data protection for the NotebookLM MCP Server.
@@ -20,6 +20,8 @@ Security model and data protection for the NotebookLM MCP Server.
 |-------|----------|-------------|
 | Cookies | `~/.notebooklm-mcp/auth.json` | User-only (0600) |
 | Chrome profile | `~/.notebooklm-mcp/chrome-profile/` | User-only (0700) |
+| Doc-refresh map | `~/.config/notebooklm-mcp/notebook_map.yaml` | User-only (OS default) |
+| Sync receipts | `~/.config/notebooklm-mcp/sync_receipts/` | User-only (OS default) |
 
 ### What Gets Stored
 
@@ -72,8 +74,10 @@ Current implementation connects directly to Google services. Corporate proxies m
 | Notebook metadata | In-memory only |
 | Source content | In-memory only |
 | Generated content URLs | In-memory only |
+| Doc-refresh notebook/source state | `~/.config/notebooklm-mcp/notebook_map.yaml` |
+| Sync audit trail | `~/.config/notebooklm-mcp/sync_receipts/*.json` |
 
-**No MCP data is persisted locally** except auth tokens.
+Most MCP request/response data remains in-memory. Auth and doc-refresh sync state are persisted locally.
 
 ### Google's Data Handling
 

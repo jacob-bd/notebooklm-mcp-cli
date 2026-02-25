@@ -279,40 +279,16 @@ def sync_files(
             print(f"  Skipping (unchanged): {rel_path}")
             continue
 
-        # File is new or changed
+        # File is new or changed.
+        # For replacements, add first then delete old source to prevent data loss.
         if old_source_id:
-            # Replace: delete old source first
             print(f"  Replacing: {rel_path} ({len(content):,} chars)...", end=" ")
-            delete_ok = client.delete_source(old_source_id)
-            if not delete_ok:
-                print("DELETE FAILED")
-                files_synced.append({
-                    "path": rel_path,
-                    "hash": current_hash,
-                    "action": "failed",
-                    "reason": "delete_failed",
-                })
-                continue
         else:
-            # New file
             print(f"  Adding: {rel_path} ({len(content):,} chars)...", end=" ")
 
-        # Add the (new or replacement) source
         result = client.add_text_source(notebook.id, content, title=file_path.name)
 
-        if result:
-            source_ids.append(result["id"])
-            action = "replaced" if old_source_id else "added"
-            files_synced.append({
-                "path": rel_path,
-                "hash": current_hash,
-                "action": action,
-                "source_id": result["id"],
-                "old_source_id": old_source_id if old_source_id else None,
-            })
-            changes_made += 1
-            print("OK")
-        else:
+        if not result:
             files_synced.append({
                 "path": rel_path,
                 "hash": current_hash,
@@ -320,6 +296,43 @@ def sync_files(
                 "reason": "add_failed",
             })
             print("FAILED")
+            continue
+
+        new_source_id = result["id"]
+        source_ids.append(new_source_id)
+        changes_made += 1
+
+        if old_source_id:
+            delete_ok = client.delete_source(old_source_id)
+            if delete_ok:
+                files_synced.append({
+                    "path": rel_path,
+                    "hash": current_hash,
+                    "action": "replaced",
+                    "source_id": new_source_id,
+                    "old_source_id": old_source_id,
+                })
+                print("OK")
+            else:
+                # Keep the newly-added source and record warning; we'll retry cleanup later.
+                files_synced.append({
+                    "path": rel_path,
+                    "hash": current_hash,
+                    "action": "added",
+                    "reason": "old_source_delete_failed",
+                    "source_id": new_source_id,
+                    "old_source_id": old_source_id,
+                })
+                print("ADDED (old source cleanup failed)")
+        else:
+            files_synced.append({
+                "path": rel_path,
+                "hash": current_hash,
+                "action": "added",
+                "source_id": new_source_id,
+                "old_source_id": None,
+            })
+            print("OK")
 
     # Summary
     added = sum(1 for f in files_synced if f["action"] == "added")

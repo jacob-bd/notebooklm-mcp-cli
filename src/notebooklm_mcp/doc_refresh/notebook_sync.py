@@ -8,7 +8,7 @@ Handles syncing documentation to NotebookLM notebooks:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -76,6 +76,7 @@ class SyncResult:
     sources_updated: int = 0
     sources_deleted: int = 0
     errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     doc_states: dict[str, dict] = field(default_factory=dict)  # path -> {hash, source_id, updated_at}
 
 
@@ -314,7 +315,7 @@ def apply_sync_plan(
         result.errors.append("No notebook ID available")
         return result
 
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).isoformat()
 
     # Process deletes first
     for action in plan.deletes:
@@ -325,14 +326,11 @@ def apply_sync_plan(
         except Exception as e:
             result.errors.append(f"Failed to delete {action.doc_path}: {e}")
 
-    # Process updates (delete + add)
+    # Process updates (add first, then delete old source).
+    # This ordering avoids data loss if adding the replacement fails.
     for action in plan.updates:
         try:
-            # Delete old source
-            if action.source_id:
-                client.delete_source(action.source_id)
-
-            # Add new source
+            # Add new source first
             full_path = repo_path / action.doc_path
             content = full_path.read_text(encoding="utf-8")
             title = make_source_title(plan.repo_key, str(action.doc_path))
@@ -350,6 +348,19 @@ def apply_sync_plan(
                     "source_id": new_source.get("id", ""),
                     "updated_at": now,
                 }
+
+                # Best effort cleanup of old source after replacement succeeds.
+                if action.source_id:
+                    try:
+                        deleted = client.delete_source(action.source_id)
+                        if not deleted:
+                            result.warnings.append(
+                                f"Updated {action.doc_path}, but failed to delete old source {action.source_id}"
+                            )
+                    except Exception as e:
+                        result.warnings.append(
+                            f"Updated {action.doc_path}, but failed to delete old source {action.source_id}: {e}"
+                        )
             else:
                 result.errors.append(f"Failed to add updated source for {action.doc_path}")
 
@@ -447,5 +458,11 @@ def format_sync_result(result: SyncResult) -> str:
         lines.append("## Errors")
         for err in result.errors:
             lines.append(f"- {err}")
+
+    if result.warnings:
+        lines.append("")
+        lines.append("## Warnings")
+        for warning in result.warnings:
+            lines.append(f"- {warning}")
 
     return "\n".join(lines)

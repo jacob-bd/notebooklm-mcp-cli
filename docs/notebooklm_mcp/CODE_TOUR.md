@@ -30,8 +30,12 @@ C021_notebooklm-mcp/
 │   └── doc_refresh/              # Doc-refresh Ralph loop module
 │       ├── __init__.py
 │       ├── canonical_docs.yaml   # Tiered doc manifest
-│       ├── notebook_map.yaml     # Repo → Notebook mapping
+│       ├── notebook_map.template.yaml  # Seed structure for runtime map
 │       └── PROMPT.md             # Ralph loop prompt
+│
+├── ~/.config/notebooklm-mcp/     # Runtime doc-refresh state (local machine)
+│   ├── notebook_map.yaml         # Repo → Notebook mapping (mutable)
+│   └── sync_receipts/*.json      # Sync audit receipts
 │
 ├── docs/                         # Reference documentation
 │   ├── API_REFERENCE.md          # Reverse-engineered API details

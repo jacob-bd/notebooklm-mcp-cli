@@ -28,6 +28,7 @@ from .hashing import (
 from .manifest import (
     load_manifest,
     load_notebook_map,
+    save_notebook_map,
     resolve_tier3_root,
     get_stored_hashes,
     get_tier_docs,
@@ -92,6 +93,7 @@ __all__ = [
     # Manifest
     "load_manifest",
     "load_notebook_map",
+    "save_notebook_map",
     "resolve_tier3_root",
     "get_stored_hashes",
     "get_tier_docs",

@@ -10,7 +10,19 @@ import yaml
 
 # Default manifest location (relative to this module)
 DEFAULT_MANIFEST_PATH = Path(__file__).parent / "canonical_docs.yaml"
-DEFAULT_NOTEBOOK_MAP_PATH = Path(__file__).parent / "notebook_map.yaml"
+DEFAULT_CONFIG_DIR = Path.home() / ".config" / "notebooklm-mcp"
+DEFAULT_NOTEBOOK_MAP_PATH = DEFAULT_CONFIG_DIR / "notebook_map.yaml"
+NOTEBOOK_MAP_TEMPLATE_PATH = Path(__file__).parent / "notebook_map.template.yaml"
+
+
+def _default_notebook_map() -> dict[str, Any]:
+    """Return a minimal default notebook map structure."""
+    return {
+        "workspace_root": str(Path.home() / "SyncedProjects"),
+        "notebooks": {},
+        "sync_log": [],
+        "config": {},
+    }
 
 
 def load_manifest(manifest_path: Optional[Path] = None) -> dict[str, Any]:
@@ -21,10 +33,40 @@ def load_manifest(manifest_path: Optional[Path] = None) -> dict[str, Any]:
 
 
 def load_notebook_map(map_path: Optional[Path] = None) -> dict[str, Any]:
-    """Load the notebook mapping YAML."""
+    """Load the notebook mapping YAML, creating a default file if needed."""
     path = map_path or DEFAULT_NOTEBOOK_MAP_PATH
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
+
+    if path.exists():
+        with open(path, "r") as f:
+            loaded = yaml.safe_load(f) or {}
+        if isinstance(loaded, dict):
+            return loaded
+        return _default_notebook_map()
+
+    # Bootstrap from packaged template if available, otherwise use defaults.
+    if NOTEBOOK_MAP_TEMPLATE_PATH.exists():
+        with open(NOTEBOOK_MAP_TEMPLATE_PATH, "r") as f:
+            template = yaml.safe_load(f) or {}
+        initial = template if isinstance(template, dict) else _default_notebook_map()
+    else:
+        initial = _default_notebook_map()
+
+    save_notebook_map(initial, path)
+    return initial
+
+
+def save_notebook_map(notebook_map: dict[str, Any], map_path: Optional[Path] = None) -> None:
+    """Persist notebook mapping YAML to disk."""
+    path = map_path or DEFAULT_NOTEBOOK_MAP_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        yaml.safe_dump(
+            notebook_map,
+            f,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        )
 
 
 def resolve_tier3_root(

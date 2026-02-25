@@ -290,6 +290,8 @@ def apply_artifact_plan(
     if verbose:
         print(f"  Found {len(source_ids)} sources")
 
+    pending_artifact_ids: set[str] = set()
+
     for action in plan.creates:
         artifact_type = action.artifact_type
         metadata = ARTIFACT_METADATA[artifact_type]
@@ -372,11 +374,17 @@ def apply_artifact_plan(
                 continue
 
             if response:
+                artifact_id = response.get("artifact_id") if isinstance(response, dict) else None
+                status = "initiated" if artifact_id else "completed"
+
                 result.artifacts_created += 1
                 result.created_artifacts[artifact_type.value] = {
-                    "status": "initiated",
+                    "status": status,
                     "response": response,
                 }
+                if artifact_id:
+                    result.created_artifacts[artifact_type.value]["artifact_id"] = artifact_id
+                    pending_artifact_ids.add(artifact_id)
             else:
                 result.errors.append(f"Failed to create {metadata['display_name']}: no response")
                 result.artifacts_failed += 1
@@ -386,7 +394,7 @@ def apply_artifact_plan(
             result.artifacts_failed += 1
 
     # Poll studio_status for completion
-    if result.artifacts_created > 0 and poll_timeout > 0:
+    if pending_artifact_ids and poll_timeout > 0:
         if verbose:
             print(f"  Polling studio_status (timeout: {poll_timeout}s)...")
 
@@ -394,7 +402,8 @@ def apply_artifact_plan(
         while time.time() - start_time < poll_timeout:
             try:
                 status = client.poll_studio_status(plan.notebook_id)
-                if _all_artifacts_complete(status, result.created_artifacts):
+                _update_artifact_statuses(status, result.created_artifacts)
+                if _all_artifacts_complete(status, pending_artifact_ids):
                     if verbose:
                         print("  All artifacts complete.")
                     break
@@ -412,35 +421,54 @@ def apply_artifact_plan(
     return result
 
 
-def _all_artifacts_complete(status: Any, created: dict) -> bool:
+def _all_artifacts_complete(status: Any, pending_artifact_ids: set[str]) -> bool:
     """
-    Check if all created artifacts are complete.
+    Check if all pending studio artifacts are complete.
 
     Args:
         status: Response from poll_studio_status (list of artifact dicts)
-        created: Dict of artifact_type -> creation info
+        pending_artifact_ids: IDs of artifacts created in this run that require polling
 
     Returns:
         True if all artifacts are ready
     """
+    if not pending_artifact_ids:
+        return True
+
     if not status:
         return False
 
-    # poll_studio_status returns a list of artifact dicts directly
-    # Each has: artifact_id, title, type, status, ...
     artifacts = status if isinstance(status, list) else []
 
-    if not artifacts and not created:
-        return True
+    completed_ids = {
+        a.get("artifact_id")
+        for a in artifacts
+        if isinstance(a, dict)
+        and isinstance(a.get("artifact_id"), str)
+        and a.get("status") in ("ready", "completed", "complete")
+    }
 
-    # Count completed artifacts
-    # Status can be "in_progress", "completed", or "unknown"
-    completed_count = sum(
-        1 for a in artifacts
-        if isinstance(a, dict) and a.get("status") in ("ready", "completed", "complete")
-    )
+    return pending_artifact_ids.issubset(completed_ids)
 
-    return completed_count >= len(created)
+
+def _update_artifact_statuses(status: Any, created: dict[str, dict]) -> None:
+    """Update created_artifacts status fields from poll_studio_status output."""
+    if not status or not isinstance(status, list):
+        return
+
+    status_by_id: dict[str, str] = {}
+    for item in status:
+        if not isinstance(item, dict):
+            continue
+        artifact_id = item.get("artifact_id")
+        artifact_status = item.get("status")
+        if isinstance(artifact_id, str) and isinstance(artifact_status, str):
+            status_by_id[artifact_id] = artifact_status
+
+    for info in created.values():
+        artifact_id = info.get("artifact_id")
+        if isinstance(artifact_id, str) and artifact_id in status_by_id:
+            info["status"] = status_by_id[artifact_id]
 
 
 def format_artifact_plan(plan: ArtifactPlan) -> str:

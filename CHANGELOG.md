@@ -7,7 +7,21 @@ Version numbers in pyproject.toml (no git tags).
 
 ## [Unreleased]
 
-(No unreleased changes)
+### Added
+- CI workflow (`.github/workflows/ci.yml`) to run tests, coverage report, and package build on push/PR.
+- `doc-refresh` console script entrypoint for the doc-refresh runner.
+- Regression tests for sync safety, artifact completion polling, major-version detection, and cookie parsing.
+
+### Changed
+- Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
+- Added a packaged `notebook_map.template.yaml` bootstrap file instead of bundling mutable runtime state.
+- Security and code-tour docs updated to reflect persisted local doc-refresh state.
+
+### Fixed
+- Replacement sync flow now adds new content before deleting old source (prevents source loss on failed add).
+- Artifact completion polling now verifies completion using the exact artifact IDs created in the run.
+- Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
+- `save_auth_tokens` now parses cookie headers with or without spaces after semicolons.
 
 ## [0.1.0] - 2026-01-10
 

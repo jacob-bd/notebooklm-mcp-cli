@@ -15,7 +15,7 @@ Create the skill definition, manifest schema, and Ralph loop prompt structure.
 | Skill definition | ✅ | `skills/doc-refresh/skill.md` |
 | Module init | ✅ | `src/notebooklm_mcp/doc_refresh/__init__.py` |
 | Canonical docs manifest | ✅ | `src/notebooklm_mcp/doc_refresh/canonical_docs.yaml` |
-| Notebook mapping | ✅ | `src/notebooklm_mcp/doc_refresh/notebook_map.yaml` |
+| Notebook mapping | ✅ | `src/notebooklm_mcp/doc_refresh/notebook_map.template.yaml` (runtime: `~/.config/notebooklm-mcp/notebook_map.yaml`) |
 | Ralph loop prompt | ✅ | `src/notebooklm_mcp/doc_refresh/PROMPT.md` |
 
 ## Key Decisions Made
