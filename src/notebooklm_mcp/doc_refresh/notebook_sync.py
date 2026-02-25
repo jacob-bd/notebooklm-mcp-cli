@@ -10,13 +10,16 @@ Handles syncing documentation to NotebookLM notebooks:
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+import time
+from typing import Any, Callable, Optional
 
 from .models import DiscoveryResult, DocItem, HashComparison
 
 
 # Source title format for deterministic matching
 SOURCE_TITLE_FORMAT = "DOC: {repo_key} :: {rel_path}"
+DELETE_RETRY_ATTEMPTS = 3
+DELETE_RETRY_BASE_SECONDS = 1.0
 
 
 @dataclass
@@ -75,9 +78,15 @@ class SyncResult:
     sources_added: int = 0
     sources_updated: int = 0
     sources_deleted: int = 0
+    delete_retry_attempts: int = 0
+    orphans_swept: int = 0
+    orphans_cleaned: int = 0
+    orphans_failed: int = 0
+    orphans_skipped: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     doc_states: dict[str, dict] = field(default_factory=dict)  # path -> {hash, source_id, updated_at}
+    orphaned_source_ids: list[str] = field(default_factory=list)
 
 
 def make_source_title(repo_key: str, rel_path: str) -> str:
@@ -293,6 +302,9 @@ def apply_sync_plan(
     client: Any,
     plan: SyncPlan,
     repo_path: Path,
+    delete_retry_attempts: int = DELETE_RETRY_ATTEMPTS,
+    delete_retry_base_seconds: float = DELETE_RETRY_BASE_SECONDS,
+    sleep_fn: Callable[[float], None] = time.sleep,
 ) -> SyncResult:
     """
     Apply a sync plan to NotebookLM.
@@ -321,10 +333,31 @@ def apply_sync_plan(
     for action in plan.deletes:
         try:
             if action.source_id:
-                client.delete_source(action.source_id)
-                result.sources_deleted += 1
+                deleted, attempts, last_error = delete_source_with_retry(
+                    client=client,
+                    source_id=action.source_id,
+                    max_attempts=delete_retry_attempts,
+                    base_backoff_seconds=delete_retry_base_seconds,
+                    sleep_fn=sleep_fn,
+                )
+                result.delete_retry_attempts += max(0, attempts - 1)
+                if deleted:
+                    result.sources_deleted += 1
+                else:
+                    result.warnings.append(
+                        f"Failed to delete stale source {action.source_id} for {action.doc_path}; "
+                        "tracked for orphan sweep"
+                    )
+                    result.orphaned_source_ids.append(action.source_id)
+                    if last_error:
+                        result.warnings.append(f"  Last delete error for {action.source_id}: {last_error}")
         except Exception as e:
-            result.errors.append(f"Failed to delete {action.doc_path}: {e}")
+            result.warnings.append(
+                f"Failed to delete stale source {action.source_id} for {action.doc_path}: {e}; "
+                "tracked for orphan sweep"
+            )
+            if action.source_id:
+                result.orphaned_source_ids.append(action.source_id)
 
     # Process updates (add first, then delete old source).
     # This ordering avoids data loss if adding the replacement fails.
@@ -351,16 +384,23 @@ def apply_sync_plan(
 
                 # Best effort cleanup of old source after replacement succeeds.
                 if action.source_id:
-                    try:
-                        deleted = client.delete_source(action.source_id)
-                        if not deleted:
-                            result.warnings.append(
-                                f"Updated {action.doc_path}, but failed to delete old source {action.source_id}"
-                            )
-                    except Exception as e:
-                        result.warnings.append(
-                            f"Updated {action.doc_path}, but failed to delete old source {action.source_id}: {e}"
+                    deleted, attempts, last_error = delete_source_with_retry(
+                        client=client,
+                        source_id=action.source_id,
+                        max_attempts=delete_retry_attempts,
+                        base_backoff_seconds=delete_retry_base_seconds,
+                        sleep_fn=sleep_fn,
+                    )
+                    result.delete_retry_attempts += max(0, attempts - 1)
+                    if not deleted:
+                        result.orphaned_source_ids.append(action.source_id)
+                        warning = (
+                            f"Updated {action.doc_path}, but failed to delete old source {action.source_id}; "
+                            "tracked for orphan sweep"
                         )
+                        if last_error:
+                            warning += f" ({last_error})"
+                        result.warnings.append(warning)
             else:
                 result.errors.append(f"Failed to add updated source for {action.doc_path}")
 
@@ -397,6 +437,39 @@ def apply_sync_plan(
         result.success = False
 
     return result
+
+
+def delete_source_with_retry(
+    client: Any,
+    source_id: str,
+    max_attempts: int = DELETE_RETRY_ATTEMPTS,
+    base_backoff_seconds: float = DELETE_RETRY_BASE_SECONDS,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> tuple[bool, int, Optional[str]]:
+    """
+    Delete a source with retry/backoff.
+
+    Returns:
+        Tuple of (deleted, attempts_made, last_error_message)
+    """
+    attempts = 0
+    last_error: Optional[str] = None
+
+    while attempts < max_attempts:
+        attempts += 1
+        try:
+            deleted = client.delete_source(source_id)
+            if deleted:
+                return True, attempts, None
+            last_error = "delete_source returned False"
+        except Exception as e:
+            last_error = str(e)
+
+        if attempts < max_attempts:
+            backoff = base_backoff_seconds * (2 ** (attempts - 1))
+            sleep_fn(backoff)
+
+    return False, attempts, last_error
 
 
 def format_sync_plan(plan: SyncPlan) -> str:
@@ -452,6 +525,12 @@ def format_sync_result(result: SyncResult) -> str:
     lines.append(f"- Sources added: {result.sources_added}")
     lines.append(f"- Sources updated: {result.sources_updated}")
     lines.append(f"- Sources deleted: {result.sources_deleted}")
+    lines.append(f"- Delete retries: {result.delete_retry_attempts}")
+    lines.append(f"- Orphans tracked: {len(result.orphaned_source_ids)}")
+    lines.append(f"- Orphans swept: {result.orphans_swept}")
+    lines.append(f"- Orphans cleaned: {result.orphans_cleaned}")
+    lines.append(f"- Orphan sweep failures: {result.orphans_failed}")
+    lines.append(f"- Orphan sweep skipped: {result.orphans_skipped}")
 
     if result.errors:
         lines.append("")

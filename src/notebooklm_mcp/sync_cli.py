@@ -15,27 +15,40 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
-import yaml
+from typing import Any, Optional
 
 from .auth import load_cached_tokens
 from .api_client import NotebookLMClient
+from .doc_refresh.manifest import (
+    MAX_ORPHAN_FAILURES,
+    add_orphan_source,
+    ensure_notebook_map_defaults,
+    get_orphan_ledger,
+    load_notebook_map as load_notebook_map_manifest,
+    record_orphan_failure,
+    remove_orphan_source,
+    save_notebook_map as save_notebook_map_manifest,
+)
+from .doc_refresh.notebook_sync import (
+    DELETE_RETRY_ATTEMPTS,
+    delete_source_with_retry,
+)
+from .doc_refresh.runner import run_artifacts, run_sync, run_validation
 
 # Paths - use central config directory for consistent access regardless of install method
 CONFIG_DIR = Path.home() / ".config" / "notebooklm-mcp"
 NOTEBOOK_MAP_PATH = CONFIG_DIR / "notebook_map.yaml"
 RECEIPTS_DIR = CONFIG_DIR / "sync_receipts"
 WORKSPACE_ROOT = Path.home() / "SyncedProjects"
+REFRESH_LOG_PATH = CONFIG_DIR / "refresh.log"
+MAX_REFRESH_LOG_BYTES = 5 * 1024 * 1024
 
 
-def get_client() -> NotebookLMClient:
-    """Get authenticated NotebookLM client."""
+def try_get_client() -> Optional[NotebookLMClient]:
+    """Return authenticated NotebookLM client if cached auth is available."""
     tokens = load_cached_tokens()
     if not tokens:
-        print("Error: No cached auth tokens found.", file=sys.stderr)
-        print("Run 'notebooklm-mcp-auth' first to authenticate.", file=sys.stderr)
-        sys.exit(1)
+        return None
 
     return NotebookLMClient(
         cookies=tokens.cookies,
@@ -44,17 +57,24 @@ def get_client() -> NotebookLMClient:
     )
 
 
+def get_client() -> NotebookLMClient:
+    """Get authenticated NotebookLM client or exit with a helpful message."""
+    client = try_get_client()
+    if client is None:
+        print("Error: No cached auth tokens found.", file=sys.stderr)
+        print("Run 'notebooklm-mcp-auth' first to authenticate.", file=sys.stderr)
+        sys.exit(1)
+    return client
+
+
 def load_notebook_map() -> dict:
     """Load the notebook map YAML."""
-    if NOTEBOOK_MAP_PATH.exists():
-        return yaml.safe_load(NOTEBOOK_MAP_PATH.read_text()) or {}
-    return {"workspace_root": str(WORKSPACE_ROOT), "notebooks": {}, "sync_log": [], "config": {}}
+    return load_notebook_map_manifest(NOTEBOOK_MAP_PATH)
 
 
 def save_notebook_map(data: dict) -> None:
     """Save the notebook map YAML."""
-    NOTEBOOK_MAP_PATH.parent.mkdir(parents=True, exist_ok=True)
-    NOTEBOOK_MAP_PATH.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+    save_notebook_map_manifest(data, NOTEBOOK_MAP_PATH)
 
 
 def compute_file_hash(file_path: Path, length: int = 12) -> str:
@@ -171,6 +191,102 @@ def write_receipt(
     return receipt_path
 
 
+def write_batch_receipt(
+    summary: dict[str, Any],
+) -> Path:
+    """Write a JSON receipt for a batch refresh run."""
+    RECEIPTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    receipt_name = f"{timestamp}_batch_refresh.json"
+    receipt_path = RECEIPTS_DIR / receipt_name
+
+    payload = {
+        "timestamp": timestamp,
+        "mode": "batch_refresh",
+        **summary,
+    }
+    receipt_path.write_text(json.dumps(payload, indent=2))
+    return receipt_path
+
+
+def append_refresh_log(lines: list[str]) -> None:
+    """Append run output lines to refresh.log."""
+    if not lines:
+        return
+
+    REFRESH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if REFRESH_LOG_PATH.exists() and REFRESH_LOG_PATH.stat().st_size > MAX_REFRESH_LOG_BYTES:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        archived = REFRESH_LOG_PATH.with_name(f"refresh.log.{stamp}.bak")
+        REFRESH_LOG_PATH.rename(archived)
+
+    with REFRESH_LOG_PATH.open("a", encoding="utf-8") as f:
+        for line in lines:
+            f.write(f"{line}\n")
+
+
+def _batch_log(lines: list[str], message: str, echo: bool = True) -> None:
+    """Record a batch log line and optionally echo to stdout."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+    line = f"[{timestamp}] {message}"
+    lines.append(line)
+    if echo:
+        print(message)
+
+
+def _sweep_orphans_for_repo(
+    client: NotebookLMClient,
+    notebook_map: dict[str, Any],
+    repo_id: str,
+) -> dict[str, int]:
+    """Sweep orphaned sources for one repo and persist counters in notebook_map."""
+    stats = {
+        "attempted": 0,
+        "cleaned": 0,
+        "failed": 0,
+        "skipped": 0,
+    }
+    ledger = get_orphan_ledger(notebook_map, repo_id, create=False)
+    if not ledger:
+        return stats
+
+    for source_id, info in list(ledger.items()):
+        if not source_id:
+            continue
+
+        if isinstance(info, dict) and info.get("disabled"):
+            stats["skipped"] += 1
+            continue
+
+        stats["attempted"] += 1
+        try:
+            deleted = client.delete_source(source_id)
+            if deleted:
+                remove_orphan_source(notebook_map, repo_id, source_id)
+                stats["cleaned"] += 1
+            else:
+                record_orphan_failure(
+                    notebook_map,
+                    repo_id,
+                    source_id,
+                    error="delete_source returned False",
+                    max_failures=MAX_ORPHAN_FAILURES,
+                )
+                stats["failed"] += 1
+        except Exception as e:
+            record_orphan_failure(
+                notebook_map,
+                repo_id,
+                source_id,
+                error=str(e),
+                max_failures=MAX_ORPHAN_FAILURES,
+            )
+            stats["failed"] += 1
+
+    return stats
+
+
 def prompt_for_artifacts(notebook_name: str, changes_made: int) -> bool:
     """Prompt user before generating artifacts."""
     if changes_made == 0:
@@ -194,6 +310,17 @@ def sync_files(
     """Sync files to a NotebookLM notebook with idempotence and replacement."""
     client = get_client()
     notebook_map = load_notebook_map()
+    notebook_map = ensure_notebook_map_defaults(notebook_map)
+
+    if repo_id:
+        sweep_stats = _sweep_orphans_for_repo(client, notebook_map, repo_id)
+        if sweep_stats["attempted"] > 0:
+            print(
+                "Orphan sweep: "
+                f"{sweep_stats['cleaned']} cleaned, "
+                f"{sweep_stats['failed']} failed, "
+                f"{sweep_stats['skipped']} skipped"
+            )
 
     # Check if notebook exists in map for this repo
     existing_entry = notebook_map.get("notebooks", {}).get(repo_id) if repo_id else None
@@ -239,6 +366,7 @@ def sync_files(
     files_synced = []
     source_ids = []
     changes_made = 0
+    new_orphans: list[str] = []
 
     for file_path in files:
         if not file_path.exists():
@@ -303,14 +431,19 @@ def sync_files(
         changes_made += 1
 
         if old_source_id:
-            delete_ok = client.delete_source(old_source_id)
-            if delete_ok:
+            deleted, attempts, _ = delete_source_with_retry(
+                client=client,
+                source_id=old_source_id,
+                max_attempts=DELETE_RETRY_ATTEMPTS,
+            )
+            if deleted:
                 files_synced.append({
                     "path": rel_path,
                     "hash": current_hash,
                     "action": "replaced",
                     "source_id": new_source_id,
                     "old_source_id": old_source_id,
+                    "delete_attempts": attempts,
                 })
                 print("OK")
             else:
@@ -322,7 +455,16 @@ def sync_files(
                     "reason": "old_source_delete_failed",
                     "source_id": new_source_id,
                     "old_source_id": old_source_id,
+                    "delete_attempts": attempts,
                 })
+                new_orphans.append(old_source_id)
+                if repo_id:
+                    add_orphan_source(
+                        notebook_map,
+                        repo_id,
+                        old_source_id,
+                        error="Delete failed after replacement retry",
+                    )
                 print("ADDED (old source cleanup failed)")
         else:
             files_synced.append({
@@ -341,6 +483,8 @@ def sync_files(
     failed = sum(1 for f in files_synced if f["action"] == "failed")
 
     print(f"\nSync complete: {added} added, {replaced} replaced, {skipped} skipped, {failed} failed")
+    if new_orphans:
+        print(f"Tracked {len(new_orphans)} orphaned source(s) for next-run cleanup")
 
     # Update notebook map
     if repo_id:
@@ -407,11 +551,244 @@ def sync_files(
     print(f"\nNotebook URL: https://notebooklm.google.com/notebook/{notebook.id}")
 
 
-def main():
+def run_batch_refresh(
+    apply: bool,
+    changed_only: bool,
+    tier_filter: Optional[str],
+    force_artifacts: bool,
+    artifacts: Optional[str],
+    skip_artifacts: bool,
+    repos_csv: Optional[str],
+    verbose: bool,
+) -> int:
+    """Run sequential cross-repo refresh using notebook_map repo mappings."""
+    notebook_map = ensure_notebook_map_defaults(load_notebook_map())
+    notebooks = notebook_map.get("notebooks", {})
+    mapped_repos = sorted(notebooks.keys())
+    log_lines: list[str] = []
+
+    selected_repos = mapped_repos
+    if repos_csv:
+        requested = [r.strip() for r in repos_csv.split(",") if r.strip()]
+        selected_repos = [r for r in requested if r in notebooks]
+        missing = [r for r in requested if r not in notebooks]
+        for repo in missing:
+            _batch_log(log_lines, f"Repo {repo} is not mapped in notebook_map.yaml", echo=True)
+
+    if not selected_repos:
+        _batch_log(log_lines, "No mapped repositories found for batch refresh.", echo=True)
+        append_refresh_log(log_lines)
+        return 1
+
+    client = try_get_client()
+    if client is None:
+        _batch_log(
+            log_lines,
+            "Auth unavailable: no cached tokens. Skipping batch refresh (run notebooklm-mcp-auth).",
+            echo=True,
+        )
+        receipt_path = write_batch_receipt(
+            {
+                "status": "auth_unavailable",
+                "apply": apply,
+                "changed_only": changed_only,
+                "tier_filter": tier_filter,
+                "force_artifacts": force_artifacts,
+                "repos": [],
+            }
+        )
+        _batch_log(log_lines, f"Receipt: {receipt_path}", echo=True)
+        append_refresh_log(log_lines)
+        return 0
+
+    try:
+        client.list_notebooks()
+    except Exception as e:
+        _batch_log(
+            log_lines,
+            f"Auth check failed ({e}). Skipping batch refresh so future scheduled runs can continue.",
+            echo=True,
+        )
+        receipt_path = write_batch_receipt(
+            {
+                "status": "auth_failed",
+                "apply": apply,
+                "changed_only": changed_only,
+                "tier_filter": tier_filter,
+                "force_artifacts": force_artifacts,
+                "error": str(e),
+                "repos": [],
+            }
+        )
+        _batch_log(log_lines, f"Receipt: {receipt_path}", echo=True)
+        append_refresh_log(log_lines)
+        return 0
+
+    workspace_root = Path(str(notebook_map.get("workspace_root", WORKSPACE_ROOT))).expanduser()
+    results: list[dict[str, Any]] = []
+
+    for repo_id in selected_repos:
+        repo_path = (workspace_root / repo_id).resolve()
+        _batch_log(log_lines, f"Processing {repo_id}", echo=True)
+
+        if not repo_path.exists():
+            message = f"Repository path not found: {repo_path}"
+            _batch_log(log_lines, message, echo=True)
+            results.append(
+                {
+                    "repo": repo_id,
+                    "status": "failed",
+                    "reason": "repo_path_missing",
+                    "error": message,
+                }
+            )
+            continue
+
+        precomputed: Optional[tuple[Any, Any]] = None
+        try:
+            validation_report, hash_comparison = run_validation(
+                repo_path=repo_path,
+                dry_run=True,
+                verbose=verbose,
+            )
+            precomputed = (validation_report, hash_comparison)
+
+            if tier_filter and validation_report.discovery.tier.value != tier_filter:
+                results.append(
+                    {
+                        "repo": repo_id,
+                        "status": "skipped",
+                        "reason": "tier_mismatch",
+                        "tier": validation_report.discovery.tier.value,
+                    }
+                )
+                _batch_log(
+                    log_lines,
+                    f"Skipped {repo_id}: tier {validation_report.discovery.tier.value} "
+                    f"does not match filter {tier_filter}",
+                    echo=True,
+                )
+                continue
+
+            changed_docs = len(hash_comparison.changed_docs) + len(hash_comparison.new_docs)
+            if changed_only and changed_docs == 0:
+                results.append(
+                    {
+                        "repo": repo_id,
+                        "status": "skipped",
+                        "reason": "no_content_changes",
+                    }
+                )
+                _batch_log(log_lines, f"Skipped {repo_id}: no content changes detected", echo=True)
+                continue
+
+            report, comparison, plan, sync_result = run_sync(
+                repo_path=repo_path,
+                apply=apply,
+                verbose=verbose,
+                precomputed=precomputed,
+                client=client,
+            )
+
+            repo_artifacts = artifacts
+            if repo_artifacts is None:
+                repo_config = notebooks.get(repo_id, {})
+                configured = repo_config.get("artifact_types")
+                if isinstance(configured, list) and configured:
+                    repo_artifacts = ",".join(str(a) for a in configured)
+
+            artifact_plan = None
+            artifact_result = None
+            if not skip_artifacts and plan.notebook_id:
+                artifact_plan, artifact_result = run_artifacts(
+                    repo_path=repo_path,
+                    notebook_id=plan.notebook_id,
+                    hash_comparison=comparison,
+                    apply=apply,
+                    force=force_artifacts,
+                    artifacts=repo_artifacts,
+                    verbose=verbose,
+                    client=client,
+                )
+
+            repo_failed = False
+            if sync_result and not sync_result.success:
+                repo_failed = True
+            if artifact_result and not artifact_result.success:
+                repo_failed = True
+            if not report.is_valid:
+                repo_failed = True
+
+            repo_status = "failed" if repo_failed else "success"
+            added_count = sync_result.sources_added if sync_result else len(plan.adds)
+            updated_count = sync_result.sources_updated if sync_result else len(plan.updates)
+            deleted_count = sync_result.sources_deleted if sync_result else len(plan.deletes)
+            repo_summary = {
+                "repo": repo_id,
+                "status": repo_status,
+                "tier": report.discovery.tier.value,
+                "added": added_count,
+                "updated": updated_count,
+                "deleted": deleted_count,
+                "orphans_cleaned": sync_result.orphans_cleaned if sync_result else 0,
+                "orphans_tracked": len(sync_result.orphaned_source_ids) if sync_result else 0,
+                "errors": (
+                    (sync_result.errors if sync_result else [])
+                    + (artifact_result.errors if artifact_result else [])
+                ),
+                "artifacts_triggered": artifact_plan.triggered if artifact_plan else False,
+                "artifacts_created": artifact_result.artifacts_created if artifact_result else 0,
+                "artifacts_failed": artifact_result.artifacts_failed if artifact_result else 0,
+            }
+            results.append(repo_summary)
+
+            _batch_log(
+                log_lines,
+                f"{repo_id}: {repo_status} "
+                f"(+{repo_summary['added']} ~{repo_summary['updated']} -{repo_summary['deleted']}, "
+                f"orphans cleaned {repo_summary['orphans_cleaned']}, "
+                f"artifacts {repo_summary['artifacts_created']})",
+                echo=True,
+            )
+
+        except Exception as e:
+            results.append(
+                {
+                    "repo": repo_id,
+                    "status": "failed",
+                    "reason": "exception",
+                    "error": str(e),
+                }
+            )
+            _batch_log(log_lines, f"{repo_id}: failed with exception: {e}", echo=True)
+            continue
+
+    summary = {
+        "status": "completed",
+        "apply": apply,
+        "changed_only": changed_only,
+        "tier_filter": tier_filter,
+        "force_artifacts": force_artifacts,
+        "repos_total": len(selected_repos),
+        "repos_succeeded": sum(1 for r in results if r.get("status") == "success"),
+        "repos_failed": sum(1 for r in results if r.get("status") == "failed"),
+        "repos_skipped": sum(1 for r in results if r.get("status") == "skipped"),
+        "repos": results,
+    }
+    receipt_path = write_batch_receipt(summary)
+    _batch_log(log_lines, f"Batch summary: {summary['repos_succeeded']} succeeded, "
+                         f"{summary['repos_failed']} failed, {summary['repos_skipped']} skipped", echo=True)
+    _batch_log(log_lines, f"Receipt: {receipt_path}", echo=True)
+    append_refresh_log(log_lines)
+
+    return 1 if summary["repos_failed"] > 0 else 0
+
+
+def main() -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(
         prog="notebooklm-sync",
-        description="Sync documentation files to NotebookLM (deterministic, with receipts)",
+        description="Sync documentation files to NotebookLM (single repo or batch mode)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -432,6 +809,12 @@ Examples:
 
     # Non-interactive mode (no prompts)
     notebooklm-sync --repo C012_round-table --tier3 --audio --yes
+
+    # Batch refresh all mapped repos
+    notebooklm-sync --all --apply
+
+    # Batch refresh only changed kitted repos
+    notebooklm-sync --all --apply --changed-only --tier kitted
         """,
     )
 
@@ -444,6 +827,51 @@ Examples:
         "--repo",
         metavar="REPO_ID",
         help="Repository ID (e.g., C012_round-table). Notebook name will match repo name exactly.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Batch refresh all mapped repos from notebook_map.yaml",
+    )
+    parser.add_argument(
+        "--repos",
+        metavar="REPO_LIST",
+        help="Comma-separated subset of mapped repos for --all mode",
+    )
+    parser.add_argument(
+        "--changed-only",
+        action="store_true",
+        help="With --all: skip repos with no content hash changes",
+    )
+    parser.add_argument(
+        "--tier",
+        choices=["simple", "complex", "kitted"],
+        help="With --all: only process repos matching this tier",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="With --all: apply changes (otherwise dry-run planning only)",
+    )
+    parser.add_argument(
+        "--force-artifacts",
+        action="store_true",
+        help="With --all: force artifact regeneration even below threshold",
+    )
+    parser.add_argument(
+        "--artifacts",
+        default=None,
+        help="Artifact subset for --all (comma-separated). Default uses standard artifact set.",
+    )
+    parser.add_argument(
+        "--skip-artifacts",
+        action="store_true",
+        help="With --all: skip artifact regeneration phase",
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose output",
     )
     parser.add_argument(
         "--tier3",
@@ -481,7 +909,22 @@ Examples:
 
     if args.list:
         list_notebooks()
-        return
+        return 0
+
+    if args.all:
+        if args.repo:
+            print("Error: --repo cannot be combined with --all. Use --repos for batch subsets.", file=sys.stderr)
+            return 1
+        return run_batch_refresh(
+            apply=args.apply,
+            changed_only=args.changed_only,
+            tier_filter=args.tier,
+            force_artifacts=args.force_artifacts,
+            artifacts=args.artifacts,
+            skip_artifacts=args.skip_artifacts,
+            repos_csv=args.repos,
+            verbose=args.verbose,
+        )
 
     # Handle --repo mode
     repo_id = args.repo
@@ -492,7 +935,7 @@ Examples:
         repo_path = WORKSPACE_ROOT / repo_id
         if not repo_path.exists():
             print(f"Error: Repository not found at {repo_path}", file=sys.stderr)
-            sys.exit(1)
+            return 1
 
         # Notebook name MUST match repo name exactly
         notebook_name = repo_id
@@ -505,11 +948,11 @@ Examples:
 
     if not notebook_name:
         parser.print_help()
-        sys.exit(1)
+        return 1
 
     if not files:
         print("Error: No files specified. Use --tier3 with --repo or provide file paths.", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     # Expand glob patterns (shell may not expand them on all platforms)
     expanded_files = []
@@ -521,7 +964,7 @@ Examples:
 
     if not expanded_files:
         print("Error: No files found matching patterns.", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     sync_files(
         notebook_name,
@@ -531,7 +974,8 @@ Examples:
         audio_focus=args.focus,
         interactive=not args.yes,
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

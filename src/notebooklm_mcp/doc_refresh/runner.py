@@ -23,7 +23,17 @@ from .artifact_refresh import (
 )
 from .discover import discover_repo
 from .hashing import compare_hashes, compute_all_hashes
-from .manifest import load_manifest, load_notebook_map, save_notebook_map
+from .manifest import (
+    MAX_ORPHAN_FAILURES,
+    add_orphan_source,
+    ensure_repo_data,
+    get_orphan_ledger,
+    load_manifest,
+    load_notebook_map,
+    record_orphan_failure,
+    remove_orphan_source,
+    save_notebook_map,
+)
 from .models import HashComparison, ValidationReport
 from .notebook_sync import (
     SyncPlan,
@@ -106,6 +116,8 @@ def run_sync(
     repo_path: Path,
     apply: bool = False,
     verbose: bool = False,
+    precomputed: Optional[tuple[ValidationReport, HashComparison]] = None,
+    client: Any | None = None,
 ) -> tuple[ValidationReport, HashComparison, SyncPlan, Optional[SyncResult]]:
     """
     Run validation and compute/apply NotebookLM sync.
@@ -114,12 +126,17 @@ def run_sync(
         repo_path: Absolute path to repository root
         apply: If True, apply changes to NotebookLM
         verbose: If True, print progress messages
+        precomputed: Optional precomputed (report, hash comparison)
+        client: Optional initialized NotebookLM client
 
     Returns:
         Tuple of (ValidationReport, HashComparison, SyncPlan, SyncResult or None)
     """
     # First run validation
-    report, comparison = run_validation(repo_path, dry_run=not apply, verbose=verbose)
+    if precomputed is None:
+        report, comparison = run_validation(repo_path, dry_run=not apply, verbose=verbose)
+    else:
+        report, comparison = precomputed
 
     if comparison is None:
         raise RuntimeError("Hash comparison failed")
@@ -132,32 +149,47 @@ def run_sync(
         print("  Phase 4: Computing sync plan...")
 
     # Get client for NotebookLM operations
-    try:
-        from ..server import get_client
-        client = get_client()
-    except Exception as e:
-        if verbose:
-            print(f"    Warning: Could not initialize NotebookLM client: {e}")
-        # Return plan with no notebook access
-        plan = SyncPlan(
-            repo_key=repo_key,
-            notebook_id=None,
-            notebook_exists=False,
-            needs_create=True,
-        )
-        # Add all existing docs as "add" actions
-        for doc in report.discovery.existing_docs:
-            if not str(doc.path).endswith("/"):
-                from .notebook_sync import SyncAction
-                plan.actions.append(
-                    SyncAction(
-                        action="add",
-                        doc_path=doc.path,
-                        reason="Initial sync",
-                        content_hash=doc.content_hash,
+    if client is None:
+        try:
+            from ..server import get_client
+
+            client = get_client()
+        except Exception as e:
+            if verbose:
+                print(f"    Warning: Could not initialize NotebookLM client: {e}")
+            # Return plan with no notebook access
+            plan = SyncPlan(
+                repo_key=repo_key,
+                notebook_id=None,
+                notebook_exists=False,
+                needs_create=True,
+            )
+            # Add all existing docs as "add" actions
+            for doc in report.discovery.existing_docs:
+                if not str(doc.path).endswith("/"):
+                    from .notebook_sync import SyncAction
+
+                    plan.actions.append(
+                        SyncAction(
+                            action="add",
+                            doc_path=doc.path,
+                            reason="Initial sync",
+                            content_hash=doc.content_hash,
+                        )
                     )
-                )
-        return report, comparison, plan, None
+            return report, comparison, plan, None
+
+    # Sweep previously orphaned sources at the start of each apply run.
+    orphan_stats = _empty_orphan_stats()
+    if apply:
+        orphan_stats = _sweep_orphaned_sources(
+            client=client,
+            notebook_map=notebook_map,
+            repo_key=repo_key,
+            verbose=verbose,
+        )
+        if orphan_stats["changed"]:
+            save_notebook_map(notebook_map)
 
     # Ensure notebook exists (or get existing)
     notebook_id, was_created = ensure_notebook(client, repo_key, notebook_map, apply=apply)
@@ -191,16 +223,24 @@ def run_sync(
 
     # Apply if requested
     sync_result = None
-    if apply and plan.has_changes:
+    if apply:
         if not notebook_id:
             # Need to create notebook first
             notebook_id, _ = ensure_notebook(client, repo_key, notebook_map, apply=True)
             plan.notebook_id = notebook_id
 
         if notebook_id:
-            if verbose:
-                print("  Phase 5: Applying sync...")
-            sync_result = apply_sync_plan(client, plan, repo_path)
+            if plan.has_changes:
+                if verbose:
+                    print("  Phase 5: Applying sync...")
+                sync_result = apply_sync_plan(client, plan, repo_path)
+            else:
+                sync_result = SyncResult(success=True, notebook_id=notebook_id)
+
+            sync_result.orphans_swept = orphan_stats["attempted"]
+            sync_result.orphans_cleaned = orphan_stats["cleaned"]
+            sync_result.orphans_failed = orphan_stats["failed"]
+            sync_result.orphans_skipped = orphan_stats["skipped"]
 
             if verbose:
                 print(f"    Added: {sync_result.sources_added}")
@@ -210,10 +250,93 @@ def run_sync(
                     print(f"    Errors: {len(sync_result.errors)}")
 
             # Update notebook_map.yaml with new state
-            if sync_result.success or sync_result.doc_states:
-                _update_notebook_map(repo_key, notebook_id, sync_result, repo_path, verbose)
+            _update_notebook_map(
+                repo_key=repo_key,
+                notebook_id=notebook_id,
+                sync_result=sync_result,
+                repo_path=repo_path,
+                notebook_map=notebook_map,
+                verbose=verbose,
+            )
 
     return report, comparison, plan, sync_result
+
+
+def _empty_orphan_stats() -> dict[str, int | bool]:
+    """Return zeroed orphan sweep counters."""
+    return {
+        "attempted": 0,
+        "cleaned": 0,
+        "failed": 0,
+        "skipped": 0,
+        "changed": False,
+    }
+
+
+def _sweep_orphaned_sources(
+    client: Any,
+    notebook_map: dict[str, Any],
+    repo_key: str,
+    verbose: bool = False,
+) -> dict[str, int | bool]:
+    """
+    Attempt cleanup of orphaned source IDs tracked in notebook_map.
+
+    Each orphan is attempted once per run. Failures increment retries and are
+    disabled after MAX_ORPHAN_FAILURES attempts.
+    """
+    stats = _empty_orphan_stats()
+    ledger = get_orphan_ledger(notebook_map, repo_key, create=False)
+    if not ledger:
+        return stats
+
+    for source_id, info in list(ledger.items()):
+        if not source_id:
+            continue
+
+        if isinstance(info, dict) and info.get("disabled"):
+            stats["skipped"] += 1
+            continue
+
+        stats["attempted"] += 1
+        try:
+            deleted = client.delete_source(source_id)
+            if deleted:
+                remove_orphan_source(notebook_map, repo_key, source_id)
+                stats["cleaned"] += 1
+                stats["changed"] = True
+            else:
+                retries = record_orphan_failure(
+                    notebook_map,
+                    repo_key,
+                    source_id,
+                    error="delete_source returned False",
+                    max_failures=MAX_ORPHAN_FAILURES,
+                )
+                stats["failed"] += 1
+                stats["changed"] = True
+                if verbose and retries >= MAX_ORPHAN_FAILURES:
+                    print(
+                        f"    Warning: orphan {source_id} exceeded {MAX_ORPHAN_FAILURES} "
+                        "cleanup failures; disabling future attempts"
+                    )
+        except Exception as e:
+            retries = record_orphan_failure(
+                notebook_map,
+                repo_key,
+                source_id,
+                error=str(e),
+                max_failures=MAX_ORPHAN_FAILURES,
+            )
+            stats["failed"] += 1
+            stats["changed"] = True
+            if verbose and retries >= MAX_ORPHAN_FAILURES:
+                print(
+                    f"    Warning: orphan {source_id} exceeded {MAX_ORPHAN_FAILURES} "
+                    "cleanup failures; disabling future attempts"
+                )
+
+    return stats
 
 
 def _update_notebook_map(
@@ -221,19 +344,13 @@ def _update_notebook_map(
     notebook_id: str,
     sync_result: SyncResult,
     repo_path: Path,
+    notebook_map: Optional[dict[str, Any]] = None,
     verbose: bool = False,
 ) -> None:
     """Update notebook_map.yaml with sync results."""
     try:
-        notebook_map = load_notebook_map()
-
-        if "notebooks" not in notebook_map:
-            notebook_map["notebooks"] = {}
-
-        if repo_key not in notebook_map["notebooks"]:
-            notebook_map["notebooks"][repo_key] = {}
-
-        repo_data = notebook_map["notebooks"][repo_key]
+        map_data = notebook_map if notebook_map is not None else load_notebook_map()
+        repo_data = ensure_repo_data(map_data, repo_key)
         repo_data["notebook_id"] = notebook_id
         current_version = _read_repo_version(repo_path)
         if current_version:
@@ -246,11 +363,24 @@ def _update_notebook_map(
         for path, state in sync_result.doc_states.items():
             repo_data["docs"][path] = state
 
+        # Track unresolved delete failures for next-run cleanup.
+        for orphan_source_id in set(sync_result.orphaned_source_ids):
+            add_orphan_source(
+                map_data,
+                repo_key,
+                orphan_source_id,
+                error="Delete failed after retry during sync",
+            )
+
         # Write back
-        save_notebook_map(notebook_map)
+        save_notebook_map(map_data)
 
         if verbose:
-            print(f"    Updated notebook_map.yaml with {len(sync_result.doc_states)} doc states")
+            print(
+                "    Updated notebook_map.yaml "
+                f"({len(sync_result.doc_states)} doc states, "
+                f"{len(sync_result.orphaned_source_ids)} tracked orphans)"
+            )
 
     except Exception as e:
         if verbose:
@@ -265,6 +395,7 @@ def run_artifacts(
     force: bool = False,
     artifacts: Optional[str] = None,
     verbose: bool = False,
+    client: Any | None = None,
 ) -> tuple[ArtifactPlan, Optional[ArtifactResult]]:
     """
     Compute and optionally apply artifact refresh.
@@ -275,8 +406,9 @@ def run_artifacts(
         hash_comparison: Result of hash comparison
         apply: If True, create artifacts
         force: Force regeneration regardless of threshold
-        artifacts: Comma-separated artifact subset (None = Standard 7)
+        artifacts: Comma-separated artifact subset (None = standard set)
         verbose: If True, print progress messages
+        client: Optional initialized NotebookLM client
 
     Returns:
         Tuple of (ArtifactPlan, ArtifactResult or None)
@@ -318,10 +450,13 @@ def run_artifacts(
             print("  Phase 7: Creating artifacts...")
 
         try:
-            from ..server import get_client
-            client = get_client()
+            active_client = client
+            if active_client is None:
+                from ..server import get_client
+
+                active_client = get_client()
             artifact_result = apply_artifact_plan(
-                client=client,
+                client=active_client,
                 plan=plan,
                 verbose=verbose,
             )
@@ -471,7 +606,8 @@ def main(args: Optional[list[str]] = None) -> int:
         "--artifacts",
         type=str,
         default=None,
-        help="Comma-separated artifact subset (e.g., 'audio,mind_map,briefing'). Default: Standard 7",
+        help="Comma-separated artifact subset (e.g., 'audio,briefing,study'). "
+        "Default: standard set (audio, briefing doc, study guide)",
     )
     parser.add_argument(
         "--force",

@@ -2,6 +2,7 @@
 Manifest loading and Tier 3 path resolution.
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,6 +14,8 @@ DEFAULT_MANIFEST_PATH = Path(__file__).parent / "canonical_docs.yaml"
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "notebooklm-mcp"
 DEFAULT_NOTEBOOK_MAP_PATH = DEFAULT_CONFIG_DIR / "notebook_map.yaml"
 NOTEBOOK_MAP_TEMPLATE_PATH = Path(__file__).parent / "notebook_map.template.yaml"
+ORPHAN_LEDGER_KEY = "orphan_ledger"
+MAX_ORPHAN_FAILURES = 5
 
 
 def _default_notebook_map() -> dict[str, Any]:
@@ -23,6 +26,130 @@ def _default_notebook_map() -> dict[str, Any]:
         "sync_log": [],
         "config": {},
     }
+
+
+def ensure_notebook_map_defaults(notebook_map: dict[str, Any]) -> dict[str, Any]:
+    """Ensure expected top-level notebook_map keys exist."""
+    notebook_map.setdefault("workspace_root", str(Path.home() / "SyncedProjects"))
+    notebook_map.setdefault("notebooks", {})
+    notebook_map.setdefault("sync_log", [])
+    notebook_map.setdefault("config", {})
+    return notebook_map
+
+
+def ensure_repo_data(
+    notebook_map: dict[str, Any],
+    repo_key: str,
+) -> dict[str, Any]:
+    """Get or create per-repo notebook map data."""
+    ensure_notebook_map_defaults(notebook_map)
+    notebooks = notebook_map.setdefault("notebooks", {})
+    repo_data = notebooks.setdefault(repo_key, {})
+    return repo_data
+
+
+def get_orphan_ledger(
+    notebook_map: dict[str, Any],
+    repo_key: str,
+    create: bool = False,
+) -> dict[str, Any]:
+    """
+    Return orphan ledger for a repo.
+
+    Ledger format:
+        orphan_ledger:
+          <source_id>:
+            retries: <int>
+            first_seen_at: <iso timestamp>
+            last_attempt_at: <iso timestamp>
+            last_error: <str>
+            disabled: <bool>
+    """
+    notebooks = notebook_map.get("notebooks", {})
+    repo_data = notebooks.get(repo_key, {})
+    ledger = repo_data.get(ORPHAN_LEDGER_KEY)
+    if isinstance(ledger, dict):
+        return ledger
+
+    if not create:
+        return {}
+
+    repo_data = ensure_repo_data(notebook_map, repo_key)
+    repo_data[ORPHAN_LEDGER_KEY] = {}
+    return repo_data[ORPHAN_LEDGER_KEY]
+
+
+def add_orphan_source(
+    notebook_map: dict[str, Any],
+    repo_key: str,
+    source_id: str,
+    error: str | None = None,
+) -> None:
+    """Add source ID to orphan ledger if it is not already tracked."""
+    if not source_id:
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    ledger = get_orphan_ledger(notebook_map, repo_key, create=True)
+    current = ledger.get(source_id, {})
+    retries = current.get("retries")
+    if not isinstance(retries, int):
+        retries = 0
+
+    updated = {
+        "retries": retries,
+        "first_seen_at": current.get("first_seen_at") or now,
+        "last_attempt_at": now,
+        "disabled": bool(current.get("disabled", False)),
+    }
+    if error:
+        updated["last_error"] = error
+    elif "last_error" in current:
+        updated["last_error"] = current["last_error"]
+
+    ledger[source_id] = updated
+
+
+def remove_orphan_source(
+    notebook_map: dict[str, Any],
+    repo_key: str,
+    source_id: str,
+) -> None:
+    """Remove a source ID from orphan ledger if present."""
+    ledger = get_orphan_ledger(notebook_map, repo_key, create=False)
+    if source_id in ledger:
+        del ledger[source_id]
+
+
+def record_orphan_failure(
+    notebook_map: dict[str, Any],
+    repo_key: str,
+    source_id: str,
+    error: str | None = None,
+    max_failures: int = MAX_ORPHAN_FAILURES,
+) -> int:
+    """Increment orphan retry counter and return new retry count."""
+    now = datetime.now(timezone.utc).isoformat()
+    ledger = get_orphan_ledger(notebook_map, repo_key, create=True)
+    current = ledger.get(source_id, {})
+    retries = current.get("retries")
+    if not isinstance(retries, int):
+        retries = 0
+    retries += 1
+
+    updated = {
+        "retries": retries,
+        "first_seen_at": current.get("first_seen_at") or now,
+        "last_attempt_at": now,
+        "disabled": retries >= max_failures,
+    }
+    if error:
+        updated["last_error"] = error
+    elif "last_error" in current:
+        updated["last_error"] = current["last_error"]
+
+    ledger[source_id] = updated
+    return retries
 
 
 def load_manifest(manifest_path: Optional[Path] = None) -> dict[str, Any]:
@@ -40,7 +167,7 @@ def load_notebook_map(map_path: Optional[Path] = None) -> dict[str, Any]:
         with open(path, "r") as f:
             loaded = yaml.safe_load(f) or {}
         if isinstance(loaded, dict):
-            return loaded
+            return ensure_notebook_map_defaults(loaded)
         return _default_notebook_map()
 
     # Bootstrap from packaged template if available, otherwise use defaults.
@@ -51,6 +178,7 @@ def load_notebook_map(map_path: Optional[Path] = None) -> dict[str, Any]:
     else:
         initial = _default_notebook_map()
 
+    initial = ensure_notebook_map_defaults(initial)
     save_notebook_map(initial, path)
     return initial
 

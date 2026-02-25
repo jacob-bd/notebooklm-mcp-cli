@@ -337,14 +337,26 @@ The `notebooklm-sync` command provides deterministic document syncing with recei
 
 - **Idempotence**: Uses SHA256 hashes to skip unchanged files
 - **Tier 3 auto-discovery**: Finds README.md, CLAUDE.md, docs/*.md automatically
+- **Batch refresh mode**: Refresh all mapped repos sequentially with per-repo isolation
+- **Orphan cleanup**: Retries failed source deletes and tracks unresolved source IDs for next-run cleanup
+- **Conditional artifacts**: Regenerates artifacts when thresholds/major-version triggers are met
 - **Sync receipts**: JSON audit trail in `~/.config/notebooklm-mcp/sync_receipts/`
-- **Audio generation**: Optional podcast creation after sync
+- **Nightly scheduling**: Launchd-ready plist + install/uninstall scripts
 
 ### Usage Examples
 
 ```bash
 # List existing notebooks
 notebooklm-sync --list
+
+# Batch refresh all mapped repos
+notebooklm-sync --all --apply
+
+# Batch refresh only changed kitted repos
+notebooklm-sync --all --apply --changed-only --tier kitted
+
+# Force artifact regeneration in batch mode
+notebooklm-sync --all --apply --force-artifacts
 
 # Sync Tier 3 docs from a repo (auto-discovers docs)
 notebooklm-sync --repo C012_round-table --tier3
@@ -368,6 +380,17 @@ notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the arc
 |------|---------|
 | `~/.config/notebooklm-mcp/notebook_map.yaml` | Repo-to-notebook mappings |
 | `~/.config/notebooklm-mcp/sync_receipts/` | JSON audit trail for each sync |
+| `~/.config/notebooklm-mcp/refresh.log` | Batch refresh append-only run log |
+
+### Nightly Schedule (macOS launchd)
+
+```bash
+# Install nightly 2 AM refresh schedule
+make install-schedule
+
+# Remove the schedule
+make uninstall-schedule
+```
 
 ## Authentication Lifecycle
 

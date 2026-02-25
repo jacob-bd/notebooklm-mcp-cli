@@ -18,6 +18,7 @@ from notebooklm_mcp.doc_refresh import (
     resolve_tier3_root,
 )
 from notebooklm_mcp.doc_refresh.artifact_refresh import _all_artifacts_complete
+from notebooklm_mcp.doc_refresh.artifact_refresh import ArtifactType, parse_artifact_list
 from notebooklm_mcp.doc_refresh.models import DocItem, HashComparison
 from notebooklm_mcp.doc_refresh.notebook_sync import SyncAction, SyncPlan, apply_sync_plan
 from notebooklm_mcp.doc_refresh import runner as doc_refresh_runner
@@ -262,6 +263,143 @@ class TestSyncSafety:
         assert result.sources_updated == 1
         assert len(result.errors) == 0
         assert result.warnings
+
+    def test_apply_sync_plan_retries_delete_before_success(self, tmp_path: Path):
+        """Replacement cleanup should retry delete with backoff before succeeding."""
+
+        class FakeClient:
+            def __init__(self):
+                self.delete_attempts = 0
+
+            def add_text_source(self, notebook_id: str, text: str, title: str):
+                return {"id": "new-source"}
+
+            def delete_source(self, source_id: str):
+                self.delete_attempts += 1
+                return self.delete_attempts >= 3
+
+        (tmp_path / "README.md").write_text("# test")
+        plan = SyncPlan(
+            repo_key="C999_test",
+            notebook_id="nb-1",
+            notebook_exists=True,
+            actions=[
+                SyncAction(
+                    action="update",
+                    doc_path=Path("README.md"),
+                    reason="Changed",
+                    source_id="old-source",
+                    content_hash="abc123",
+                )
+            ],
+        )
+
+        client = FakeClient()
+        result = apply_sync_plan(
+            client,
+            plan,
+            tmp_path,
+            delete_retry_attempts=3,
+            delete_retry_base_seconds=0,
+            sleep_fn=lambda _: None,
+        )
+
+        assert result.success is True
+        assert result.sources_updated == 1
+        assert client.delete_attempts == 3
+        assert result.delete_retry_attempts == 2
+        assert result.orphaned_source_ids == []
+
+    def test_apply_sync_plan_tracks_orphan_after_retry_exhaustion(self, tmp_path: Path):
+        """If delete retries are exhausted, old source ID should be tracked as orphan."""
+
+        class FakeClient:
+            def add_text_source(self, notebook_id: str, text: str, title: str):
+                return {"id": "new-source"}
+
+            def delete_source(self, source_id: str):
+                return False
+
+        (tmp_path / "README.md").write_text("# test")
+        plan = SyncPlan(
+            repo_key="C999_test",
+            notebook_id="nb-1",
+            notebook_exists=True,
+            actions=[
+                SyncAction(
+                    action="update",
+                    doc_path=Path("README.md"),
+                    reason="Changed",
+                    source_id="old-source",
+                    content_hash="abc123",
+                )
+            ],
+        )
+
+        result = apply_sync_plan(
+            FakeClient(),
+            plan,
+            tmp_path,
+            delete_retry_attempts=3,
+            delete_retry_base_seconds=0,
+            sleep_fn=lambda _: None,
+        )
+
+        assert result.success is True
+        assert result.sources_updated == 1
+        assert result.delete_retry_attempts == 2
+        assert result.orphaned_source_ids == ["old-source"]
+        assert result.warnings
+
+
+class TestOrphanSweep:
+    """Tests for orphan ledger sweep behavior."""
+
+    def test_sweep_orphaned_sources_updates_retry_state(self):
+        """Sweep should remove cleaned orphans and disable persistent failures."""
+
+        class FakeClient:
+            def delete_source(self, source_id: str):
+                return source_id == "source-ok"
+
+        notebook_map = {
+            "notebooks": {
+                "C999_test": {
+                    "orphan_ledger": {
+                        "source-ok": {"retries": 1, "disabled": False},
+                        "source-stuck": {"retries": 4, "disabled": False},
+                    }
+                }
+            }
+        }
+
+        stats = doc_refresh_runner._sweep_orphaned_sources(
+            client=FakeClient(),
+            notebook_map=notebook_map,
+            repo_key="C999_test",
+            verbose=False,
+        )
+
+        ledger = notebook_map["notebooks"]["C999_test"]["orphan_ledger"]
+        assert "source-ok" not in ledger
+        assert ledger["source-stuck"]["retries"] == 5
+        assert ledger["source-stuck"]["disabled"] is True
+        assert stats["attempted"] == 2
+        assert stats["cleaned"] == 1
+        assert stats["failed"] == 1
+
+
+class TestArtifactDefaults:
+    """Tests for PRD artifact default behavior."""
+
+    def test_parse_artifact_list_defaults_to_standard_triplet(self):
+        """Default artifacts should match PRD standard set."""
+        parsed = parse_artifact_list(None)
+        assert parsed == [
+            ArtifactType.AUDIO_OVERVIEW,
+            ArtifactType.BRIEFING_DOC,
+            ArtifactType.STUDY_GUIDE,
+        ]
 
 
 class TestMajorVersionDetection:

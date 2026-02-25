@@ -1,6 +1,6 @@
 # PRD-NR01: Nightly Notebook Refresh
 
-**Status:** Draft
+**Status:** Implemented (2026-02-25, pending soak validation)
 **Author:** Jeremy / Atlas
 **Created:** 2026-02-25
 **Repo:** C021_notebooklm-mcp
@@ -186,11 +186,11 @@ After each batch run, produce:
 
 ## Success Criteria
 
-- [ ] `notebooklm-sync --all --apply` refreshes all mapped repos end-to-end
-- [ ] Zero orphaned duplicate sources after 3 consecutive nightly runs
-- [ ] Artifacts regenerated automatically when content delta exceeds threshold
-- [ ] Nightly schedule runs unattended for 7 days without manual intervention
-- [ ] Auth failures logged but don't block subsequent runs or repos
+- [x] `notebooklm-sync --all --apply` refreshes all mapped repos end-to-end
+- [ ] Zero orphaned duplicate sources after 3 consecutive nightly runs (pending soak)
+- [x] Artifacts regenerated automatically when content delta exceeds threshold
+- [ ] Nightly schedule runs unattended for 7 days without manual intervention (pending soak)
+- [x] Auth failures logged but don't block subsequent runs or repos
 
 ## Open Questions
 

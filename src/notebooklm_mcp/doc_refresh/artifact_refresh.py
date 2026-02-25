@@ -1,14 +1,18 @@
 """
 NotebookLM artifact refresh for doc-refresh.
 
-Handles regeneration of Standard 7 artifacts when docs change:
-- Mind Map
+Handles regeneration of notebook artifacts when docs change.
+
+Default artifact set:
+- Audio Overview
 - Briefing Doc
 - Study Guide
-- Audio Overview
+
+Optional:
 - Infographic
 - Flashcards
 - Quiz
+- Mind Map
 
 Triggers: content delta > threshold, major version bump, or --force
 """
@@ -73,7 +77,22 @@ ARTIFACT_METADATA: dict[ArtifactType, dict[str, Any]] = {
     },
 }
 
-# Standard 7 - the default set of artifacts
+# PRD standard defaults: audio + briefing + study guide.
+STANDARD_ARTIFACTS = [
+    ArtifactType.AUDIO_OVERVIEW,
+    ArtifactType.BRIEFING_DOC,
+    ArtifactType.STUDY_GUIDE,
+]
+
+# Optional artifacts that can be enabled per repo or via CLI flags.
+OPTIONAL_ARTIFACTS = [
+    ArtifactType.INFOGRAPHIC,
+    ArtifactType.FLASHCARDS,
+    ArtifactType.QUIZ,
+    ArtifactType.MIND_MAP,
+]
+
+# Backward-compatible alias retained for existing imports.
 STANDARD_7 = list(ArtifactType)
 
 # Default regeneration threshold (15%)
@@ -125,6 +144,7 @@ class ArtifactResult:
     artifacts_created: int = 0
     artifacts_failed: int = 0
     errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     created_artifacts: dict[str, dict] = field(default_factory=dict)  # type -> status info
 
 
@@ -139,13 +159,15 @@ def parse_artifact_list(artifact_str: Optional[str]) -> list[ArtifactType]:
         List of ArtifactType to create
     """
     if not artifact_str:
-        return STANDARD_7.copy()
+        return STANDARD_ARTIFACTS.copy()
 
     result = []
     for name in artifact_str.split(","):
         name = name.strip().lower()
         # Support various aliases
         aliases = {
+            "all": None,
+            "standard": None,
             "audio": ArtifactType.AUDIO_OVERVIEW,
             "audio_overview": ArtifactType.AUDIO_OVERVIEW,
             "mind_map": ArtifactType.MIND_MAP,
@@ -159,9 +181,15 @@ def parse_artifact_list(artifact_str: Optional[str]) -> list[ArtifactType]:
             "quiz": ArtifactType.QUIZ,
         }
         if name in aliases:
-            result.append(aliases[name])
+            aliased = aliases[name]
+            if aliased is None and name == "all":
+                return STANDARD_7.copy()
+            if aliased is None and name == "standard":
+                return STANDARD_ARTIFACTS.copy()
+            if aliased is not None:
+                result.append(aliased)
 
-    return result if result else STANDARD_7.copy()
+    return result if result else STANDARD_ARTIFACTS.copy()
 
 
 def compute_artifact_plan(
@@ -214,7 +242,7 @@ def compute_artifact_plan(
         change_delta=delta,
     )
 
-    artifacts_to_check = artifact_subset or STANDARD_7
+    artifacts_to_check = artifact_subset or STANDARD_ARTIFACTS
     for artifact_type in artifacts_to_check:
         if triggered:
             plan.actions.append(
@@ -297,6 +325,16 @@ def apply_artifact_plan(
         metadata = ARTIFACT_METADATA[artifact_type]
         tool_name = metadata["mcp_tool"]
         params = metadata["default_params"].copy()
+
+        # Best-effort cleanup: remove previous artifact version before creating a new one.
+        deleted_count, cleanup_warnings = cleanup_previous_artifacts(
+            client=client,
+            notebook_id=plan.notebook_id,
+            artifact_type=artifact_type,
+        )
+        result.warnings.extend(cleanup_warnings)
+        if verbose and deleted_count:
+            print(f"  Removed {deleted_count} previous {metadata['display_name']} artifact(s)")
 
         if verbose:
             print(f"  Creating {metadata['display_name']}...")
@@ -471,6 +509,70 @@ def _update_artifact_statuses(status: Any, created: dict[str, dict]) -> None:
             info["status"] = status_by_id[artifact_id]
 
 
+def cleanup_previous_artifacts(
+    client: Any,
+    notebook_id: str,
+    artifact_type: ArtifactType,
+) -> tuple[int, list[str]]:
+    """Delete previous artifact versions for the same artifact type."""
+    warnings: list[str] = []
+    deleted = 0
+
+    # Mind maps are currently listed separately and there is no delete endpoint in api_client.
+    if artifact_type == ArtifactType.MIND_MAP:
+        return deleted, warnings
+
+    try:
+        existing = client.poll_studio_status(notebook_id)
+    except Exception as e:
+        return deleted, [f"Could not list prior artifacts for cleanup: {e}"]
+
+    for artifact in existing if isinstance(existing, list) else []:
+        if not isinstance(artifact, dict):
+            continue
+
+        if not _artifact_matches_type(artifact, artifact_type):
+            continue
+
+        artifact_id = artifact.get("artifact_id")
+        if not isinstance(artifact_id, str) or not artifact_id:
+            continue
+
+        try:
+            if client.delete_studio_artifact(artifact_id):
+                deleted += 1
+            else:
+                warnings.append(
+                    f"Failed to delete prior {artifact_type.value} artifact {artifact_id}"
+                )
+        except Exception as e:
+            warnings.append(
+                f"Failed to delete prior {artifact_type.value} artifact {artifact_id}: {e}"
+            )
+
+    return deleted, warnings
+
+
+def _artifact_matches_type(artifact: dict[str, Any], artifact_type: ArtifactType) -> bool:
+    """Best-effort match of studio_status artifacts to requested artifact type."""
+    raw_type = str(artifact.get("type", "")).lower()
+    title = str(artifact.get("title", "")).lower()
+
+    if artifact_type == ArtifactType.AUDIO_OVERVIEW:
+        return raw_type == "audio"
+    if artifact_type == ArtifactType.INFOGRAPHIC:
+        return raw_type == "infographic"
+    if artifact_type == ArtifactType.BRIEFING_DOC:
+        return raw_type == "report" and "briefing" in title
+    if artifact_type == ArtifactType.STUDY_GUIDE:
+        return raw_type == "report" and "study guide" in title
+    if artifact_type == ArtifactType.FLASHCARDS:
+        return raw_type == "flashcards" and "quiz" not in title
+    if artifact_type == ArtifactType.QUIZ:
+        return raw_type in ("quiz", "flashcards") and "quiz" in title
+    return False
+
+
 def format_artifact_plan(plan: ArtifactPlan) -> str:
     """Format an artifact plan as human-readable text."""
     lines: list[str] = []
@@ -523,5 +625,11 @@ def format_artifact_result(result: ArtifactResult) -> str:
         lines.append("## Errors")
         for err in result.errors:
             lines.append(f"- {err}")
+
+    if result.warnings:
+        lines.append("")
+        lines.append("## Warnings")
+        for warning in result.warnings:
+            lines.append(f"- {warning}")
 
     return "\n".join(lines)
