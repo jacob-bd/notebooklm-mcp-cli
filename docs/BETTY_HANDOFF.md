@@ -106,7 +106,7 @@ We built a "Ralph Loop" that keeps documentation and NotebookLM notebooks synchr
 4. **Regenerates** artifacts when content changes significantly
 
 ### The Notebook Map
-All synced repos are tracked in `notebook_map.yaml`:
+All synced repos are tracked in `~/.config/notebooklm-mcp/notebook_map.yaml`:
 - Doc hashes (detect when content changes)
 - Source IDs (map docs to NotebookLM sources)
 - Artifact IDs (mind maps, study guides, etc.)

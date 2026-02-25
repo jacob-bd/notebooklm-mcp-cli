@@ -31,6 +31,7 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
 ]
 
 [project.scripts]
@@ -38,6 +39,7 @@ notebooklm-mcp = "notebooklm_mcp.server:main"
 notebooklm-mcp-auth = "notebooklm_mcp.auth_cli:main"
 notebooklm-sync = "notebooklm_mcp.sync_cli:main"
 generate-project-primer = "notebooklm_mcp.primer_gen.cli:main"
+doc-refresh = "notebooklm_mcp.doc_refresh.runner:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/notebooklm_mcp"]

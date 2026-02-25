@@ -17,6 +17,10 @@ from notebooklm_mcp.doc_refresh import (
     load_manifest,
     resolve_tier3_root,
 )
+from notebooklm_mcp.doc_refresh.artifact_refresh import _all_artifacts_complete
+from notebooklm_mcp.doc_refresh.models import DocItem, HashComparison
+from notebooklm_mcp.doc_refresh.notebook_sync import SyncAction, SyncPlan, apply_sync_plan
+from notebooklm_mcp.doc_refresh import runner as doc_refresh_runner
 from notebooklm_mcp.doc_refresh.manifest import _extract_short_name
 
 
@@ -165,3 +169,130 @@ Some content.
         assert is_major_version_bump(None, "2.0.0") is False
         assert is_major_version_bump("1.0.0", None) is False
         assert is_major_version_bump(None, None) is False
+
+
+class TestArtifactPolling:
+    """Tests for artifact polling completion checks."""
+
+    def test_all_artifacts_complete_requires_matching_ids(self):
+        """Completion only succeeds when all pending artifact IDs are completed."""
+        status = [
+            {"artifact_id": "a1", "status": "completed"},
+            {"artifact_id": "a2", "status": "in_progress"},
+        ]
+        assert _all_artifacts_complete(status, {"a1"}) is True
+        assert _all_artifacts_complete(status, {"a1", "a2"}) is False
+
+    def test_all_artifacts_complete_with_no_pending_ids(self):
+        """No pending artifact IDs means polling is already complete."""
+        assert _all_artifacts_complete([], set()) is True
+
+
+class TestSyncSafety:
+    """Tests for sync update safety semantics."""
+
+    def test_apply_sync_plan_updates_add_before_delete(self, tmp_path: Path):
+        """Update flow should add replacement content before deleting old source."""
+
+        class FakeClient:
+            def __init__(self):
+                self.calls = []
+
+            def add_text_source(self, notebook_id: str, text: str, title: str):
+                self.calls.append(("add", notebook_id, title))
+                return {"id": "new-source"}
+
+            def delete_source(self, source_id: str):
+                self.calls.append(("delete", source_id))
+                return True
+
+        (tmp_path / "README.md").write_text("# test")
+        plan = SyncPlan(
+            repo_key="C999_test",
+            notebook_id="nb-1",
+            notebook_exists=True,
+            actions=[
+                SyncAction(
+                    action="update",
+                    doc_path=Path("README.md"),
+                    reason="Changed",
+                    source_id="old-source",
+                    content_hash="abc123",
+                )
+            ],
+        )
+
+        client = FakeClient()
+        result = apply_sync_plan(client, plan, tmp_path)
+
+        assert result.success is True
+        assert result.sources_updated == 1
+        assert client.calls[0][0] == "add"
+        assert client.calls[1][0] == "delete"
+
+    def test_apply_sync_plan_keeps_new_source_when_old_delete_fails(self, tmp_path: Path):
+        """Failed cleanup of old source should not mark update as failed."""
+
+        class FakeClient:
+            def add_text_source(self, notebook_id: str, text: str, title: str):
+                return {"id": "new-source"}
+
+            def delete_source(self, source_id: str):
+                return False
+
+        (tmp_path / "README.md").write_text("# test")
+        plan = SyncPlan(
+            repo_key="C999_test",
+            notebook_id="nb-1",
+            notebook_exists=True,
+            actions=[
+                SyncAction(
+                    action="update",
+                    doc_path=Path("README.md"),
+                    reason="Changed",
+                    source_id="old-source",
+                    content_hash="abc123",
+                )
+            ],
+        )
+
+        result = apply_sync_plan(FakeClient(), plan, tmp_path)
+
+        assert result.success is True
+        assert result.sources_updated == 1
+        assert len(result.errors) == 0
+        assert result.warnings
+
+
+class TestMajorVersionDetection:
+    """Tests for major version bump detection logic."""
+
+    def test_detect_major_version_bump_uses_stored_meta_version(self, monkeypatch, tmp_path: Path):
+        """Major bump detection compares stored meta version to current META.yaml version."""
+        (tmp_path / "META.yaml").write_text("version: 2.0.0\n")
+
+        comparison = HashComparison(
+            total_docs=1,
+            changed_docs=[
+                DocItem(
+                    path=Path("META.yaml"),
+                    tier=1,
+                    purpose="metadata",
+                    exists=True,
+                    required=True,
+                    content_hash="newhash",
+                    stored_hash="oldhash",
+                    is_changed=True,
+                )
+            ],
+            unchanged_docs=[],
+            new_docs=[],
+        )
+
+        monkeypatch.setattr(
+            doc_refresh_runner,
+            "load_notebook_map",
+            lambda: {"notebooks": {tmp_path.name: {"meta_version": "1.5.0"}}},
+        )
+
+        assert doc_refresh_runner._detect_major_version_bump(tmp_path, comparison, verbose=False) is True

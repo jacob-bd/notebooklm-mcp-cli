@@ -1767,10 +1767,11 @@ def save_auth_tokens(
 
         # Parse cookie string to dict
         all_cookies = {}
-        for part in cookies.split("; "):
+        for part in cookies.split(";"):
+            part = part.strip()
             if "=" in part:
                 key, value = part.split("=", 1)
-                all_cookies[key] = value
+                all_cookies[key.strip()] = value.strip()
 
         # Validate required cookies
         required = ["SID", "HSID", "SSID", "APISID", "SAPISID"]

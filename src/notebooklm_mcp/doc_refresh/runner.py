@@ -23,7 +23,7 @@ from .artifact_refresh import (
 )
 from .discover import discover_repo
 from .hashing import compare_hashes, compute_all_hashes
-from .manifest import load_manifest, load_notebook_map, DEFAULT_NOTEBOOK_MAP_PATH
+from .manifest import load_manifest, load_notebook_map, save_notebook_map
 from .models import HashComparison, ValidationReport
 from .notebook_sync import (
     SyncPlan,
@@ -211,7 +211,7 @@ def run_sync(
 
             # Update notebook_map.yaml with new state
             if sync_result.success or sync_result.doc_states:
-                _update_notebook_map(repo_key, notebook_id, sync_result, verbose)
+                _update_notebook_map(repo_key, notebook_id, sync_result, repo_path, verbose)
 
     return report, comparison, plan, sync_result
 
@@ -220,6 +220,7 @@ def _update_notebook_map(
     repo_key: str,
     notebook_id: str,
     sync_result: SyncResult,
+    repo_path: Path,
     verbose: bool = False,
 ) -> None:
     """Update notebook_map.yaml with sync results."""
@@ -234,6 +235,9 @@ def _update_notebook_map(
 
         repo_data = notebook_map["notebooks"][repo_key]
         repo_data["notebook_id"] = notebook_id
+        current_version = _read_repo_version(repo_path)
+        if current_version:
+            repo_data["meta_version"] = current_version
 
         # Update docs with new state
         if "docs" not in repo_data:
@@ -243,8 +247,7 @@ def _update_notebook_map(
             repo_data["docs"][path] = state
 
         # Write back
-        with open(DEFAULT_NOTEBOOK_MAP_PATH, "w") as f:
-            yaml.dump(notebook_map, f, default_flow_style=False, sort_keys=False)
+        save_notebook_map(notebook_map)
 
         if verbose:
             print(f"    Updated notebook_map.yaml with {len(sync_result.doc_states)} doc states")
@@ -359,31 +362,49 @@ def _detect_major_version_bump(
     if not meta_changed:
         return False
 
-    # Read current META.yaml
+    current_version = _read_repo_version(repo_path)
+    if not current_version:
+        return False
+
+    stored_version: str | None = None
+    try:
+        notebook_map = load_notebook_map()
+        repo_data = notebook_map.get("notebooks", {}).get(repo_path.name, {})
+        raw_stored = repo_data.get("meta_version")
+        if isinstance(raw_stored, str) and raw_stored.strip():
+            stored_version = raw_stored.strip()
+    except Exception:
+        stored_version = None
+
+    if verbose:
+        print(f"    META.yaml version: {current_version}")
+        print(f"    Stored meta version: {stored_version or 'unknown'}")
+
+    if not stored_version:
+        return False
+
+    return is_major_version_bump(stored_version, current_version)
+
+
+def _read_repo_version(repo_path: Path) -> Optional[str]:
+    """Read the version value from META.yaml if present."""
     meta_path = repo_path / "META.yaml"
     if not meta_path.exists():
-        return False
+        return None
 
     try:
         with open(meta_path, "r") as f:
-            meta = yaml.safe_load(f)
-
-        current_version = meta.get("version")
-        # For now, we don't have stored version easily accessible
-        # This would need to be enhanced to compare against stored version
-        # For Round 3, we'll consider any META.yaml change with version field
-        # as potentially major - the is_major_version_bump function compares two versions
-
-        if verbose and current_version:
-            print(f"    META.yaml version: {current_version}")
-
-        # Since we don't have the old version stored easily, return False
-        # A more complete implementation would read the old content hash
-        # and compare versions
-        return False
-
+            meta = yaml.safe_load(f) or {}
     except Exception:
-        return False
+        return None
+
+    if not isinstance(meta, dict):
+        return None
+
+    version = meta.get("version")
+    if version is None:
+        return None
+    return str(version).strip() or None
 
 
 def main(args: Optional[list[str]] = None) -> int:
