@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2026-02-26
+
+### Fixed
+- **MCP server instructions: incorrect parameter names** — The consolidated tools summary in the MCP server instructions advertised `type=` for `source_add`, `studio_create`, and `download_artifact`, but the actual tool schemas use `source_type` and `artifact_type`. AI clients reading the instructions would use wrong parameter names, causing validation errors. Also added value parameter hints for `source_add`.
+
 ## [0.3.13] - 2026-02-26
 
 ### Added
@@ -24,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Source additions bypassing Token Refresh** - Refactored `add_url_source`, `add_drive_source`, `add_text_source`, and multiple other methods in `core/sources.py` to use the unified `_call_rpc` mechanism instead of raw `client.post` requests. This ensures that adding sources now properly benefits from the automatic session/CSRF token refresh if authentication unexpectedly expires (Issue #62).
-- **Notebook operations bypassing Token Refresh** - Refactored `list_notebooks` and `delete_notebook` in `core/notebooks.py` to use `_call_rpc`, ensuring they recover from expired CSRF tokens just like other core operations. (Partial fix for PR #61).
+- **Notebook operations bypassing Token Refresh** - Refactored `list_notebooks` and `delete_notebook` in `core/notebooks.py` to use `_call_rpc`, ensuring they recover from expired CSRF tokens just like other core operations. Thanks to **@byingyang** for identifying this in PR #61.
 - **OpenClaw skill path** - Fixed incorrect installation path for OpenClaw skills (`workplace` -> `workspace`) in code and documentation. Thanks to **@maxcanada** for reporting (Issue #63).
 - **`create slides` default format** - Fixed a bug where `create slides` would error because it used an invalid format fallback. It now correctly defaults to `detailed_deck`. Added comprehensive tests for all verb defaults. (PR #64)
 

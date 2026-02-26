@@ -38,10 +38,10 @@ mcp = FastMCP(
 **Studio:** After creating audio/video/infographic/slides, poll studio_status for completion.
 
 Consolidated tools:
-- source_add(type=url|text|drive|file): Add any source type
-- studio_create(type=audio|video|...): Create any artifact type
+- source_add(source_type=url|text|drive|file, url=..., document_id=..., text=..., file_path=...): Add any source type
+- studio_create(artifact_type=audio|video|...): Create any artifact type
 - studio_revise: Revise individual slides in an existing slide deck
-- download_artifact(type=audio|video|...): Download any artifact type
+- download_artifact(artifact_type=audio|video|...): Download any artifact type
 - note_create/note_list/note_update/note_delete: Manage notes in notebooks""",
 )
 

@@ -9,9 +9,9 @@
 
 **Changes from v1:**
 - Tools consolidated: 45+ → 29 (-36%)
-- `source_add(type=...)` replaces 4 source tools
-- `studio_create(type=...)` replaces 9 creation tools
-- `download_artifact(type=...)` replaces 9 download tools
+- `source_add(source_type=...)` replaces 4 source tools
+- `studio_create(artifact_type=...)` replaces 9 creation tools
+- `download_artifact(artifact_type=...)` replaces 9 download tools
 
 **Prerequisites:**
 - MCP server installed: `uv cache clean && uv tool install --force .`
