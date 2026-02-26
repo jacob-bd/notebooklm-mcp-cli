@@ -11,6 +11,7 @@ def source_add(
     notebook_id: str,
     source_type: str,
     url: str | None = None,
+    urls: list[str] | None = None,
     text: str | None = None,
     title: str | None = None,
     file_path: str | None = None,
@@ -31,6 +32,7 @@ def source_add(
             - drive: Google Drive document
             - file: Local file upload (PDF, text, audio)
         url: URL to add (for source_type=url)
+        urls: List of URLs to add in bulk (for source_type=url, alternative to url)
         text: Text content to add (for source_type=text)
         title: Display title (for text sources)
         file_path: Local file path (for source_type=file)
@@ -41,11 +43,23 @@ def source_add(
 
     Example:
         source_add(notebook_id="abc", source_type="url", url="https://example.com")
+        source_add(notebook_id="abc", source_type="url", urls=["https://a.com", "https://b.com"])
         source_add(notebook_id="abc", source_type="url", url="https://example.com", wait=True)
         source_add(notebook_id="abc", source_type="file", file_path="/path/to/doc.pdf", wait=True)
     """
     try:
         client = get_client()
+
+        # Bulk URL add: when urls list is provided
+        if urls and source_type == "url":
+            result = sources_service.add_sources(
+                client, notebook_id,
+                [{"source_type": "url", "url": u} for u in urls],
+                wait=wait, wait_timeout=wait_timeout,
+            )
+            return {"status": "success", "ready": wait, **result}
+
+        # Single source add (existing behavior)
         result = sources_service.add_source(
             client, notebook_id, source_type,
             url=url, text=text, title=title,
@@ -131,11 +145,16 @@ def source_rename(notebook_id: str, source_id: str, new_title: str) -> dict[str,
 
 
 @logged_tool()
-def source_delete(source_id: str, confirm: bool = False) -> dict[str, Any]:
-    """Delete source permanently. IRREVERSIBLE. Requires confirm=True.
+def source_delete(
+    source_id: str | None = None,
+    source_ids: list[str] | None = None,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Delete source(s) permanently. IRREVERSIBLE. Requires confirm=True.
 
     Args:
-        source_id: Source UUID to delete
+        source_id: Source UUID to delete (single)
+        source_ids: List of source UUIDs to delete (bulk, alternative to source_id)
         confirm: Must be True after user approval
     """
     if not confirm:
@@ -147,6 +166,20 @@ def source_delete(source_id: str, confirm: bool = False) -> dict[str, Any]:
 
     try:
         client = get_client()
+
+        # Bulk delete: when source_ids list is provided
+        if source_ids:
+            sources_service.delete_sources(client, source_ids)
+            return {
+                "status": "success",
+                "message": f"{len(source_ids)} sources have been permanently deleted.",
+                "deleted_count": len(source_ids),
+            }
+
+        # Single delete (existing behavior)
+        if not source_id:
+            return {"status": "error", "error": "Either source_id or source_ids is required."}
+
         sources_service.delete_source(client, source_id)
         return {
             "status": "success",

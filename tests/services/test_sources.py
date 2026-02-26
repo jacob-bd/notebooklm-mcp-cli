@@ -7,9 +7,11 @@ from notebooklm_tools.services.sources import (
     validate_source_type,
     resolve_drive_mime_type,
     add_source,
+    add_sources,
     list_drive_sources,
     sync_drive_sources,
     delete_source,
+    delete_sources,
     describe_source,
     get_source_content,
     VALID_SOURCE_TYPES,
@@ -238,3 +240,101 @@ class TestGetSourceContent:
         mock_client.get_source_fulltext.return_value = None
         with pytest.raises(ServiceError, match="No content returned"):
             get_source_content(mock_client, "src-1")
+
+
+class TestAddSources:
+    """Test add_sources (bulk) function."""
+
+    def test_batch_url_sources(self, mock_client):
+        mock_client.add_url_sources.return_value = [
+            {"id": "s1", "title": "Example"},
+            {"id": "s2", "title": "Example Org"},
+        ]
+        result = add_sources(mock_client, "nb-1", [
+            {"source_type": "url", "url": "https://example.com"},
+            {"source_type": "url", "url": "https://example.org"},
+        ])
+        assert result["added_count"] == 2
+        assert len(result["results"]) == 2
+        assert result["results"][0]["source_id"] == "s1"
+        assert result["results"][1]["source_id"] == "s2"
+        # Should call batch method once, not individual add_url_source
+        mock_client.add_url_sources.assert_called_once()
+        mock_client.add_url_source.assert_not_called()
+
+    def test_mixed_types_batches_urls(self, mock_client):
+        """URL sources are batched; text sources fall back to individual calls."""
+        mock_client.add_url_sources.return_value = [
+            {"id": "s1", "title": "Example"},
+        ]
+        result = add_sources(mock_client, "nb-1", [
+            {"source_type": "url", "url": "https://example.com"},
+            {"source_type": "text", "text": "hello world"},
+        ])
+        assert result["added_count"] == 2
+        mock_client.add_url_sources.assert_called_once()
+        mock_client.add_text_source.assert_called_once()
+
+    def test_empty_list_raises(self, mock_client):
+        with pytest.raises(ValidationError, match="No sources provided"):
+            add_sources(mock_client, "nb-1", [])
+
+    def test_invalid_source_type_raises(self, mock_client):
+        with pytest.raises(ValidationError, match="Unknown source type"):
+            add_sources(mock_client, "nb-1", [
+                {"source_type": "podcast", "url": "https://example.com"},
+            ])
+
+    def test_url_missing_raises(self, mock_client):
+        with pytest.raises(ValidationError, match="url is required"):
+            add_sources(mock_client, "nb-1", [
+                {"source_type": "url"},
+            ])
+
+    def test_batch_no_id_raises_service_error(self, mock_client):
+        mock_client.add_url_sources.return_value = [{}]
+        with pytest.raises(ServiceError, match="no ID returned"):
+            add_sources(mock_client, "nb-1", [
+                {"source_type": "url", "url": "https://example.com"},
+            ])
+
+    def test_batch_api_error_wraps(self, mock_client):
+        mock_client.add_url_sources.side_effect = RuntimeError("boom")
+        with pytest.raises(ServiceError, match="Failed to batch-add"):
+            add_sources(mock_client, "nb-1", [
+                {"source_type": "url", "url": "https://example.com"},
+            ])
+
+    def test_wait_forwarded(self, mock_client):
+        mock_client.add_url_sources.return_value = [
+            {"id": "s1", "title": "Example"},
+        ]
+        add_sources(mock_client, "nb-1", [
+            {"source_type": "url", "url": "https://example.com"},
+        ], wait=True, wait_timeout=60)
+        mock_client.add_url_sources.assert_called_once_with(
+            "nb-1", ["https://example.com"], wait=True, wait_timeout=60,
+        )
+
+
+class TestDeleteSources:
+    """Test delete_sources (bulk) function."""
+
+    def test_batch_delete(self, mock_client):
+        mock_client.delete_sources.return_value = True
+        delete_sources(mock_client, ["s1", "s2", "s3"])
+        mock_client.delete_sources.assert_called_once_with(["s1", "s2", "s3"])
+
+    def test_empty_list_raises(self, mock_client):
+        with pytest.raises(ValidationError, match="No source IDs"):
+            delete_sources(mock_client, [])
+
+    def test_falsy_result_raises(self, mock_client):
+        mock_client.delete_sources.return_value = False
+        with pytest.raises(ServiceError, match="Bulk delete returned falsy"):
+            delete_sources(mock_client, ["s1"])
+
+    def test_api_error(self, mock_client):
+        mock_client.delete_sources.side_effect = RuntimeError("fail")
+        with pytest.raises(ServiceError, match="Failed to delete"):
+            delete_sources(mock_client, ["s1"])

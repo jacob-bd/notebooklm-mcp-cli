@@ -55,7 +55,7 @@ def list_sources(
 @app.command("add")
 def add_source(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
-    url: Optional[str] = typer.Option(None, "--url", "-u", help="URL to add (website or YouTube)"),
+    url: Optional[list[str]] = typer.Option(None, "--url", "-u", help="URL to add (repeatable for bulk)"),
     text: Optional[str] = typer.Option(None, "--text", "-t", help="Text content to add"),
     drive: Optional[str] = typer.Option(None, "--drive", "-d", help="Google Drive document ID"),
     youtube: Optional[str] = typer.Option(None, "--youtube", "-y", help="YouTube URL"),
@@ -69,13 +69,18 @@ def add_source(
 
     Examples:
         nlm source add <notebook-id> --url https://example.com
+        nlm source add <notebook-id> --url https://a.com --url https://b.com
         nlm source add <notebook-id> --url https://example.com --wait
         nlm source add <notebook-id> --file document.pdf --wait
     """
     notebook_id = get_alias_manager().resolve(notebook_id)
 
+    # Normalize url list: typer gives None or a list
+    urls = url or []
+    has_url = len(urls) > 0
+
     # Validate that exactly one source type is provided (CLI-specific UX)
-    source_count = sum(1 for x in [url, text, drive, youtube, file] if x)
+    source_count = sum(1 for x in [has_url, text, drive, youtube, file] if x)
     if source_count == 0:
         console.print("[red]Error:[/red] Please specify a source: --url, --text, --file, --drive, or --youtube")
         raise typer.Exit(1)
@@ -83,17 +88,34 @@ def add_source(
         console.print("[red]Error:[/red] Please specify only one source type at a time")
         raise typer.Exit(1)
 
-    # Map CLI flags to service source_type + params
-    if youtube:
-        # YouTube is just a URL source type
-        source_type, source_url = "url", youtube
-    elif url:
-        source_type, source_url = "url", url
-    else:
-        source_type, source_url = None, None
-
     try:
         with get_client(profile) as client:
+            # Bulk URL add: multiple --url flags
+            if has_url and len(urls) > 1:
+                if wait:
+                    console.print(f"[blue]Adding {len(urls)} URLs and waiting for processing...[/blue]")
+                else:
+                    console.print(f"[blue]Adding {len(urls)} URLs...[/blue]")
+                bulk_result = sources_service.add_sources(
+                    client, notebook_id,
+                    [{"source_type": "url", "url": u} for u in urls],
+                    wait=wait,
+                )
+                ready_msg = " (ready)" if wait else ""
+                for r in bulk_result["results"]:
+                    console.print(f"[green]✓[/green] Added source: {r['title']}{ready_msg}")
+                    console.print(f"[dim]  Source ID: {r['source_id']}[/dim]")
+                console.print(f"\n[green]✓[/green] {bulk_result['added_count']} source(s) added.")
+                return
+
+            # Single URL add (including youtube)
+            if youtube:
+                source_type, source_url = "url", youtube
+            elif has_url:
+                source_type, source_url = "url", urls[0]
+            else:
+                source_type, source_url = None, None
+
             if source_type == "url":
                 if wait:
                     console.print(f"[blue]Adding {source_url} and waiting for processing...[/blue]")
@@ -244,23 +266,40 @@ def rename_source(
 
 @app.command("delete")
 def delete_source(
-    source_id: str = typer.Argument(..., help="Source ID"),
+    source_ids: list[str] = typer.Argument(..., help="Source ID(s) to delete"),
     confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
-    """Delete a source permanently."""
-    source_id = get_alias_manager().resolve(source_id)
+    """Delete source(s) permanently.
+
+    Accepts one or more source IDs for single or bulk deletion.
+
+    Examples:
+        nlm source delete <source-id> --confirm
+        nlm source delete <id1> <id2> <id3> --confirm
+    """
+    resolved_ids = [get_alias_manager().resolve(sid) for sid in source_ids]
 
     if not confirm:
-        typer.confirm(
-            f"Are you sure you want to delete source {source_id}?",
-            abort=True,
-        )
+        if len(resolved_ids) == 1:
+            typer.confirm(
+                f"Are you sure you want to delete source {resolved_ids[0]}?",
+                abort=True,
+            )
+        else:
+            typer.confirm(
+                f"Are you sure you want to delete {len(resolved_ids)} sources?",
+                abort=True,
+            )
 
     try:
         with get_client(profile) as client:
-            sources_service.delete_source(client, source_id)
-        console.print(f"[green]✓[/green] Deleted source: {source_id}")
+            if len(resolved_ids) == 1:
+                sources_service.delete_source(client, resolved_ids[0])
+                console.print(f"[green]✓[/green] Deleted source: {resolved_ids[0]}")
+            else:
+                sources_service.delete_sources(client, resolved_ids)
+                console.print(f"[green]✓[/green] Deleted {len(resolved_ids)} sources")
     except ServiceError as e:
         console.print(f"[red]Error:[/red] {e.user_message}")
         raise typer.Exit(1)

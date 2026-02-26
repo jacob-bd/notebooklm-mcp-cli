@@ -68,6 +68,12 @@ class DriveListResult(TypedDict):
     stale_count: int
 
 
+class BulkAddResult(TypedDict):
+    """Result of bulk adding sources."""
+    results: list[AddSourceResult]
+    added_count: int
+
+
 def validate_source_type(source_type: str) -> None:
     """Validate source type. Raises ValidationError if invalid."""
     if source_type not in VALID_SOURCE_TYPES:
@@ -185,6 +191,106 @@ def _extract_result(
         "source_type": source_type,
         "source_id": result["id"],
         "title": result.get("title", fallback_title),
+    }
+
+
+def add_sources(
+    client: NotebookLMClient,
+    notebook_id: str,
+    sources: list[dict],
+    *,
+    wait: bool = False,
+    wait_timeout: float = 120.0,
+) -> BulkAddResult:
+    """Add multiple sources to a notebook.
+
+    URL sources are batched into a single API call for efficiency.
+    Non-URL sources (text, drive, file) fall back to individual calls.
+
+    Args:
+        client: Authenticated NotebookLM client
+        notebook_id: Notebook UUID
+        sources: List of source descriptors, each a dict with:
+            - source_type: str (url, text, drive, file)
+            - url: str (for url type)
+            - text: str (for text type)
+            - title: str (optional)
+            - document_id: str (for drive type)
+            - doc_type: str (for drive type, default "doc")
+            - file_path: str (for file type)
+        wait: Wait for source processing
+        wait_timeout: Max seconds to wait per source
+
+    Returns:
+        BulkAddResult with results list and added_count
+
+    Raises:
+        ValidationError: If sources list is empty or has invalid entries
+        ServiceError: If the add operation fails
+    """
+    if not sources:
+        raise ValidationError("No sources provided for bulk add.")
+
+    # Validate all source types upfront
+    for src in sources:
+        st = src.get("source_type", "")
+        validate_source_type(st)
+
+    # Separate URL sources for batching vs others for individual adds
+    url_sources = [s for s in sources if s.get("source_type") == "url"]
+    other_sources = [s for s in sources if s.get("source_type") != "url"]
+
+    results: list[AddSourceResult] = []
+
+    # Batch URL sources in a single API call
+    if url_sources:
+        urls = []
+        for src in url_sources:
+            url = src.get("url")
+            if not url:
+                raise ValidationError("url is required for source_type='url'")
+            urls.append(url)
+
+        try:
+            raw_results = client.add_url_sources(
+                notebook_id, urls, wait=wait, wait_timeout=wait_timeout,
+            )
+            for i, raw in enumerate(raw_results):
+                if raw and raw.get("id"):
+                    results.append({
+                        "source_type": "url",
+                        "source_id": raw["id"],
+                        "title": raw.get("title", urls[i]),
+                    })
+                else:
+                    raise ServiceError(
+                        f"Failed to add URL source '{urls[i]}' — no ID returned",
+                        user_message=f"Failed to add URL source: {urls[i]}",
+                    )
+        except (ValidationError, ServiceError):
+            raise
+        except Exception as e:
+            raise ServiceError(
+                f"Failed to batch-add URL sources: {e}",
+                user_message="Could not add URL sources.",
+            )
+
+    # Add non-URL sources individually
+    for src in other_sources:
+        result = add_source(
+            client, notebook_id, src["source_type"],
+            text=src.get("text"),
+            title=src.get("title"),
+            file_path=src.get("file_path"),
+            document_id=src.get("document_id"),
+            doc_type=src.get("doc_type", "doc"),
+            wait=wait, wait_timeout=wait_timeout,
+        )
+        results.append(result)
+
+    return {
+        "results": results,
+        "added_count": len(results),
     }
 
 
@@ -338,6 +444,39 @@ def delete_source(
         raise ServiceError(
             f"Failed to delete source {source_id}: {e}",
             user_message="Failed to delete source.",
+        )
+
+
+def delete_sources(
+    client: NotebookLMClient,
+    source_ids: list[str],
+) -> None:
+    """Delete multiple sources permanently in a single request.
+
+    Args:
+        client: Authenticated NotebookLM client
+        source_ids: List of source UUIDs to delete
+
+    Raises:
+        ValidationError: If source_ids is empty
+        ServiceError: If deletion fails
+    """
+    if not source_ids:
+        raise ValidationError("No source IDs provided for bulk delete.")
+
+    try:
+        result = client.delete_sources(source_ids)
+        if not result:
+            raise ServiceError(
+                f"Bulk delete returned falsy for {len(source_ids)} sources",
+                user_message="Failed to delete sources.",
+            )
+    except (ValidationError, ServiceError):
+        raise
+    except Exception as e:
+        raise ServiceError(
+            f"Failed to delete {len(source_ids)} sources: {e}",
+            user_message="Failed to delete sources.",
         )
 
 

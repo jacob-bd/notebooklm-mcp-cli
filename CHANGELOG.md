@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13] - 2026-02-26
+
+### Added
+- **Bulk Source Add** — Add multiple URL sources in a single API call, dramatically reducing round-trips and avoiding rate limits (Issue #57).
+  - Core: `add_url_sources(notebook_id, urls)` on `SourceMixin`
+  - Service: `add_sources(client, notebook_id, sources)` — batches URL sources automatically, falls back to individual calls for other types
+  - MCP: `source_add` now accepts optional `urls` list parameter for bulk URL add
+  - CLI: `nlm source add <notebook> --url https://a.com --url https://b.com` (repeatable `--url` flag)
+- **Bulk Source Delete** — Delete multiple sources in a single API call.
+  - Core: `delete_sources(source_ids)` on `SourceMixin`
+  - Service: `delete_sources(client, source_ids)` with validation
+  - MCP: `source_delete` now accepts optional `source_ids` list parameter for bulk delete
+  - CLI: `nlm source delete <id1> <id2> <id3> --confirm` (variadic arguments)
+- **12 new unit tests** for bulk add/delete service functions (total: 443 tests)
+
 ## [Unreleased / 0.3.12]
 
 ### Fixed

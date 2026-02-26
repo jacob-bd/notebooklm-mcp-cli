@@ -176,6 +176,29 @@ class SourceMixin(BaseClient):
         # Response is typically [] on success
         return result is not None
 
+    def delete_sources(self, source_ids: list[str]) -> bool:
+        """Delete multiple sources from a notebook in a single request.
+
+        WARNING: This action is IRREVERSIBLE. All specified sources will be
+        permanently deleted.
+
+        Args:
+            source_ids: List of source UUIDs to delete
+
+        Returns:
+            True on success, False on failure
+        """
+        # Batch delete params: [[["id1"], ["id2"], ...], [2]]
+        params = [[[sid] for sid in source_ids], [2]]
+
+        result = self._call_rpc(
+            self.RPC_DELETE_SOURCE,
+            params
+        )
+
+        # Response is typically [] on success
+        return result is not None
+
     def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict]:
         """Get all sources from a notebook with their type information."""
         result = self.get_notebook(notebook_id)
@@ -302,6 +325,79 @@ class SourceMixin(BaseClient):
             return self.wait_for_source_ready(notebook_id, source_result["id"], wait_timeout)
         
         return source_result
+
+    def add_url_sources(
+        self,
+        notebook_id: str,
+        urls: list[str],
+        wait: bool = False,
+        wait_timeout: float = 120.0,
+    ) -> list[dict]:
+        """Add multiple URLs as sources to a notebook in a single request.
+
+        Each URL is added as a separate source. YouTube and regular URLs
+        are handled automatically.
+
+        Args:
+            notebook_id: Target notebook ID
+            urls: List of URLs to add
+            wait: If True, block until all sources are ready
+            wait_timeout: Seconds to wait per source if wait=True (default 120)
+
+        Returns:
+            List of source dicts with id and title, or empty list on failure
+        """
+        source_data_list = []
+        for url in urls:
+            is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
+            if is_youtube:
+                source_data = [None, None, None, None, None, None, None, [url], None, None, 1]
+            else:
+                source_data = [None, None, [url], None, None, None, None, None, None, None, 1]
+            source_data_list.append(source_data)
+
+        params = [
+            source_data_list,
+            notebook_id,
+            [2],
+            [1, None, None, None, None, None, None, None, None, None, [1]]
+        ]
+        source_path = f"/notebook/{notebook_id}"
+
+        try:
+            result = self._call_rpc(
+                self.RPC_ADD_SOURCE,
+                params,
+                path=source_path,
+                timeout=SOURCE_ADD_TIMEOUT
+            )
+        except httpx.TimeoutException:
+            return [{
+                "status": "timeout",
+                "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s but may have succeeded.",
+            }]
+
+        source_results = []
+        if result and isinstance(result, list) and len(result) > 0:
+            source_list = result[0] if result else []
+            if isinstance(source_list, list):
+                for source_data in source_list:
+                    if isinstance(source_data, list) and len(source_data) > 1:
+                        source_id = source_data[0][0] if source_data[0] else None
+                        source_title = source_data[1] if len(source_data) > 1 else "Untitled"
+                        source_results.append({"id": source_id, "title": source_title})
+
+        if source_results and wait:
+            waited_results = []
+            for sr in source_results:
+                if sr.get("id"):
+                    waited = self.wait_for_source_ready(notebook_id, sr["id"], wait_timeout)
+                    waited_results.append(waited or sr)
+                else:
+                    waited_results.append(sr)
+            return waited_results
+
+        return source_results
 
 
     def add_text_source(
