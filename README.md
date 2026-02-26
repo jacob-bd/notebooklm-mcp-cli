@@ -349,7 +349,7 @@ The `notebooklm-sync` command provides deterministic document syncing with recei
 # List existing notebooks
 notebooklm-sync --list
 
-# Batch refresh all mapped repos
+# Batch refresh all mapped repos (applied mode)
 notebooklm-sync --all --apply
 
 # Batch refresh only changed kitted repos
@@ -388,9 +388,30 @@ notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the arc
 # Install nightly 2 AM refresh schedule
 make install-schedule
 
+# Preview scheduled command behavior without applying changes
+notebooklm-sync --all
+
 # Remove the schedule
 make uninstall-schedule
 ```
+
+### Scheduled Sync Operations (PRD-NR01)
+
+For recurring documentation refreshes, install the launchd job with `make install-schedule`.
+The generated job runs:
+
+```bash
+notebooklm-sync --all --apply --changed-only
+```
+
+It appends batch run output to:
+
+```bash
+~/.config/notebooklm-mcp/refresh.log
+```
+
+This is the supported baseline for unattended operation. Use `make uninstall-schedule` before archival
+or when transferring automation ownership to another machine.
 
 ## Authentication Lifecycle
 

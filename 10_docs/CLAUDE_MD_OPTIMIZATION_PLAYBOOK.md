@@ -179,13 +179,13 @@ Check `KNOWN_PROJECTS.md` or search: `ls -d *keyword*`
 ## Key Environment
 
 ```bash
-export SADB_DATA_DIR="$HOME/SADB_Data"  # Artifact storage
+export WORKSPACE_DATA_DIR="$HOME/workspace_data"  # Artifact storage
 ```
 
 **Shared locations**:
 - `_SharedData/ChromaDB/` - Vector stores
 - `_SharedData/registry/` - Project registry
-- `$SADB_DATA_DIR` - Large artifacts (kept outside sync)
+- `$WORKSPACE_DATA_DIR` - Large artifacts (kept outside sync)
 
 ## Guardrails
 
@@ -204,7 +204,7 @@ All projects should include:
 venv/
 node_modules/
 data/
-.env
+dotenv files
 ```
 
 ## When in Doubt
@@ -268,7 +268,7 @@ When applying this playbook on Windows:
 
 1. **Paths differ**:
    - Mac: `~/SyncedProjects/`
-   - PC: Likely `C:\Users\<name>\SyncedProjects\` or similar
+   - PC: `X:\SyncedProjects\`-style path
 
 2. **Update path references** in ~/CLAUDE.md for credential vault location
 

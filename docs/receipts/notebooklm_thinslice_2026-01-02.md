@@ -87,7 +87,7 @@ Re-authenticated during session via `notebooklm-mcp-auth`:
 ## Additional Work
 
 ### Registry Update (C010_standards)
-Added C021_notebooklm-mcp to `/Users/jeremybradford/SyncedProjects/C010_standards/registry/repos.yaml`
+Added C021_notebooklm-mcp to `/registry/repos.yaml`
 
 ### .gitignore Update
 Added `.bbot/` and `.claude/` to gitignore (machine-specific state)

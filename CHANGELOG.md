@@ -8,9 +8,13 @@ Version numbers in pyproject.toml (no git tags).
 ## [Unreleased]
 
 ### Added
+- Nightly documentation refresh automation (PRD-NR01) with launchd scheduling helpers in
+  `00_run/install_refresh_schedule.sh` and `00_run/uninstall_refresh_schedule.sh`, plus `Makefile` targets
+  `install-schedule`/`uninstall-schedule`.
 - CI workflow (`.github/workflows/ci.yml`) to run tests, coverage report, and package build on push/PR.
 - `doc-refresh` console script entrypoint for the doc-refresh runner.
 - Regression tests for sync safety, artifact completion polling, major-version detection, and cookie parsing.
+- `notebooklm-sync --all --apply --changed-only` mode for automated nightly updates (runs only changed repos by default).
 
 ### Changed
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
@@ -18,8 +22,10 @@ Version numbers in pyproject.toml (no git tags).
 - Security and code-tour docs updated to reflect persisted local doc-refresh state.
 
 ### Fixed
-- Replacement sync flow now adds new content before deleting old source (prevents source loss on failed add).
-- Artifact completion polling now verifies completion using the exact artifact IDs created in the run.
+- Doc sync replacement flow now uses a safer add-before-delete order to avoid source loss if replacement fails.
+- Artifact completion polling now validates completion against the artifact IDs created in the same run.
+- Cookie parsing now handles headers with optional whitespace after `;`.
+- Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
 - Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
 - `save_auth_tokens` now parses cookie headers with or without spaces after semicolons.
 

@@ -40,6 +40,10 @@ ENV/
 .coverage
 htmlcov/
 
+# Secrets/session artifacts
+.env
+cookies.txt
+
 # Misc
 .DS_Store
 *.log

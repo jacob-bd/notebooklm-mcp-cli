@@ -1,6 +1,6 @@
 # NotebookLM MCP Operations
 
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-02-26
 **Version**: 0.1.0
 
 Day-to-day operation of the NotebookLM MCP Server.
@@ -84,6 +84,47 @@ notebooklm-mcp-auth
 
 # 5. Verify: "List my NotebookLM notebooks"
 ```
+
+### Doc Sync Workflow
+
+Use the nightly doc sync pipeline to keep mapped repositories up to date:
+
+1. Confirm your map exists at:
+
+   ```bash
+   ~/.config/notebooklm-mcp/notebook_map.yaml
+   ```
+
+2. Run a dry-run first:
+
+   ```bash
+   notebooklm-sync --all
+   ```
+
+3. Run an applied pass for changed repos:
+
+   ```bash
+   notebooklm-sync --all --apply --changed-only
+   ```
+
+4. Review logs and receipts:
+
+   ```bash
+   tail -f ~/.config/notebooklm-mcp/refresh.log
+   ls ~/.config/notebooklm-mcp/sync_receipts/
+   ```
+
+### Scheduled Doc Sync (Optional)
+
+```bash
+# Install nightly 2 AM run
+make install-schedule
+
+# Remove recurring run
+make uninstall-schedule
+```
+
+The scheduled job executes `notebooklm-sync --all --apply --changed-only`.
 
 ### Common Operations
 
@@ -223,6 +264,9 @@ This MCP provides **31 tools** - significant context consumption.
 |-----|----------|---------|
 | Auth tokens | `~/.notebooklm-mcp/auth.json` | Cached credentials |
 | Chrome profile | `~/.notebooklm-mcp/chrome-profile/` | Persistent login |
+| Sync map | `~/.config/notebooklm-mcp/notebook_map.yaml` | Repo-to-notebook mapping |
+| Sync receipts | `~/.config/notebooklm-mcp/sync_receipts/` | JSON batch and per-run receipts |
+| Sync log | `~/.config/notebooklm-mcp/refresh.log` | Nightly/batch refresh log |
 | MCP logs | AI tool's log output | Debug MCP issues |
 
 ## Upgrading

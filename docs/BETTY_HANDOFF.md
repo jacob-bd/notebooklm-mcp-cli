@@ -214,8 +214,8 @@ Upload these primers to LLM Projects for project-specific context.
 
 **MCP Server:** jacob-bd/notebooklm-mcp (GitHub)
 **Local Path:**
-- Mac: `/Users/jeremybradford/SyncedProjects/C021_notebooklm-mcp`
-- PC: `C:\Users\Jeremy\SyncedProjects\C021_notebooklm-mcp`
+- Mac: `<repo-local-path>`
+- PC: `<pc-repo-local-path>`
 
 **Authentication:** Cookie-based (simplified!)
 - Only cookies needed - CSRF token and session ID auto-extracted

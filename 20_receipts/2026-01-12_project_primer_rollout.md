@@ -53,7 +53,7 @@ Repo ID:       C021_notebooklm-mcp
 Tier:          kitted (detected: complex)
 Source docs:   5
 Repo SHA:      337cf4b
-Output:        /Users/jeremybradford/SyncedProjects/C021_notebooklm-mcp/PROJECT_PRIMER.md
+Output:        /PROJECT_PRIMER.md
 Hash:          sha256:63243804daa7
 Generated:     2026-01-12T21:52:13
 

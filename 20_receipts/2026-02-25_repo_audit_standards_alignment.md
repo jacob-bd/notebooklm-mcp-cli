@@ -27,11 +27,11 @@ PRD: PRD-T11_pre-push-gate-policy
 
 ## Evidence / Commands
 1) Repository contract check:
-`python3 /Users/jeremybradford/SyncedProjects/C010_standards/validators/check_repo_contract.py --repo-root . --verbose`
+`python3 /validators/check_repo_contract.py --repo-root . --verbose`
 Result: PASS (`[OK] Repo contract validation passed`).
 
 2) Windows filename validation:
-`python3 /Users/jeremybradford/SyncedProjects/C010_standards/validators/check_windows_filename.py . --verbose`
+`python3 /validators/check_windows_filename.py . --verbose`
 Result: PASS (`[OK] Windows filename validation passed - no issues found`).
 
 3) Repository verification target:

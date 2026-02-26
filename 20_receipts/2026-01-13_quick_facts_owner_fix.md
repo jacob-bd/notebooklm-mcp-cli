@@ -66,7 +66,7 @@ uv run pytest tests/test_primer_gen.py -v
 # 7 passed in 0.03s
 
 # End-to-end verification
-generate-project-primer /Users/jeremybradford/SyncedProjects/C010_standards
+generate-project-primer 
 # Quick Facts now shows: | **Owner** | Jeremy Bradford |
 ```
 

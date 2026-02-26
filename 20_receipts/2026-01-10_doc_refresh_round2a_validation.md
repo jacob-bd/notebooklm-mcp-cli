@@ -37,7 +37,7 @@ uv run python -c "import notebooklm_mcp.doc_refresh as dr"
 
 ### C017 Validation Run
 ```
-Validating: /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+Validating: 
   Phase 1: Discovering documents...
     Tier: kitted
     Docs found: 13/14

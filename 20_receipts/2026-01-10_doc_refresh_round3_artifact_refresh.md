@@ -83,7 +83,7 @@ aliases = {
 
 ### Dry-Run (No Changes - Threshold Not Met)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --target <C017_REPO_ROOT>
 
 # Artifact Plan: C017_brain-on-tap
 
@@ -106,7 +106,7 @@ Threshold not met. Use --force to regenerate anyway.
 
 ### Dry-Run (--force Flag)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --target <C017_REPO_ROOT>
 
 # Artifact Plan: C017_brain-on-tap
 
@@ -128,7 +128,7 @@ uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --targ
 
 ### Dry-Run (--artifacts Subset)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --artifacts "audio,briefing" --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --artifacts "audio,briefing" --target <C017_REPO_ROOT>
 
 # Artifact Plan: C017_brain-on-tap
 
@@ -145,7 +145,7 @@ uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --force --arti
 
 ### Dry-Run (--skip-artifacts)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --skip-artifacts --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --skip-artifacts --target <C017_REPO_ROOT>
 
 # Sync Plan: C017_brain-on-tap
 

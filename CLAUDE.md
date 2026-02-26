@@ -130,12 +130,42 @@ notebooklm-sync --repo C012_round-table --tier3 --audio --yes
 
 # Custom focus for audio
 notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
+
+# Nightly batch mode (used by launchd)
+notebooklm-sync --all --apply --changed-only
 ```
 
 **Key features:**
 - **Idempotence**: SHA256 hashes skip unchanged files
 - **Cross-notebook safety**: Uses mapped notebook_id to prevent accidental source deletion
 - **Receipts**: JSON audit trail with timestamps, actions, and source IDs
+
+## Operations and Scheduling for Docs
+
+Use the scheduled refresh pipeline when maintaining doc hygiene across repos:
+
+- `make install-schedule` installs a macOS launchd job at 02:00 local time.
+- `make uninstall-schedule` removes that launchd job.
+- Scheduled job command:
+
+```bash
+notebooklm-sync --all --apply --changed-only
+```
+
+- Runbook logs are written to:
+
+```bash
+~/.config/notebooklm-mcp/refresh.log
+```
+
+- Manual fallback checks (before/after automation):
+  - `notebooklm-sync --list`
+  - `notebooklm-sync --repo C012_round-table --tier3 --yes`
+  - `notebooklm-sync --all --apply --changed-only`
+
+- If batch runs fail due auth or transient API issues, fix the local auth context first and rerun the same command.
+
+For CLI references and scheduled-operations details, see **[docs/CLI.md](./docs/CLI.md)**.
 
 ## MCP Tools Provided
 

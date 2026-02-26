@@ -43,7 +43,7 @@ Implemented NotebookLM source synchronization for doc-refresh, including determi
 
 ### Dry-Run Sync (C017)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --target <C017_REPO_ROOT>
 
 # Sync Plan: C017_brain-on-tap
 **Notebook ID:** c0b11752-c427-4191-ac73-5dc27b879750
@@ -64,7 +64,7 @@ uv run python -m notebooklm_mcp.doc_refresh.runner --sync-only -v --target /User
 
 ### Apply Sync (C017)
 ```
-uv run python -m notebooklm_mcp.doc_refresh.runner --apply --sync-only -v --target /Users/jeremybradford/SyncedProjects/C017_brain-on-tap
+uv run python -m notebooklm_mcp.doc_refresh.runner --apply --sync-only -v --target <C017_REPO_ROOT>
 
 # Sync Result
 **Success:** Yes

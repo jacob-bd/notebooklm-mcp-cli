@@ -2,7 +2,7 @@
 
 ## Source of Truth Priority
 - Highest for this repo: `AGENTS.md` and `CLAUDE.md`, then `README.md` and `META.yaml`.
-- For deeper standards, defer to `/Users/jeremybradford/SyncedProjects/C010_standards`.
+- For deeper standards, defer to `<C010_ROOT>/C010_standards`.
 
 ## Immediate Execution Rules
 - Keep changes focused; avoid new top-level directories without explicit approval.
