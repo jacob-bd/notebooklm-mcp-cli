@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2026-02-26
+
+### Added
+- **`nlm setup add json` — Interactive JSON config generator** — Run `nlm setup add json` to generate an MCP JSON config snippet for any tool not directly supported. Interactive wizard with numbered prompts lets you choose uvx vs regular mode, full path vs command name, and whether to include the `mcpServers` wrapper. Prints syntax-highlighted JSON and offers clipboard copy on macOS.
+
 ## [0.3.14] - 2026-02-26
 
 ### Fixed

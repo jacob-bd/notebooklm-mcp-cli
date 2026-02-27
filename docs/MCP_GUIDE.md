@@ -221,6 +221,20 @@ This MCP has **29 tools** which consume context. Best practices:
 
 ## IDE Configuration
 
+The easiest way to configure any tool is with `nlm setup`:
+
+```bash
+nlm setup add claude-code       # Claude Code
+nlm setup add claude-desktop    # Claude Desktop
+nlm setup add gemini            # Gemini CLI
+nlm setup add cursor            # Cursor
+nlm setup add windsurf          # Windsurf
+nlm setup add json              # Any other tool (interactive JSON generator)
+```
+
+<details>
+<summary>Manual configuration</summary>
+
 ### Claude Code
 ```bash
 claude mcp add --scope user notebooklm-mcp notebooklm-mcp
@@ -242,3 +256,5 @@ Add to `~/.cursor/mcp.json` or `~/.vscode/mcp.json`:
 ```bash
 gemini mcp add --scope user notebooklm-mcp notebooklm-mcp
 ```
+
+</details>

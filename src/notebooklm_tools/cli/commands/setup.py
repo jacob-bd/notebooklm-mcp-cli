@@ -18,6 +18,8 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.prompt import Confirm, Prompt
+from rich.syntax import Syntax
 from rich.table import Table
 
 console = Console()
@@ -223,7 +225,8 @@ CLIENT_REGISTRY = {
 
 def _complete_client(ctx, param, incomplete: str) -> list[str]:
     """Shell completion for client names."""
-    return [name for name in CLIENT_REGISTRY if name.startswith(incomplete)]
+    all_clients = list(CLIENT_REGISTRY.keys()) + ["json"]
+    return [name for name in all_clients if name.startswith(incomplete)]
 
 
 # =============================================================================
@@ -358,6 +361,94 @@ def _setup_antigravity() -> bool:
     return True
 
 
+def _prompt_numbered(prompt_text: str, options: list[tuple[str, str]], default: int = 1) -> str:
+    """Show a numbered prompt and return the chosen option value.
+
+    Args:
+        prompt_text: Header text for the prompt.
+        options: List of (value, label) tuples.
+        default: 1-based default choice number.
+
+    Returns:
+        The value string of the chosen option.
+    """
+    console.print(f"{prompt_text}")
+    for i, (_value, label) in enumerate(options, 1):
+        marker = " [dim](default)[/dim]" if i == default else ""
+        console.print(f"  [cyan]{i}[/cyan]) {label}{marker}")
+
+    valid = [str(i) for i in range(1, len(options) + 1)]
+    choice = Prompt.ask("Choose", choices=valid, default=str(default), show_choices=False)
+    return options[int(choice) - 1][0]
+
+
+def _setup_json() -> None:
+    """Interactive flow to generate MCP JSON config for any tool."""
+    console.print("[bold]Generate MCP JSON config[/bold]\n")
+    console.print("This generates a JSON snippet you can paste into any tool's MCP config.\n")
+
+    config_type = _prompt_numbered("Config type:", [
+        ("uvx", "uvx (no install required)"),
+        ("regular", "Regular (uses installed binary)"),
+    ])
+
+    use_full_path = False
+    if config_type == "regular":
+        path_choice = _prompt_numbered("Command format:", [
+            ("name", "Command name (notebooklm-mcp)"),
+            ("full", "Full path to binary"),
+        ])
+        use_full_path = path_choice == "full"
+
+    config_scope = _prompt_numbered("Config scope:", [
+        ("existing", "Add to existing config (server entry only)"),
+        ("new", "New config file (includes mcpServers wrapper)"),
+    ])
+
+    # Build the server entry
+    if config_type == "uvx":
+        server_entry = {
+            "command": "uvx",
+            "args": ["--from", "notebooklm-mcp-cli", "notebooklm-mcp"],
+        }
+    else:
+        if use_full_path:
+            binary_path = _find_mcp_server_path()
+            if not binary_path:
+                console.print(
+                    "[yellow]Warning:[/yellow] notebooklm-mcp not found in PATH, "
+                    "using command name instead"
+                )
+                binary_path = MCP_SERVER_CMD
+            server_entry = {"command": binary_path}
+        else:
+            server_entry = {"command": MCP_SERVER_CMD}
+
+    if config_scope == "new":
+        output = {"mcpServers": {"notebooklm-mcp": server_entry}}
+    else:
+        output = {"notebooklm-mcp": server_entry}
+
+    json_str = json.dumps(output, indent=2)
+
+    console.print()
+    console.print(Syntax(json_str, "json", theme="monokai", padding=1))
+    console.print()
+
+    if platform.system() == "Darwin":
+        if Confirm.ask("Copy to clipboard?", default=True):
+            try:
+                subprocess.run(
+                    ["pbcopy"],
+                    input=json_str.encode(),
+                    check=True,
+                    timeout=5,
+                )
+                console.print("[green]✓[/green] Copied to clipboard")
+            except (subprocess.SubprocessError, OSError):
+                console.print("[yellow]Warning:[/yellow] Could not copy to clipboard")
+
+
 # =============================================================================
 # Commands
 # =============================================================================
@@ -384,9 +475,14 @@ def setup_add(
         nlm setup add windsurf
         nlm setup add cline
         nlm setup add antigravity
+        nlm setup add json
     """
+    if client == "json":
+        _setup_json()
+        return
+
     if client not in CLIENT_REGISTRY:
-        valid = ", ".join(CLIENT_REGISTRY.keys())
+        valid = ", ".join(list(CLIENT_REGISTRY.keys()) + ["json"])
         console.print(f"[red]Error:[/red] Unknown client '{client}'")
         console.print(f"Available clients: {valid}")
         raise typer.Exit(1)

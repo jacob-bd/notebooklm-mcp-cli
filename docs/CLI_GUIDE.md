@@ -222,6 +222,7 @@ nlm setup add claude-desktop    # Write claude_desktop_config.json
 nlm setup add gemini            # Write ~/.gemini/settings.json
 nlm setup add cursor            # Write ~/.cursor/mcp.json
 nlm setup add windsurf          # Write mcp_config.json
+nlm setup add json              # Generate JSON config for any tool
 
 nlm setup remove claude-desktop # Remove MCP configuration
 nlm setup remove gemini         # Remove from Gemini CLI
@@ -229,7 +230,9 @@ nlm setup remove gemini         # Remove from Gemini CLI
 nlm setup list                  # Show all clients and config status
 ```
 
-**Supported Clients:** `claude-code`, `claude-desktop`, `gemini`, `cursor`, `windsurf`
+**Supported Clients:** `claude-code`, `claude-desktop`, `gemini`, `cursor`, `windsurf`, `cline`, `antigravity`
+
+**For unsupported tools:** Use `nlm setup add json` to interactively generate a JSON config snippet. Choose between uvx or regular mode, full path or command name, and whether to include the `mcpServers` wrapper. The result is printed and can be copied to clipboard.
 
 > **Note:** `nlm setup` configures the MCP server transport. Use `nlm skill install` to install skill/reference docs for AI tools that don't use MCP.
 

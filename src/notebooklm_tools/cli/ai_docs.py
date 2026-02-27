@@ -699,10 +699,13 @@ nlm setup add cursor                    # Add to Cursor config
 nlm setup add windsurf                  # Add to Windsurf config
 nlm setup add cline                     # Add to Cline CLI config
 nlm setup add antigravity               # Add to Antigravity config
+nlm setup add json                      # Generate JSON config for any tool (interactive)
 nlm setup remove <client>               # Remove MCP from client
 ```
 
 **Supported Clients:** claude-code, claude-desktop, gemini, cursor, windsurf, cline, antigravity, codex
+
+**For other tools:** `nlm setup add json` launches an interactive wizard — choose uvx or regular mode, full path or command name, and existing or new config. The JSON is printed with syntax highlighting and can be copied to clipboard (macOS).
 
 ---
 

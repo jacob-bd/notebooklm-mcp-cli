@@ -57,6 +57,9 @@ nlm setup add gemini
 nlm setup add cursor
 nlm setup add cline
 nlm setup add antigravity
+
+# Generate JSON config for any other tool
+nlm setup add json
 ```
 
 Then use natural language: *"Create a notebook about quantum computing and generate a podcast"*
@@ -305,6 +308,9 @@ nlm setup add gemini
 nlm setup add cursor
 nlm setup add windsurf
 
+# Generate JSON config for any other tool
+nlm setup add json
+
 # Check which tools are configured
 nlm setup list
 
@@ -357,6 +363,8 @@ For tools that use JSON config, point them to uvx:
 
 <details>
 <summary>Manual Setup (if you prefer)</summary>
+
+> **Tip:** Run `nlm setup add json` for an interactive wizard that generates the right JSON snippet for your tool.
 
 **Claude Code / Gemini CLI** support adding MCP servers via their own CLI:
 ```bash
