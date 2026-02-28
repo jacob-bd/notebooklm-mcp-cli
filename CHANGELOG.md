@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2026-02-28
+
+### Fixed
+- **Chrome profile isolation bug**: `nlm login` could reuse a Chrome instance from a different NLM profile. Implemented port-to-profile mapping to guarantee strict cross-profile isolation.
+- **Auto-retry on Google account mismatch**: When switching NLM profiles (or when multiple users log in on the same machine), Chrome can cache the wrong Google login. The builtin login provider now detects `AccountMismatchError`, automatically clears the stale Chrome user-data-dir, and relaunches Chrome for a fresh Google sign-in.
+- **`nlm login profile delete` validation**: Profile deletion was failing for broken/invalid profiles because it strictly checked for valid cookies. Now it checks if the profile directory exists, allowing deletion of empty/corrupt profiles.
+
 ## [0.3.15] - 2026-02-26
 
 ### Added

@@ -124,6 +124,8 @@ def login_callback(
     Use --check to validate existing credentials.
     Use --provider openclaw --cdp-url <url> to read auth from an existing
     OpenClaw-managed browser CDP endpoint.
+    
+    To switch active accounts, run `nlm login switch <profile>`.
     """
     from notebooklm_tools.core.auth import AuthManager
     from notebooklm_tools.core.exceptions import AccountMismatchError, NLMError
@@ -302,9 +304,70 @@ def login_callback(
         console.print(f"  Credentials saved to: {auth.profile_dir}")
 
     except AccountMismatchError as e:
-        console.print(f"\n[red]Error:[/red] {e.message}")
-        console.print(f"\n[yellow]Hint:[/yellow] {e.hint}")
-        raise typer.Exit(1)
+        if provider == "builtin" and not force:
+            # The Chrome data dir has a stale Google login from a different
+            # account.  Auto-retry: clear it and relaunch so the user can
+            # log in with the correct account.
+            console.print(
+                f"\n[yellow]⚠[/yellow]  Wrong Google account detected "
+                f"([bold]{result.get('email', '?')}[/bold] instead of "
+                f"[bold]{e.stored_email}[/bold])."
+            )
+            console.print("[dim]Clearing stale browser session and relaunching Chrome...[/dim]\n")
+
+            # Close the mismatch Chrome
+            try:
+                terminate_chrome()
+            except Exception:
+                pass
+
+            # Retry with cleared Chrome profile
+            try:
+                result = extract_cookies_via_cdp(
+                    auto_launch=True,
+                    wait_for_login=True,
+                    login_timeout=300,
+                    profile_name=profile,
+                    clear_profile=True,
+                )
+                launched_local_chrome = True
+
+                cookies = result["cookies"]
+                csrf_token = result.get("csrf_token", "")
+                session_id = result.get("session_id", "")
+                email = result.get("email", "")
+                build_label = result.get("build_label", "")
+
+                auth.save_profile(
+                    cookies=cookies,
+                    csrf_token=csrf_token,
+                    session_id=session_id,
+                    email=email,
+                    force=True,  # Allow overwrite on retry
+                    build_label=build_label,
+                )
+
+                if launched_local_chrome:
+                    console.print("[dim]Closing Chrome...[/dim]")
+                    terminate_chrome()
+
+                console.print(f"\n[green]✓[/green] Successfully authenticated!")
+                console.print(f"  Profile: {profile}")
+                console.print(f"  Provider: {provider}")
+                console.print(f"  Cookies: {len(cookies)} extracted")
+                console.print(f"  CSRF Token: {'Yes' if csrf_token else 'No (will be auto-extracted)'}")
+                if email:
+                    console.print(f"  Account: {email}")
+                console.print(f"  Credentials saved to: {auth.profile_dir}")
+            except NLMError as retry_err:
+                console.print(f"\n[red]Error on retry:[/red] {retry_err.message}")
+                if retry_err.hint:
+                    console.print(f"\n[dim]Hint: {retry_err.hint}[/dim]")
+                raise typer.Exit(1)
+        else:
+            console.print(f"\n[red]Error:[/red] {e.message}")
+            console.print(f"\n[yellow]Hint:[/yellow] {e.hint}")
+            raise typer.Exit(1)
     except NLMError as e:
         console.print(f"\n[red]Error:[/red] {e.message}")
         if e.hint:
@@ -348,7 +411,8 @@ def profile_delete(
 
     auth = AuthManager(profile)
 
-    if not auth.profile_exists():
+    # Allow deleting invalid profiles (check if name is in list_profiles)
+    if profile not in AuthManager.list_profiles():
         console.print(f"[red]Error:[/red] Profile '{profile}' not found")
         raise typer.Exit(1)
 

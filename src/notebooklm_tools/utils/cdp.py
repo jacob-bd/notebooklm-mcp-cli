@@ -33,6 +33,82 @@ CDP_DEFAULT_PORT = 9222
 CDP_PORT_RANGE = range(9222, 9232)  # Ports to scan for existing/available
 NOTEBOOKLM_URL = "https://notebooklm.google.com/"
 
+import logging as _logging
+_logger = _logging.getLogger(__name__)
+
+
+# =============================================================================
+# Port-to-Profile Mapping
+# =============================================================================
+# Tracks which CDP port belongs to which NLM profile so we never reuse
+# a Chrome instance from a different profile.
+
+def _get_port_map_file() -> Path:
+    """Get path to chrome-port-map.json."""
+    from notebooklm_tools.utils.config import get_storage_dir
+    return get_storage_dir() / "chrome-port-map.json"
+
+
+def _read_port_map() -> dict[str, dict]:
+    """Read the port map, pruning entries whose PIDs are no longer alive.
+
+    Returns:
+        Dict mapping port (as string key) to {"profile": str, "pid": int}.
+    """
+    import os
+    map_file = _get_port_map_file()
+    if not map_file.exists():
+        return {}
+
+    try:
+        data = json.loads(map_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    # Prune stale entries (dead PIDs)
+    alive: dict[str, dict] = {}
+    changed = False
+    for port_str, entry in data.items():
+        pid = entry.get("pid")
+        if pid is not None:
+            try:
+                os.kill(pid, 0)  # signal 0 = check if process exists
+                alive[port_str] = entry
+            except (OSError, ProcessLookupError):
+                changed = True  # PID is dead, skip it
+        else:
+            alive[port_str] = entry
+
+    if changed:
+        _save_port_map(alive)
+
+    return alive
+
+
+def _save_port_map(data: dict[str, dict]) -> None:
+    """Write port map to disk."""
+    map_file = _get_port_map_file()
+    try:
+        map_file.write_text(json.dumps(data, indent=2))
+    except OSError:
+        pass  # Best-effort
+
+
+def _write_port_map(port: int, profile_name: str, pid: int) -> None:
+    """Record which profile owns which port."""
+    data = _read_port_map()
+    data[str(port)] = {"profile": profile_name, "pid": pid}
+    _save_port_map(data)
+
+
+def _clear_port_map(port: int) -> None:
+    """Remove a port entry after Chrome terminates."""
+    data = _read_port_map()
+    if str(port) in data:
+        del data[str(port)]
+        _save_port_map(data)
+
+
 
 def normalize_cdp_http_url(cdp_url: str) -> str:
     """Normalize a CDP endpoint into an HTTP base URL.
@@ -123,32 +199,37 @@ def is_profile_locked(profile_name: str = "default") -> bool:
     return lock_file.exists()
 
 
-def find_existing_nlm_chrome(port_range: range = CDP_PORT_RANGE) -> tuple[int | None, str | None]:
-    """Find an existing NLM Chrome instance on any port in range.
+def find_existing_nlm_chrome(port_range: range = CDP_PORT_RANGE, profile_name: str = "default") -> tuple[int | None, str | None]:
+    """Find an existing NLM Chrome instance for a specific profile.
     
-    Scans the port range looking for a Chrome DevTools endpoint.
-    This allows reconnecting to an existing auth Chrome window.
+    Uses the port-to-profile mapping to only reconnect to Chrome instances
+    that belong to the requested profile, preventing cross-profile
+    contamination.
+    
+    Args:
+        port_range: Range of ports to scan.
+        profile_name: Only reuse Chrome instances launched for this profile.
     
     Returns:
         The port number and debugger URL if found, (None, None) otherwise
     """
     import socket
-    for port in port_range:
-        # First check if the port is in use. If `bind` succeeds, the port is unused, 
-        # meaning Chrome is NOT listening there. This avoids a 2-second timeout 
-        # on OSes that drop packets instead of actively refusing connection.
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('127.0.0.1', port))
-                # Port is available (not in use), so move to the next one
-                continue
-        except OSError:
-            # Port is in use, let's see if it's a Chrome DevTools endpoint
-            pass
+    port_map = _read_port_map()
 
+    # First, check mapped ports for the target profile (fast path)
+    for port_str, entry in port_map.items():
+        if entry.get("profile") != profile_name:
+            continue
+        port = int(port_str)
         debugger_url = get_debugger_url(port, timeout=2)
         if debugger_url:
+            _logger.debug(f"Reusing mapped Chrome on port {port} for profile '{profile_name}'")
             return port, debugger_url
+        else:
+            # Mapped but not responding — stale entry, clean it up
+            _clear_port_map(port)
+
+    # No mapped instance found for this profile
     return None, None
 
 
@@ -195,6 +276,8 @@ def launch_chrome(port: int = CDP_DEFAULT_PORT, headless: bool = False, profile_
     global _chrome_process, _chrome_port
     _chrome_process = launch_chrome_process(port, headless, profile_name)
     _chrome_port = port if _chrome_process else None
+    if _chrome_process is not None:
+        _write_port_map(port, profile_name, _chrome_process.pid)
     return _chrome_process is not None
 
 
@@ -238,6 +321,11 @@ def terminate_chrome(process: subprocess.Popen | None = None, port: int | None =
                 process.kill()
             except Exception:
                 pass
+
+    # Clean up port map
+    effective_port = port or _chrome_port
+    if effective_port:
+        _clear_port_map(effective_port)
 
     if process == _chrome_process:
         _chrome_process = None
@@ -511,7 +599,7 @@ def extract_cookies_via_cdp(
     reused_existing = False
     existing_port, debugger_url = None, None
     if not clear_profile:
-        existing_port, debugger_url = find_existing_nlm_chrome()
+        existing_port, debugger_url = find_existing_nlm_chrome(profile_name=profile_name)
         
     if existing_port:
         port = existing_port
