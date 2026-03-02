@@ -194,7 +194,10 @@ def get_chrome_path() -> str | None:
             str(Path.home() / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
             str(Path.home() / "Applications/Arc.app/Contents/MacOS/Arc"),
             str(Path.home() / "Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
+            str(Path.home() / "Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
             str(Path.home() / "Applications/Chromium.app/Contents/MacOS/Chromium"),
+            str(Path.home() / "Applications/Vivaldi.app/Contents/MacOS/Vivaldi"),
+            str(Path.home() / "Applications/Opera.app/Contents/MacOS/Opera"),
         ]
         for path in candidates:
             if Path(path).exists():
@@ -207,6 +210,7 @@ def get_chrome_path() -> str | None:
             "chromium",
             "chromium-browser",
             "brave-browser",
+            "microsoft-edge-stable",
             "microsoft-edge",
         ]
         for candidate in candidates:
@@ -220,6 +224,8 @@ def get_chrome_path() -> str | None:
             str(Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe"),
             r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
             r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            str(Path.home() / r"AppData\Local\BraveSoftware\Brave-Browser\Application\brave.exe"),
         ]
         for path in candidates:
             if Path(path).exists():
