@@ -173,66 +173,126 @@ def find_available_port(starting_from: int = 9222, max_attempts: int = 10) -> in
     )
 
 
-def get_chrome_path() -> str | None:
-    """Get the Chrome executable path for the current platform.
+# ---------------------------------------------------------------------------
+# Browser candidate tables — (display_name, path_or_executable) tuples.
+# Ordered by preference: Google Chrome first, then popular Chromium forks.
+# The display_name is used in error messages so it always stays in sync with
+# what we actually search for.
+# ---------------------------------------------------------------------------
 
-    Returns the first found Chromium-based browser, preferring Google Chrome
-    but falling back to Arc, Brave, Edge, Chromium, Vivaldi, and Opera.
+
+# macOS: absolute .app bundle paths, /Applications first then ~/Applications
+def _macos_browser_candidates() -> list[tuple[str, str]]:
+    home_apps = Path.home() / "Applications"
+    entries: list[tuple[str, str]] = [
+        ("Google Chrome", "Google Chrome.app/Contents/MacOS/Google Chrome"),
+        ("Arc", "Arc.app/Contents/MacOS/Arc"),
+        ("Brave Browser", "Brave Browser.app/Contents/MacOS/Brave Browser"),
+        ("Microsoft Edge", "Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+        ("Chromium", "Chromium.app/Contents/MacOS/Chromium"),
+        ("Vivaldi", "Vivaldi.app/Contents/MacOS/Vivaldi"),
+        ("Opera", "Opera.app/Contents/MacOS/Opera"),
+        ("Opera GX", "Opera GX.app/Contents/MacOS/Opera GX"),
+    ]
+    candidates: list[tuple[str, str]] = []
+    for name, rel in entries:
+        candidates.append((name, str(Path("/Applications") / rel)))
+        candidates.append((name, str(home_apps / rel)))
+    return candidates
+
+
+# Linux: `shutil.which`-able executable names
+_LINUX_BROWSER_CANDIDATES: list[tuple[str, str]] = [
+    ("Google Chrome", "google-chrome"),
+    ("Google Chrome", "google-chrome-stable"),
+    ("Chromium", "chromium"),
+    ("Chromium", "chromium-browser"),
+    ("Brave Browser", "brave-browser"),
+    ("Microsoft Edge", "microsoft-edge-stable"),
+    ("Microsoft Edge", "microsoft-edge"),
+    ("Vivaldi", "vivaldi-stable"),
+    ("Vivaldi", "vivaldi"),
+    ("Opera", "opera"),
+]
+
+
+# Windows: absolute paths.  User-local installs live under %LOCALAPPDATA%.
+def _windows_browser_candidates() -> list[tuple[str, str]]:
+    local = Path.home() / "AppData" / "Local"
+    roaming = Path.home() / "AppData" / "Roaming"
+    pf = Path(r"C:\Program Files")
+    pf86 = Path(r"C:\Program Files (x86)")
+    return [
+        ("Google Chrome", str(pf / r"Google\Chrome\Application\chrome.exe")),
+        ("Google Chrome", str(pf86 / r"Google\Chrome\Application\chrome.exe")),
+        ("Google Chrome", str(local / r"Google\Chrome\Application\chrome.exe")),
+        ("Microsoft Edge", str(pf86 / r"Microsoft\Edge\Application\msedge.exe")),
+        ("Microsoft Edge", str(pf / r"Microsoft\Edge\Application\msedge.exe")),
+        ("Microsoft Edge", str(local / r"Microsoft\Edge\Application\msedge.exe")),
+        ("Brave Browser", str(pf / r"BraveSoftware\Brave-Browser\Application\brave.exe")),
+        ("Brave Browser", str(local / r"BraveSoftware\Brave-Browser\Application\brave.exe")),
+        ("Vivaldi", str(local / r"Vivaldi\Application\vivaldi.exe")),
+        ("Opera", str(roaming / r"Opera Software\Opera Stable\launcher.exe")),
+        ("Opera GX", str(roaming / r"Opera Software\Opera GX Stable\launcher.exe")),
+    ]
+
+
+def get_chrome_path() -> str | None:
+    """Return the path/executable for the first available Chromium-based browser.
+
+    Search order (all platforms): Google Chrome → Arc (macOS) → Brave →
+    Microsoft Edge → Chromium → Vivaldi → Opera.
+
+    Falls back to the original hardcoded Google Chrome path for each platform
+    as a last resort so behaviour is identical to pre-refactor when no other
+    browser is found (i.e. the old single-path check).
     """
     system = platform.system()
 
     if system == "Darwin":
-        candidates = [
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            "/Applications/Arc.app/Contents/MacOS/Arc",
-            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-            "/Applications/Chromium.app/Contents/MacOS/Chromium",
-            "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi",
-            "/Applications/Opera.app/Contents/MacOS/Opera",
-            # User-installed (~/Applications)
-            str(Path.home() / "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
-            str(Path.home() / "Applications/Arc.app/Contents/MacOS/Arc"),
-            str(Path.home() / "Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
-            str(Path.home() / "Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
-            str(Path.home() / "Applications/Chromium.app/Contents/MacOS/Chromium"),
-            str(Path.home() / "Applications/Vivaldi.app/Contents/MacOS/Vivaldi"),
-            str(Path.home() / "Applications/Opera.app/Contents/MacOS/Opera"),
-        ]
-        for path in candidates:
+        for _name, path in _macos_browser_candidates():
             if Path(path).exists():
                 return path
-        return None
+        # Original fallback: the path that was hardcoded before this refactor
+        fallback = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        return fallback if Path(fallback).exists() else None
+
     elif system == "Linux":
-        candidates = [
-            "google-chrome",
-            "google-chrome-stable",
-            "chromium",
-            "chromium-browser",
-            "brave-browser",
-            "microsoft-edge-stable",
-            "microsoft-edge",
-        ]
-        for candidate in candidates:
-            if shutil.which(candidate):
-                return candidate
-        return None
-    elif system == "Windows":
-        candidates = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            str(Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe"),
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
-            str(Path.home() / r"AppData\Local\BraveSoftware\Brave-Browser\Application\brave.exe"),
-        ]
-        for path in candidates:
-            if Path(path).exists():
-                return path
+        for _name, exe in _LINUX_BROWSER_CANDIDATES:
+            if shutil.which(exe):
+                return exe
         return None
 
+    elif system == "Windows":
+        for _name, path in _windows_browser_candidates():
+            if Path(path).exists():
+                return path
+        # Original fallback
+        fallback = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+        return fallback if Path(fallback).exists() else None
+
     return None
+
+
+def get_supported_browsers() -> list[str]:
+    """Return a deduplicated, ordered list of browser display-names for the
+    current platform.  Used to build human-readable error messages that are
+    always in sync with what :func:`get_chrome_path` actually searches for.
+    """
+    system = platform.system()
+    seen: set[str] = set()
+    names: list[str] = []
+    if system == "Darwin":
+        pairs = _macos_browser_candidates()
+    elif system == "Linux":
+        pairs = _LINUX_BROWSER_CANDIDATES
+    else:
+        pairs = _windows_browser_candidates()
+    for name, _ in pairs:
+        if name not in seen:
+            seen.add(name)
+            names.append(name)
+    return names
 
 
 # Import Chrome profile directory from unified config
@@ -654,20 +714,18 @@ def extract_cookies_via_cdp(
 
     if not debugger_url and auto_launch:
         if is_profile_locked(profile_name):
-            # Profile locked but no Chrome found on known ports - stale lock?
+            # Profile locked but no browser found on known ports - stale lock?
             raise AuthenticationError(
-                message="The NLM auth profile is locked but no Chrome instance found",
-                hint=f"Close any stuck Chrome processes or delete the SingletonLock file in the {profile_name} Chrome profile.",
+                message="The NLM auth profile is locked but no browser instance was found",
+                hint=f"Close any stuck browser processes or delete the SingletonLock file in the {profile_name} Chrome profile.",
             )
 
         if not get_chrome_path():
-            system = platform.system()
-            if system == "Darwin":
-                browsers = "Google Chrome, Arc, Brave Browser, Microsoft Edge, or Chromium"
-            elif system == "Linux":
-                browsers = "Google Chrome, Chromium, Brave, or Microsoft Edge"
+            browser_names = get_supported_browsers()
+            if len(browser_names) > 1:
+                browsers = ", ".join(browser_names[:-1]) + f", or {browser_names[-1]}"
             else:
-                browsers = "Google Chrome or Microsoft Edge"
+                browsers = browser_names[0] if browser_names else "Google Chrome"
             raise AuthenticationError(
                 message="No supported browser found",
                 hint=f"Install {browsers}, or use 'nlm login --manual' to import cookies from a file.",
@@ -679,12 +737,12 @@ def extract_cookies_via_cdp(
         except RuntimeError as e:
             raise AuthenticationError(
                 message=str(e),
-                hint="Close some Chrome instances and try again.",
+                hint="Close some browser instances and try again.",
             )
 
         if not launch_chrome(port, profile_name=profile_name):
             raise AuthenticationError(
-                message="Failed to launch Chrome",
+                message="Failed to launch browser",
                 hint="Try 'nlm login --manual' to import cookies from a file.",
             )
 
@@ -692,12 +750,24 @@ def extract_cookies_via_cdp(
 
     if not debugger_url:
         raise AuthenticationError(
-            message=f"Cannot connect to Chrome on port {port}",
+            message=f"Cannot connect to browser on port {port}",
             hint="Use 'nlm login --manual' to import cookies from a file.",
         )
     result = extract_cookies_from_page(f"http://localhost:{port}", wait_for_login, login_timeout)
     result["reused_existing"] = reused_existing
     return result
+
+
+# make get_supported_browsers importable alongside get_chrome_path
+__all__ = [
+    "get_chrome_path",
+    "get_supported_browsers",
+    "extract_cookies_via_cdp",
+    "extract_cookies_via_existing_cdp",
+    "run_headless_auth",
+    "has_chrome_profile",
+    "terminate_chrome",
+]
 
 
 def extract_cookies_via_existing_cdp(
