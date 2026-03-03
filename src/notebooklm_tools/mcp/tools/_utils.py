@@ -1,9 +1,11 @@
 """MCP Tools - Shared utilities and base components."""
 
 import functools
+import inspect
 import json
 import logging
 import os
+import threading
 from typing import Any
 
 from notebooklm_tools.core.client import NotebookLMClient, extract_cookies_from_chrome_export
@@ -14,6 +16,7 @@ mcp_logger = logging.getLogger("notebooklm_tools.mcp")
 
 # Global state
 _client: NotebookLMClient | None = None
+_client_lock = threading.Lock()
 _query_timeout: float = float(os.environ.get("NOTEBOOKLM_QUERY_TIMEOUT", "120.0"))
 
 
@@ -29,12 +32,18 @@ def set_query_timeout(timeout: float) -> None:
 
 
 def get_client() -> NotebookLMClient:
-    """Get or create the API client.
+    """Get or create the API client (thread-safe).
 
     Tries environment variables first, falls back to cached tokens from auth CLI.
     """
     global _client
-    if _client is None:
+    if _client is not None:
+        return _client
+    with _client_lock:
+        # Double-checked locking: re-check inside lock to avoid race condition
+        if _client is not None:
+            return _client
+
         cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
         csrf_token = os.environ.get("NOTEBOOKLM_CSRF_TOKEN", "")
         session_id = os.environ.get("NOTEBOOKLM_SESSION_ID", "")
@@ -71,7 +80,8 @@ def get_client() -> NotebookLMClient:
 def reset_client() -> None:
     """Reset the client to force re-initialization."""
     global _client
-    _client = None
+    with _client_lock:
+        _client = None
 
 
 def get_mcp_instance():
@@ -83,8 +93,6 @@ def get_mcp_instance():
 # Registry for tools - allows registration without immediate mcp dependency
 _tool_registry: list[tuple] = []
 
-
-import inspect
 
 def logged_tool():
     """Decorator that combines @mcp.tool() with MCP request/response logging.

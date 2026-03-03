@@ -1,6 +1,6 @@
 """Export service — shared business logic for Google Docs/Sheets exports."""
 
-from typing import TypedDict, Literal, Optional
+from typing import TypedDict, Literal, Optional, cast
 
 from ..core.client import NotebookLMClient
 from .errors import ValidationError, ExportError
@@ -65,13 +65,14 @@ def export_artifact(
             "status": "success",
             "notebook_id": notebook_id,
             "artifact_id": artifact_id,
-            "export_type": clean_type,  # type: ignore
+            "export_type": cast(ExportType, clean_type),
             "url": result["url"],
             "message": f"Exported to {export_label}: {result['url']}",
         }
     else:
-        # Fail-fast
+        # Fail-fast: summarize response keys to avoid leaking huge payloads in the error
+        response_summary = f"keys={list(result.keys())}" if isinstance(result, dict) else repr(result)[:200]
         raise ExportError(
-            f"Export failed - no document URL returned. Response: {result}",
-            user_message=result.get("message", "Export failed - no document URL returned")
+            f"Export failed - no document URL returned. Response summary: {response_summary}",
+            user_message=result.get("message", "Export failed - no document URL returned") if isinstance(result, dict) else "Export failed - no document URL returned",
         )

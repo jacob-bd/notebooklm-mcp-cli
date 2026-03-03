@@ -129,5 +129,7 @@ def extract_cookies_from_chrome_export(cookie_data: str | list[dict]) -> dict[st
     for item in cookie_data.split(";"):
         if "=" in item:
             name, value = item.strip().split("=", 1)
-            cookies[name] = value
+            name = name.strip()
+            if name:
+                cookies[name] = value
     return cookies

@@ -331,7 +331,9 @@ def _dispatch_create(
             language=kwargs["language"],
         )
 
-    return None  # unreachable after validate_artifact_type
+    # validate_artifact_type() above raises ValidationError for unknown types,
+    # so execution never reaches this point. Make the exhaustiveness explicit.
+    raise ValidationError(f"Unhandled artifact type: {artifact_type}")
 
 
 def _create_mind_map(

@@ -11,6 +11,7 @@ Internal API. See CLAUDE.md for full documentation.
 import json
 import logging
 import os
+import random
 import re
 import urllib.parse
 from typing import Any
@@ -259,7 +260,6 @@ class BaseClient:
         self._conversation_cache: dict[str, list[ConversationTurn]] = {}
 
         # Request counter for _reqid parameter (required for query endpoint)
-        import random
         self._reqid_counter = random.randint(100000, 999999)
 
         # Only refresh CSRF token if not provided - tokens actually last hours/days, not minutes
@@ -430,9 +430,10 @@ class BaseClient:
                 i += 1
                 continue
 
-            # Try to parse as byte count
+            # Try to parse as byte count (the value itself is unused — only used
+            # to confirm the line is a numeric chunk-size marker)
             try:
-                byte_count = int(line)
+                int(line)
                 # Next line(s) should be the JSON payload
                 i += 1
                 if i < len(lines):
@@ -699,9 +700,9 @@ class BaseClient:
                 )
 
             save_tokens_to_cache(cached, silent=True)
-        except Exception:
-            # Silently fail - caching is an optimization, not critical
-            pass
+        except Exception as e:
+            # Non-critical: caching is an optimization, but log at debug level
+            logger.debug(f"Failed to update auth token cache: {e}")
 
     def _try_reload_or_headless_auth(self) -> bool:
         """Try to recover authentication by reloading from disk or running headless auth.
@@ -732,7 +733,7 @@ class BaseClient:
                 self.csrf_token = tokens.csrf_token
                 self._session_id = tokens.session_id
                 return True
-        except Exception:
-            pass
-        
+        except Exception as e:
+            logger.debug(f"Headless auth failed: {e}")
+
         return False

@@ -2,7 +2,7 @@
 
 class ServiceError(Exception):
     """Base class for all service layer errors."""
-    def __init__(self, message: str, user_message: str = None, debug_code: str = None):
+    def __init__(self, message: str, user_message: str | None = None, debug_code: str | None = None):
         super().__init__(message)
         self.user_message = user_message or message
         self.debug_code = debug_code

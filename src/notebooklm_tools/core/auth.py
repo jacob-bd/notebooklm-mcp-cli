@@ -91,8 +91,8 @@ def load_cached_tokens() -> AuthTokens | None:
                 session_id=profile.session_id or "",
                 extracted_at=profile.last_validated.timestamp() if profile.last_validated else time.time()
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to load default profile: {e}")
 
     # 2. Fallback to legacy auth cache (with auto-migration)
     cache_path = get_cache_path()

@@ -49,7 +49,7 @@ def retry_on_server_error(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
+            last_exception: httpx.HTTPStatusError | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -64,8 +64,10 @@ def retry_on_server_error(
                         f"retrying in {delay:.1f}s..."
                     )
                     time.sleep(delay)
-            # Should not reach here, but just in case
-            raise last_exception  # type: ignore[misc]
+            # last_exception is always set here because the loop runs at least once
+            # and any non-retryable error is re-raised immediately above
+            assert last_exception is not None
+            raise last_exception
         return wrapper
     return decorator
 
@@ -97,7 +99,7 @@ def execute_with_retry(
     Raises:
         httpx.HTTPStatusError: If all retries are exhausted or error is non-retryable.
     """
-    last_exception = None
+    last_exception: httpx.HTTPStatusError | None = None
     for attempt in range(max_retries + 1):
         try:
             return func(*args, **kwargs)
@@ -112,4 +114,7 @@ def execute_with_retry(
                 f"retrying in {delay:.1f}s..."
             )
             time.sleep(delay)
-    raise last_exception  # type: ignore[misc]
+    # last_exception is always set here because the loop runs at least once
+    # and any non-retryable error is re-raised immediately above
+    assert last_exception is not None
+    raise last_exception
