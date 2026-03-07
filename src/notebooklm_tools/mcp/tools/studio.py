@@ -60,7 +60,7 @@ def studio_create(
 
         Type-specific options:
         - audio: audio_format (deep_dive|brief|critique|debate), audio_length (short|default|long)
-        - video: video_format (explainer|brief), visual_style (auto_select|classic|whiteboard|kawaii|anime|watercolor|retro_print|heritage|paper_craft)
+        - video: video_format (explainer|brief|cinematic ⚡experimental), visual_style (auto_select|classic|whiteboard|kawaii|anime|watercolor|retro_print|heritage|paper_craft)
         - infographic: orientation (landscape|portrait|square), detail_level (concise|standard|detailed), infographic_style (auto_select|sketch_note|professional|bento_grid|editorial|instructional|bricks|clay|anime|kawaii|scientific)
         - slide_deck: slide_format (detailed_deck|presenter_slides), slide_length (short|default)
         - report: report_format (Briefing Doc|Study Guide|Blog Post|Create Your Own), custom_prompt

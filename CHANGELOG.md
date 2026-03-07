@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.4.1] - 2026-03-07
+
+### Added
+- **Cinematic Video Format (Experimental)** — Added support for NotebookLM's new "Cinematic" video format (`video_format="cinematic"`, format code `3`). This format produces higher-fidelity video overviews and is available to NotebookLM Plus/Ultra subscribers. Thanks to **@ovai-felix** for the detailed reverse-engineering and verified payload structure (Issue #79).
+  - Core: Cinematic payloads use a 5-element inner options array (omitting `visual_style_code`), while Explainer/Brief continue to use 6 elements
+  - MCP: `studio_create` with `video_format="cinematic"` 
+  - CLI: `nlm video create <notebook> --format cinematic`
+  - ⚠️ **Note for free/Pro users:** Cinematic is gated behind NotebookLM Plus/Ultra. Free and Pro tier users will see: `"NotebookLM rejected video creation. Try again later or create from NotebookLM UI for diagnosis."` — this is expected behavior, not a bug.
+
 ## [0.4.0] - 2026-03-05
 
 ### Added

@@ -505,7 +505,7 @@ def create_infographic(
 @video_app.command("create")
 def create_video(
     notebook_id: str = typer.Argument(..., help="Notebook ID"),
-    format: str = typer.Option("explainer", "--format", "-f", help="Format: explainer, brief"),
+    format: str = typer.Option("explainer", "--format", "-f", help="Format: explainer, brief, cinematic (experimental)"),
     style: str = typer.Option(
         "auto_select", "--style", "-s",
         help="Visual style: auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",

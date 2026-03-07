@@ -73,3 +73,18 @@ class TestStudioMixinMethods:
         assert callable(mixin.get_studio_status)
         # Method docstring should indicate it's an alias
         assert "Alias" in mixin.get_studio_status.__doc__
+
+
+class TestCinematicVideoConstant:
+    """Test that the Cinematic video format constant is correctly defined."""
+
+    def test_cinematic_constant_value(self):
+        """VIDEO_FORMAT_CINEMATIC should be 3."""
+        from notebooklm_tools.core import constants
+        assert constants.VIDEO_FORMAT_CINEMATIC == 3
+
+    def test_cinematic_code_mapper_lookup(self):
+        """CodeMapper should resolve 'cinematic' to 3 and back."""
+        from notebooklm_tools.core import constants
+        assert constants.VIDEO_FORMATS.get_code("cinematic") == 3
+        assert constants.VIDEO_FORMATS.get_name(3) == "cinematic"

@@ -217,10 +217,12 @@ AUDIO_LENGTHS = CodeMapper({
 # =============================================================================
 VIDEO_FORMAT_EXPLAINER = 1
 VIDEO_FORMAT_BRIEF = 2
+VIDEO_FORMAT_CINEMATIC = 3
 
 VIDEO_FORMATS = CodeMapper({
     "explainer": VIDEO_FORMAT_EXPLAINER,
     "brief": VIDEO_FORMAT_BRIEF,
+    "cinematic": VIDEO_FORMAT_CINEMATIC,
 })
 
 VIDEO_STYLE_AUTO_SELECT = 1

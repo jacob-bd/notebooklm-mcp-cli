@@ -99,6 +99,20 @@ class TestCreateArtifact:
         assert result["artifact_type"] == "video"
         assert result["artifact_id"] == "art-2"
 
+    def test_create_video_cinematic(self, mock_client):
+        """Cinematic format resolves to code 3 and calls client correctly."""
+        result = create_artifact(mock_client, "nb-1", "video", video_format="cinematic")
+        assert result["artifact_type"] == "video"
+        assert result["artifact_id"] == "art-2"
+        # Verify format_code=3 (VIDEO_FORMAT_CINEMATIC) was passed
+        call_kwargs = mock_client.create_video_overview.call_args
+        assert call_kwargs[1]["format_code"] == 3
+
+    def test_create_video_invalid_format(self, mock_client):
+        """Invalid video format raises ValidationError."""
+        with pytest.raises(ValidationError, match="Unknown video format"):
+            create_artifact(mock_client, "nb-1", "video", video_format="invalid_format")
+
     def test_create_infographic(self, mock_client):
         result = create_artifact(mock_client, "nb-1", "infographic")
         assert result["artifact_type"] == "infographic"

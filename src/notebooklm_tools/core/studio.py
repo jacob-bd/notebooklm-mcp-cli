@@ -150,17 +150,18 @@ class StudioMixin(BaseClient):
         # Build source IDs in the simpler format: [[id1], [id2], ...]
         sources_simple = [[sid] for sid in source_ids]
 
-        video_options = [
-            None, None,
-            [
-                sources_simple,
-                language,
-                focus_prompt,
-                None,
-                format_code,
-                visual_style_code
-            ]
+        # Build inner options — Cinematic format (code 3) omits visual_style_code
+        inner_options = [
+            sources_simple,
+            language,
+            focus_prompt,
+            None,
+            format_code,
         ]
+        if format_code != constants.VIDEO_FORMAT_CINEMATIC:
+            inner_options.append(visual_style_code)
+
+        video_options = [None, None, inner_options]
 
         params = [
             [2],
@@ -194,7 +195,7 @@ class StudioMixin(BaseClient):
                 "type": "video",
                 "status": "in_progress" if status_code == 1 else "completed" if status_code == 3 else "unknown",
                 "format": constants.VIDEO_FORMATS.get_name(format_code),
-                "visual_style": constants.VIDEO_STYLES.get_name(visual_style_code),
+                "visual_style": constants.VIDEO_STYLES.get_name(visual_style_code) if format_code != constants.VIDEO_FORMAT_CINEMATIC else None,
                 "language": language,
             }
 
