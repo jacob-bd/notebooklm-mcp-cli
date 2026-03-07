@@ -148,6 +148,8 @@ class ConversationMixin(BaseClient):
             - conversation_id: ID to use for follow-up questions
             - sources_used: List of source IDs cited in the answer
             - citations: Dict mapping citation number to source ID (1-indexed)
+            - references: List of dicts with source_id, citation_number, and
+              cited_text (the actual passage text from the source)
             - turn_number: Which turn this is in the conversation (1 = first)
             - is_follow_up: Whether this was a follow-up query
             - raw_response: The raw parsed response (for debugging)
@@ -231,6 +233,7 @@ class ConversationMixin(BaseClient):
             "conversation_id": conversation_id,
             "sources_used": citation_data.get("sources_used", []),
             "citations": citation_data.get("citations", {}),
+            "references": citation_data.get("references", []),
             "turn_number": turn_number,
             "is_follow_up": not is_new_conversation,
             "raw_response": response.text[:1000] if response.text else "",
@@ -464,17 +467,65 @@ class ConversationMixin(BaseClient):
         return None, False, {}
 
     @staticmethod
+    def _extract_cited_text(detail: list) -> str | None:
+        """Extract cited text from a passage detail structure.
+
+        The text passages are at detail[4], which contains nested structures:
+          detail[4] = [[passage_data, ...], ...]
+          passage_data = [start_char, end_char, nested_passages]
+          nested_passages contains text at varying depths as [start, end, text] triplets.
+
+        Args:
+            detail: The inner detail array (passage[1]).
+
+        Returns:
+            Concatenated cited text string, or None if no text found.
+        """
+        if len(detail) <= 4 or not isinstance(detail[4], list):
+            return None
+
+        texts: list[str] = []
+        for passage_wrapper in detail[4]:
+            if not isinstance(passage_wrapper, list) or not passage_wrapper:
+                continue
+            passage_data = passage_wrapper[0]
+            if not isinstance(passage_data, list) or len(passage_data) < 3:
+                continue
+            # Extract text from nested structure at passage_data[2]
+            nested = passage_data[2]
+            if not isinstance(nested, list):
+                continue
+            for nested_group in nested:
+                if not isinstance(nested_group, list):
+                    continue
+                for inner in nested_group:
+                    if not isinstance(inner, list) or len(inner) < 3:
+                        continue
+                    text_val = inner[2]
+                    if isinstance(text_val, str) and text_val.strip():
+                        texts.append(text_val.strip())
+                    elif isinstance(text_val, list):
+                        for item in text_val:
+                            if isinstance(item, str) and item.strip():
+                                texts.append(item.strip())
+
+        return " ".join(texts) if texts else None
+
+    @staticmethod
     def _extract_citation_data(type_info: list) -> dict:
-        """Extract source IDs from the citation passages in a type-1 answer chunk.
+        """Extract source IDs and cited text from the citation passages in a type-1 answer chunk.
 
         The source passages are at type_info[3] (i.e. first_elem[4][3]).
-        Each passage entry: [["passage_id"], [null, null, confidence, ..., [[["SOURCE_ID"], ...]], ...]]
+        Each passage entry: [["passage_id"], [null, null, confidence, ..., text_passages, [[["SOURCE_ID"], ...]], ...]]
         The parent source ID is at passage[1][5][0][0][0].
+        The cited text passages are at passage[1][4].
         Citations in the answer text are 1-indexed into this array.
 
         Returns:
-            Dict with 'sources_used' (unique source IDs) and
-            'citations' (citation_number -> source_id mapping), or empty dict.
+            Dict with 'sources_used' (unique source IDs),
+            'citations' (citation_number -> source_id mapping),
+            and 'references' (list of {source_id, citation_number, cited_text}),
+            or empty dict.
         """
         try:
             if len(type_info) < 4 or not isinstance(type_info[3], list):
@@ -486,6 +537,7 @@ class ConversationMixin(BaseClient):
 
             citations: dict[int, str] = {}
             seen_sources: dict[str, None] = {}  # ordered set via dict
+            references: list[dict] = []
 
             for i, passage in enumerate(passages):
                 if not isinstance(passage, list) or len(passage) < 2:
@@ -504,8 +556,20 @@ class ConversationMixin(BaseClient):
                     continue
                 source_id = source_id_wrapper[0]
                 if isinstance(source_id, str):
-                    citations[i + 1] = source_id
+                    citation_number = i + 1
+                    citations[citation_number] = source_id
                     seen_sources[source_id] = None
+
+                    # Extract cited text from passage detail
+                    cited_text = ConversationMixin._extract_cited_text(detail)
+
+                    ref_entry: dict = {
+                        "source_id": source_id,
+                        "citation_number": citation_number,
+                    }
+                    if cited_text:
+                        ref_entry["cited_text"] = cited_text
+                    references.append(ref_entry)
 
             if not citations:
                 return {}
@@ -513,6 +577,7 @@ class ConversationMixin(BaseClient):
             return {
                 "sources_used": list(seen_sources.keys()),
                 "citations": citations,
+                "references": references,
             }
         except (IndexError, TypeError):
             return {}

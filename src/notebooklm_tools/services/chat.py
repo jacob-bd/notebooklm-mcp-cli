@@ -17,6 +17,7 @@ class QueryResult(TypedDict):
     conversation_id: Optional[str]
     sources_used: list
     citations: dict
+    references: list
 
 
 class ConfigureResult(TypedDict):
@@ -84,6 +85,7 @@ def query(
             "conversation_id": result.get("conversation_id"),
             "sources_used": result.get("sources_used", []),
             "citations": result.get("citations", {}),
+            "references": result.get("references", []),
         }
 
     raise ServiceError(
