@@ -504,6 +504,11 @@ class ConversationMixin(BaseClient):
                     continue
                 nested = segment[2]
                 if not isinstance(nested, list):
+                    # Table segment: insert placeholder, data goes in cited_table
+                    if (len(segment) > 4 and isinstance(segment[4], list)
+                            and len(segment[4]) >= 3
+                            and isinstance(segment[4][2], list)):
+                        texts.append("<cited_table>")
                     continue
                 for nested_group in nested:
                     if not isinstance(nested_group, list):
@@ -520,6 +525,105 @@ class ConversationMixin(BaseClient):
                                     texts.append(item.strip())
 
         return " ".join(texts) if texts else None
+
+    @staticmethod
+    def _extract_text_from_table_rows(rows: list) -> list[list[str]]:
+        """Parse table rows into a structured list of rows, each a list of cell strings.
+
+        Table segments have their data at segment[4] = [dim1, dim2, rows_array].
+        Each row:  [start, end, [cells...]]
+        Each cell: [start, end, [[sub_start, sub_end, [content_items...]]]]
+                   or [start, start] (empty cell)
+        Each content_item: [[text_start, text_end, [text, ...]], optional_metadata]
+
+        Returns:
+            List of rows, where each row is a list of cell text strings.
+        """
+        parsed_rows: list[list[str]] = []
+        for row in rows:
+            if not isinstance(row, list) or len(row) < 3:
+                continue
+            cells = row[2]
+            if not isinstance(cells, list):
+                continue
+            row_cells: list[str] = []
+            for cell in cells:
+                cell_text = ""
+                if isinstance(cell, list) and len(cell) >= 3:
+                    cell_content = cell[2]
+                    if isinstance(cell_content, list):
+                        parts: list[str] = []
+                        for sub_elem in cell_content:
+                            if not isinstance(sub_elem, list) or len(sub_elem) < 3:
+                                continue
+                            content_items = sub_elem[2]
+                            if not isinstance(content_items, list):
+                                continue
+                            for item in content_items:
+                                if not isinstance(item, list) or not item:
+                                    continue
+                                first = item[0]
+                                if not isinstance(first, list) or len(first) < 3:
+                                    continue
+                                text_val = first[2]
+                                if isinstance(text_val, list):
+                                    for t in text_val:
+                                        if isinstance(t, str) and t.strip():
+                                            parts.append(t.strip())
+                                elif isinstance(text_val, str) and text_val.strip():
+                                    parts.append(text_val.strip())
+                        cell_text = " ".join(parts)
+                row_cells.append(cell_text)
+            parsed_rows.append(row_cells)
+        return parsed_rows
+
+    @staticmethod
+    def _extract_table_from_detail(detail: list) -> dict | None:
+        """Extract structured table data from a passage detail.
+
+        Scans detail[4] for table/grid segments (where segment[2] is null and
+        segment[4] holds [dim1, dim2, rows_array]).
+
+        Returns:
+            Dict with 'num_columns' and 'rows' (list of lists of cell strings),
+            or None if no table found.
+        """
+        if len(detail) <= 4 or not isinstance(detail[4], list):
+            return None
+
+        for element in detail[4]:
+            if not isinstance(element, list) or not element:
+                continue
+
+            if isinstance(element[0], (int, float)):
+                segments = [element]
+            else:
+                segments = element
+
+            for segment in segments:
+                if not isinstance(segment, list) or len(segment) < 3:
+                    continue
+                if not isinstance(segment[0], (int, float)):
+                    continue
+                # Table segments have segment[2] as null, data in segment[4]
+                if isinstance(segment[2], list):
+                    continue
+                if len(segment) <= 4 or not isinstance(segment[4], list):
+                    continue
+                table_info = segment[4]
+                if len(table_info) < 3 or not isinstance(table_info[2], list):
+                    continue
+
+                parsed_rows = ConversationMixin._extract_text_from_table_rows(
+                    table_info[2]
+                )
+                if parsed_rows:
+                    return {
+                        "num_columns": len(parsed_rows[0]),
+                        "rows": parsed_rows,
+                    }
+
+        return None
 
     @staticmethod
     def _extract_citation_data(type_info: list) -> dict:
@@ -579,6 +683,12 @@ class ConversationMixin(BaseClient):
                     }
                     if cited_text:
                         ref_entry["cited_text"] = cited_text
+
+                    # Extract structured table data if present
+                    cited_table = ConversationMixin._extract_table_from_detail(detail)
+                    if cited_table:
+                        ref_entry["cited_table"] = cited_table
+
                     references.append(ref_entry)
 
             if not citations:
