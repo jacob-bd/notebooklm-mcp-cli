@@ -470,10 +470,10 @@ class ConversationMixin(BaseClient):
     def _extract_cited_text(detail: list) -> str | None:
         """Extract cited text from a passage detail structure.
 
-        The text passages are at detail[4], which contains nested structures:
-          detail[4] = [[passage_data, ...], ...]
-          passage_data = [start_char, end_char, nested_passages]
-          nested_passages contains text at varying depths as [start, end, text] triplets.
+        The text passages are at detail[4], which contains elements in two variants:
+          - Wrapped segments: [[start, end, nested], metadata] — first element is a list
+          - Direct segments: [start, end, nested] — first element is an integer
+        Each segment has nested_passages containing text as [start, end, text] triplets.
 
         Args:
             detail: The inner detail array (passage[1]).
@@ -485,29 +485,39 @@ class ConversationMixin(BaseClient):
             return None
 
         texts: list[str] = []
-        for passage_wrapper in detail[4]:
-            if not isinstance(passage_wrapper, list) or not passage_wrapper:
+        for element in detail[4]:
+            if not isinstance(element, list) or not element:
                 continue
-            passage_data = passage_wrapper[0]
-            if not isinstance(passage_data, list) or len(passage_data) < 3:
-                continue
-            # Extract text from nested structure at passage_data[2]
-            nested = passage_data[2]
-            if not isinstance(nested, list):
-                continue
-            for nested_group in nested:
-                if not isinstance(nested_group, list):
+
+            # Detect: is this a direct segment [int, int, nested] or a wrapper [[seg], ...]?
+            if isinstance(element[0], (int, float)):
+                # Direct segment
+                segments_to_process = [element]
+            else:
+                # Wrapper containing segments (and possibly metadata like [null, 1])
+                segments_to_process = element
+
+            for segment in segments_to_process:
+                if not isinstance(segment, list) or len(segment) < 3:
                     continue
-                for inner in nested_group:
-                    if not isinstance(inner, list) or len(inner) < 3:
+                if not isinstance(segment[0], (int, float)):
+                    continue
+                nested = segment[2]
+                if not isinstance(nested, list):
+                    continue
+                for nested_group in nested:
+                    if not isinstance(nested_group, list):
                         continue
-                    text_val = inner[2]
-                    if isinstance(text_val, str) and text_val.strip():
-                        texts.append(text_val.strip())
-                    elif isinstance(text_val, list):
-                        for item in text_val:
-                            if isinstance(item, str) and item.strip():
-                                texts.append(item.strip())
+                    for inner in nested_group:
+                        if not isinstance(inner, list) or len(inner) < 3:
+                            continue
+                        text_val = inner[2]
+                        if isinstance(text_val, str) and text_val.strip():
+                            texts.append(text_val.strip())
+                        elif isinstance(text_val, list):
+                            for item in text_val:
+                                if isinstance(item, str) and item.strip():
+                                    texts.append(item.strip())
 
         return " ".join(texts) if texts else None
 
