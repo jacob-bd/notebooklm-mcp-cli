@@ -700,7 +700,12 @@ class SourceMixin(BaseClient):
             raise FileValidationError(f"File is empty: {file_path}")
 
         # Validate file type
-        supported_extensions = {'.pdf', '.txt', '.md', '.docx', '.csv', '.mp3', '.mp4', '.jpg', '.jpeg', '.png'}
+        supported_extensions = {
+            '.pdf', '.txt', '.md', '.docx', '.csv',  # Documents
+            '.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg', '.webm',  # Audio
+            '.mp4', '.mov', '.avi', '.mkv', '.webm',  # Video
+            '.jpg', '.jpeg', '.png', '.gif', '.webp',  # Images
+        }
         file_extension = file_path.suffix.lower()
         if file_extension not in supported_extensions:
             raise FileValidationError(
