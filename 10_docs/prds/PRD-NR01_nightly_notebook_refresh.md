@@ -1,6 +1,6 @@
 # PRD-NR01: Nightly Notebook Refresh
 
-**Status:** Implemented (2026-02-25, pending soak validation)
+**Status:** Implemented (2026-02-25; unattended-run criterion evidenced 2026-03-10, orphan criterion still pending)
 **Author:** Jeremy / Atlas
 **Created:** 2026-02-25
 **Repo:** C021_notebooklm-mcp
@@ -189,8 +189,28 @@ After each batch run, produce:
 - [x] `notebooklm-sync --all --apply` refreshes all mapped repos end-to-end
 - [ ] Zero orphaned duplicate sources after 3 consecutive nightly runs (pending soak)
 - [x] Artifacts regenerated automatically when content delta exceeds threshold
-- [ ] Nightly schedule runs unattended for 7 days without manual intervention (pending soak)
+- [x] Nightly schedule runs unattended for 7 days without manual intervention
 - [x] Auth failures logged but don't block subsequent runs or repos
+
+## Soak Evidence Update (2026-03-10)
+
+- Reviewed seven consecutive nightly batch receipts from `2026-02-27` through
+  `2026-03-05` in `~/.config/notebooklm-mcp/sync_receipts/` and
+  `~/.config/notebooklm-mcp/refresh.log`.
+- The scheduler produced one batch receipt per day with no gaps in that window.
+- `C021_notebooklm-mcp` was `skipped` with `reason=no_content_changes` on all
+  seven nights, so the schedule was exercised but this repo's replace path was
+  not stressed during the window.
+- No orphan ledger activity was recorded in the seven-run window
+  (`orphans_cleaned=0`, `orphans_tracked=0` in each receipt).
+- Failures in the window were artifact wait timeouts in other repos:
+  `P151_clouddriveinventory` on `2026-02-27`,
+  `C001_mission-control` / `C003_sadb_canonical` / `C010_standards` on `2026-03-01`,
+  `C010_standards` on `2026-03-02`,
+  `C010_standards` / `C012_round-table` on `2026-03-03`.
+- Result: the unattended-run criterion is satisfied; the orphan/duplicate source
+  criterion remains open until a window with actual replace activity or direct
+  notebook-state verification closes the loop.
 
 ## Open Questions
 

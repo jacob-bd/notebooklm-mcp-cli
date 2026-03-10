@@ -41,14 +41,34 @@ uv run pytest tests/test_file.py::test_function -v
 
 **Python requirement:** >=3.11
 
-## Authentication (SIMPLIFIED!)
+## Authentication (Operator Path First)
 
-**You only need to provide COOKIES!** The CSRF token and session ID are now **automatically extracted** when needed.
+**You only need to provide cookies.** The CSRF token and session ID are
+**automatically extracted** when needed.
 
-### Method 1: Chrome DevTools MCP (Recommended)
+### Method 1: Local Operator Refresh (Recommended)
 
-**Option A - Fast (Recommended):**
-Extract CSRF token and session ID directly from network request - **no page fetch needed!**
+For local recovery, smoke checks, or day-to-day operator work, prefer the CLI:
+
+```bash
+# Recommended path
+notebooklm-mcp-auth
+
+# Manual fallback if auto mode cannot connect
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
+```
+
+Auto mode is the preferred path because it avoids pasting live cookies into the
+repo working tree. If file mode is needed, store the cookie file outside the
+repo. `cookies.example.txt` is a format-only example.
+
+### Method 2: Chrome DevTools MCP / In-Tool Save
+
+If you're already inside an assistant workflow with Chrome DevTools access, you
+can save cookies directly from a live request.
+
+**Option A - Fast:**
+Extract CSRF token and session ID directly from the network request.
 
 ```python
 # 1. Navigate to NotebookLM page
@@ -66,13 +86,13 @@ save_auth_tokens(
 ```
 
 **Option B - Minimal (slower first call):**
-Save only cookies, tokens extracted from page on first API call
+Save only cookies and let the client extract the rest on demand.
 
 ```python
 save_auth_tokens(cookies=<cookie_header>)
 ```
 
-### Method 2: Environment Variables
+### Method 3: Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -86,7 +106,9 @@ save_auth_tokens(cookies=<cookie_header>)
 - **CSRF token**: Auto-refreshed on each client initialization
 - **Session ID**: Auto-refreshed on each client initialization
 
-When API calls fail with auth errors, re-extract fresh cookies from Chrome DevTools.
+When API calls fail with auth errors, prefer `notebooklm-mcp-auth` for local
+operator recovery. Use Chrome DevTools extraction when you specifically need the
+in-session `save_auth_tokens(...)` path.
 
 ## Architecture
 

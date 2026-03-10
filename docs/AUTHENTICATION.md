@@ -10,8 +10,8 @@ NotebookLM MCP uses browser cookies for authentication (there is no official API
 
 | Method | Best For | Requires |
 |--------|----------|----------|
-| **Auto Mode** (default) | Most users | Chrome installed, can close Chrome |
-| **File Mode** (`--file`) | Complex setups, troubleshooting | Manual cookie extraction |
+| **Auto Mode** (default) | Most users and routine operator refresh | Chrome installed, can close Chrome |
+| **File Mode** (`--file`) | Fallback for complex setups and troubleshooting | Manual cookie extraction |
 
 ---
 
@@ -55,7 +55,7 @@ This profile is separate from your regular Chrome profile and includes no extens
 
 ---
 
-## Method 2: File Mode
+## Method 2: File Mode (Fallback)
 
 This method lets you manually extract and provide cookies. Use this if:
 - Auto mode doesn't work on your system
@@ -69,7 +69,7 @@ This method lets you manually extract and provide cookies. Use this if:
 notebooklm-mcp-auth --file
 
 # Option B: Direct file path
-notebooklm-mcp-auth --file /path/to/cookies.txt
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
 
 ### How to Extract Cookies Manually
@@ -84,7 +84,7 @@ notebooklm-mcp-auth --file /path/to/cookies.txt
 8. In the right panel, scroll to **Request Headers**
 9. Find the line starting with `cookie:`
 10. Right-click the cookie **value** and select **Copy value**
-11. Paste into a text file and save
+11. Paste into a text file outside this repo and save
 
 ### Cookie File Format
 
@@ -97,7 +97,8 @@ SID=abc123...; HSID=xyz789...; SSID=...; APISID=...; SAPISID=...; __Secure-1PSID
 **Notes:**
 - Lines starting with `#` are treated as comments and ignored
 - The file can contain the cookie string on one or multiple lines
-- A template file `cookies.txt` is included in the repository
+- Use a local, non-repo path such as `~/Downloads/notebooklm-cookies.txt`
+- `cookies.example.txt` in this repo is a format example only; do not paste live cookies into the repo
 
 ---
 
@@ -150,6 +151,25 @@ gemini mcp add notebooklm notebooklm-mcp
 
 Then restart your AI assistant.
 
+## Read-Only Smoke After Auth
+
+After restarting your AI assistant, use a read-only verification ladder:
+
+```bash
+# Shell smoke
+notebooklm-sync --list
+```
+
+If the shell smoke succeeds, verify the MCP surface from your AI assistant:
+
+```python
+notebook_list(max_results=5)
+notebook_get(notebook_id="<known_notebook_id>")
+```
+
+If `notebooklm-sync --list` fails with `ValueError: Cookies have expired`, re-run
+`notebooklm-mcp-auth`, restart the AI tool, and retry the same ladder.
+
 ---
 
 ## Token Expiration
@@ -172,7 +192,7 @@ Close Chrome completely and try again. On Mac, use **Cmd+Q** to fully quit.
 
 Try file mode instead:
 ```bash
-notebooklm-mcp-auth --file
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
 
 ### "401 Unauthorized" or "403 Forbidden" errors
@@ -183,7 +203,7 @@ Your cookies have expired. Run the auth command again to refresh.
 
 Some Chrome extensions or tools modify Chrome's behavior. Use file mode:
 ```bash
-notebooklm-mcp-auth --file
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
 
 ### Cookie file shows "missing required cookies"
@@ -208,4 +228,6 @@ This is handled automatically - no action required from users.
 - Cookies are stored locally in `~/.notebooklm-mcp/auth.json`
 - The dedicated Chrome profile contains your Google login for NotebookLM
 - Never share your `auth.json` file or commit it to version control
-- The `cookies.txt` file in the repo is a template - don't commit real cookies
+- Never paste live cookies into this repo; if you use file mode, keep the cookie
+  file outside the working tree
+- `cookies.example.txt` is a format example only

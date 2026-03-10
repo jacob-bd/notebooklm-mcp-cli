@@ -43,6 +43,7 @@ htmlcov/
 # Secrets/session artifacts
 .env
 cookies.txt
+notebooklm-cookies.txt
 
 # Misc
 .DS_Store

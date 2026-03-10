@@ -19,9 +19,53 @@ notebooklm-mcp
 ### Auth workflows
 
 ```bash
+# Recommended: auto mode
 notebooklm-mcp-auth
-notebooklm-mcp-auth --file
+
+# Fallback: manual cookie file outside the repo
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
+
+## Read-Only Smoke Verification
+
+Use this when you want operator confidence without mutating NotebookLM state.
+
+### 1. Shell smoke
+
+```bash
+notebooklm-sync --list
+```
+
+- Success: notebook list prints normally
+- Failure: if you see `ValueError: Cookies have expired`, run `notebooklm-mcp-auth`,
+  restart your AI tool, and retry this same command
+
+### 2. MCP smoke
+
+After the shell smoke passes and your MCP client is restarted:
+
+```python
+notebook_list(max_results=5)
+notebook_get(notebook_id="<known_notebook_id>")
+```
+
+- `notebook_list` confirms auth + listing
+- `notebook_get` confirms read access against a known notebook without creating or mutating anything
+
+## Nightly Receipt Review
+
+To review the most recent nightly batch window:
+
+```bash
+ls -1t ~/.config/notebooklm-mcp/sync_receipts | head -n 7
+tail -n 200 ~/.config/notebooklm-mcp/refresh.log
+```
+
+Look for:
+- one batch receipt per expected day
+- `repos_failed` spikes or repeated failures in the same repo
+- any non-zero `orphans_cleaned` or `orphans_tracked`
+- whether the target repo was `success`, `skipped`, or `failed`
 
 ### Document sync (manual)
 

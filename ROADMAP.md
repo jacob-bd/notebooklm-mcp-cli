@@ -14,12 +14,14 @@ the next working sessions.
     `Implemented ... pending soak validation`.
   - The unchecked success criteria are still:
     - zero orphaned duplicate sources after 3 consecutive nightly runs
-    - 7 unattended nightly runs without manual intervention
+    - zero orphaned duplicate sources after 3 consecutive nightly runs
   - The previous root roadmap already pointed to soak validation as the next milestone.
-- First concrete step: review the last 7 runs in
-  `~/.config/notebooklm-mcp/refresh.log` and the paired
-  `~/.config/notebooklm-mcp/sync_receipts/`, summarize failures/orphans, and write
-  a closeout receipt against PRD-NR01.
+- Completed on 2026-03-10:
+  - reviewed the 7-run nightly window in `refresh.log` and `sync_receipts/`
+  - updated `PRD-NR01_nightly_notebook_refresh.md` with soak evidence
+- Next concrete step: decide whether the remaining artifact timeout failures in
+  other repos are acceptable for PRD closeout, or whether a second evidence
+  window is needed before declaring soak complete.
 - Effort: M
 - Confidence: high
 - Blockers / what lowers priority: expired NotebookLM auth, free-tier rate limits,
@@ -34,9 +36,12 @@ the next working sessions.
   - `CLAUDE.md` and `META.yaml` both note cookie rotation / free-tier limits.
   - `docs/MCP_TEST_PLAN.md` contains a broad manual plan, but there is no short
     read-only runbook for routine operator confidence.
-- First concrete step: document a minimal smoke checklist using non-mutating reads
-  such as `notebooklm-sync --list`, `notebook_list`, and `notebook_get` against a
-  known notebook, then decide whether to expose it as `make smoke`.
+- Completed on 2026-03-10:
+  - documented a read-only smoke ladder in `docs/CLI.md`,
+    `docs/AUTHENTICATION.md`, `docs/TROUBLESHOOTING.md`, and
+    `docs/NOTEBOOKLM_MCP_OPERATIONS_MANUAL.md`
+- Next concrete step: decide whether that documented ladder should stay docs-only
+  or be promoted into a lightweight `make smoke` wrapper.
 - Effort: S
 - Confidence: high
 - Blockers / what lowers priority: requires valid auth and a stable known-good notebook.
@@ -55,9 +60,12 @@ the next working sessions.
     operator to paste real cookies into that filename.
   - `00_run/README.md` still says the directory is "Currently empty" even though
     install/uninstall scheduler scripts are present.
-- First concrete step: choose one recommended auth path, replace `cookies.txt`
-  with a clearly named template or docs-only example, and update the related
-  docs/README/`00_run` copy in one parity pass.
+- Completed on 2026-03-10:
+  - aligned operator docs and CLI help around auto mode as the preferred path
+  - replaced the tracked `cookies.txt` template with `cookies.example.txt`
+  - refreshed `00_run/README.md` to reflect the actual scheduler scripts
+- Next concrete step: keep the docs-site/secondary docs in parity on future
+  doc refreshes and watch for any auth guidance drift reappearing.
 - Effort: S
 - Confidence: high
 - Blockers / what lowers priority: none beyond deciding the preferred onboarding path.

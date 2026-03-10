@@ -475,8 +475,8 @@ def run_auth_flow(port: int = CDP_DEFAULT_PORT, auto_launch: bool = True) -> Aut
 def run_file_cookie_entry(cookie_file: str | None = None) -> AuthTokens | None:
     """Read cookies from a file and save them.
 
-    This is the recommended way to authenticate - users save their cookies
-    to a text file to avoid terminal truncation issues.
+    This is the manual fallback path when auto mode cannot connect or when
+    local Chrome tooling interferes.
 
     Args:
         cookie_file: Optional path to file. If not provided, shows instructions
@@ -500,11 +500,11 @@ def run_file_cookie_entry(cookie_file: str | None = None) -> AuthTokens | None:
         print("  8. In the right panel, find 'Request Headers'")
         print("  9. Find the line starting with 'cookie:'")
         print(" 10. Right-click the cookie VALUE and select 'Copy value'")
-        print(" 11. Edit the 'cookies.txt' file in this repo (or create a new file)")
+        print(" 11. Paste into a local file outside this repo")
         print(" 12. Paste the cookie string and save")
         print()
-        print("TIP: If running from the repo directory, just edit 'cookies.txt'")
-        print("     and enter: cookies.txt")
+        print("TIP: Example path: ~/Downloads/notebooklm-cookies.txt")
+        print("     If you want a format example, copy cookies.example.txt first.")
         print()
         print("-" * 50)
         print()
@@ -625,20 +625,21 @@ This tool extracts authentication tokens from Chrome for use with the NotebookLM
 
 TWO MODES:
 
-1. FILE MODE (--file): Import cookies from a file (RECOMMENDED)
+1. AUTO MODE (default): Automatic extraction via Chrome DevTools (RECOMMENDED)
+   - Requires closing Chrome first
+   - Launches Chrome and extracts cookies automatically
+   - Avoids storing live cookies in the repo working tree
+
+2. FILE MODE (--file): Import cookies from a file (manual fallback)
    - Shows step-by-step instructions for extracting cookies
    - Prompts you for the file path after you save the cookies
    - No Chrome remote debugging required
 
-2. AUTO MODE (default): Automatic extraction via Chrome DevTools
-   - Requires closing Chrome first
-   - Launches Chrome and extracts cookies automatically
-   - May not work on all systems
-
 EXAMPLES:
-  notebooklm-mcp-auth --file               # Guided file import (recommended)
-  notebooklm-mcp-auth --file ~/cookies.txt # Direct file import
-  notebooklm-mcp-auth                      # Auto mode (close Chrome first)
+  notebooklm-mcp-auth                                  # Auto mode (recommended)
+  notebooklm-mcp-auth --file                           # Guided file import
+  notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
+                                                     # Direct file import
 
 After authentication, start the MCP server with: notebooklm-mcp
         """
@@ -648,7 +649,7 @@ After authentication, start the MCP server with: notebooklm-mcp
         nargs="?",
         const="",  # When --file is used without argument, set to empty string
         metavar="PATH",
-        help="Import cookies from file (recommended). Shows instructions if no path given."
+        help="Import cookies from file (manual fallback). Shows instructions if no path given."
     )
     parser.add_argument(
         "--port",

@@ -1,6 +1,6 @@
 # NotebookLM MCP Operations Manual
 
-**Last Updated**: 2026-01-03
+**Last Updated**: 2026-03-10
 
 ---
 
@@ -23,15 +23,22 @@
 
 ## Preflight Gate (MANDATORY)
 
-Before any MCP work, verify auth is healthy:
+Before any MCP work, verify auth is healthy with a read-only ladder:
+
+```bash
+# Shell preflight
+notebooklm-sync --list
+```
+
+Then verify the MCP surface:
 
 ```python
-# Preflight check - MUST pass before proceeding
+# MCP preflight check - MUST pass before proceeding
 result = notebook_list(max_results=5)
 assert result["count"] > 0, "Auth failed - see Auth Recovery below"
 ```
 
-**If count = 0** or error returned:
+**If either preflight fails:**
 1. Check `~/.notebooklm-mcp/auth.json` exists and is recent
 2. If stale → run Auth Recovery below
 3. **Restart Claude Code session** after auth fix (MCP connection is cached)
@@ -68,9 +75,13 @@ notebooklm-mcp-auth
 **Root cause** (discovered 2026-01-03): Stale `chrome-profile/` can cause auth to "succeed" but return wrong session, showing 0 notebooks even when account has many.
 
 **Verification after recovery**:
+```bash
+notebooklm-sync --list
+```
+
 ```python
 notebook_list(max_results=5)  # Should return count > 0
-notebook_create(title="Auth Smoke Test")  # Should succeed
+notebook_get(notebook_id="<known_notebook_id>")  # Read-only fetch
 ```
 
 ---

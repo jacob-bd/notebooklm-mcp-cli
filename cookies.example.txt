@@ -1,0 +1,17 @@
+# NotebookLM Cookie Header Example
+# ================================
+#
+# Copy this file to a local path outside the repo before pasting anything real:
+#
+#   cp cookies.example.txt ~/Downloads/notebooklm-cookies.txt
+#
+# Then paste the raw cookie VALUE from Chrome DevTools into that copied file.
+# Do not paste live cookies into this repository.
+#
+# Expected format:
+# SID=xxx; HSID=xxx; SSID=xxx; APISID=xxx; SAPISID=xxx; ...
+#
+# Lines starting with "#" are ignored by:
+#   notebooklm-mcp-auth --file /path/to/notebooklm-cookies.txt
+#
+# PASTE BELOW THIS LINE:

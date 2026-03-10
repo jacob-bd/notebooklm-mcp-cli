@@ -136,15 +136,24 @@ Before using the MCP, you need to authenticate with NotebookLM. Run:
 # Recommended: Auto mode (launches Chrome, you log in)
 notebooklm-mcp-auth
 
-# Alternative: File mode (manual cookie extraction)
-notebooklm-mcp-auth --file
+# Fallback: File mode (manual cookie extraction to a non-repo file)
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
 
-**Auto mode** launches a dedicated Chrome profile, you log in to Google, and cookies are extracted automatically. Your login persists for future auth refreshes.
+**Auto mode** launches a dedicated Chrome profile, you log in to Google, and cookies are extracted automatically. Your login persists for future auth refreshes. This is the recommended operator path because it avoids copying live cookies into your repo working tree.
 
-**File mode** shows instructions for manually extracting cookies from Chrome DevTools and saving them to a file.
+**File mode** is the manual fallback when auto mode cannot connect or Chrome tooling is interfering. If you use it, save the cookie header to a local file outside the repo. A format-only example lives in `cookies.example.txt`.
 
 After successful auth, add the MCP to your AI tool and restart.
+
+For a read-only smoke after auth:
+
+```bash
+# Shell smoke
+notebooklm-sync --list
+```
+
+Then, in your MCP client, run a read-only notebook listing and fetch a known notebook with `notebook_get`. The full operator workflow lives in **[docs/CLI.md](docs/CLI.md)**.
 
 For detailed instructions, troubleshooting, and how the authentication system works, see **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)**.
 

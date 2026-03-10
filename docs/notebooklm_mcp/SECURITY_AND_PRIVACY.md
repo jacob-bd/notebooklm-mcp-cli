@@ -190,7 +190,11 @@ auth.json
 .notebooklm-mcp/
 chrome-profile/
 cookies.txt
+notebooklm-cookies.txt
 ```
+
+`cookies.example.txt` may stay tracked as a format example, but live cookie files
+should remain outside the repo.
 
 ## Related Documentation
 

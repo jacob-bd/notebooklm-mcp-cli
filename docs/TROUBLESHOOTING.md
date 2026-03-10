@@ -4,6 +4,22 @@ Common issues encountered when using the NotebookLM MCP server, with solutions.
 
 ## Authentication Issues
 
+### Symptom: `notebooklm-sync --list` fails with expired cookies
+
+**Cause:** The cached NotebookLM cookies can no longer bootstrap a client session.
+
+**Diagnosis:**
+```bash
+notebooklm-sync --list
+# ValueError: Cookies have expired. Please re-authenticate by running 'notebooklm-mcp-auth'.
+```
+
+**Solution:**
+1. Close Chrome completely
+2. Run `notebooklm-mcp-auth`
+3. Restart your AI tool / MCP host
+4. Retry `notebooklm-sync --list`
+
 ### Symptom: `notebook_list` returns 0 notebooks
 
 **Cause:** Auth tokens have expired or rotated.
@@ -55,10 +71,10 @@ If you previously had notebooks and now see 0, auth is dead.
 ### Recovery Ladder (Auth Dies Mid-Operation)
 
 1. **Stop current operation** - don't retry blindly
-2. **Verify auth state:** `notebook_list()` - if 0, auth is dead
+2. **Verify auth state:** `notebooklm-sync --list` in a shell, or `notebook_list()` in an MCP client
 3. **Refresh auth:** Close Chrome tabs → `notebooklm-mcp-auth`
 4. **Restart MCP:** Exit and restart Claude Code
-5. **Verify recovery:** `notebook_list()` should return your notebooks
+5. **Verify recovery:** `notebooklm-sync --list` and then `notebook_list()` should return your notebooks
 6. **Resume operation** - check `notebook_get()` to verify state before continuing
 
 ## Studio Artifact Issues
@@ -144,6 +160,11 @@ Pasted text sources appear in `other_sources` and cannot be synced.
 
 ### Check system health
 
+```bash
+# 0. Shell smoke
+notebooklm-sync --list
+```
+
 ```python
 # 1. Auth health
 notebook_list()  # Should return your notebooks
@@ -178,8 +199,11 @@ Check MCP server logs for detailed error messages:
 ## Session Hygiene Best Practices
 
 1. **Start sessions with health check:**
+   ```bash
+   notebooklm-sync --list  # Shell read-only smoke
+   ```
    ```python
-   notebook_list()  # Verify auth
+   notebook_list()  # MCP read-only smoke
    ```
 
 2. **Before long operations:**
