@@ -52,7 +52,8 @@ def _extract_keywords(title: str, source_titles: Optional[list[str]] = None) -> 
     all_text = title
     if source_titles:
         all_text += " " + " ".join(source_titles[:20])
-    words = re.findall(r"\b[a-zA-Z]{3,}\b", all_text.lower())
+    # Extract alphabetic words (3+ chars) AND 4-digit years/numbers
+    words = re.findall(r"\b[a-zA-Z]{3,}\b|\b\d{4}\b", all_text.lower())
     keywords = list(dict.fromkeys(w for w in words if w not in _STOP_WORDS))
     return keywords[:30]
 

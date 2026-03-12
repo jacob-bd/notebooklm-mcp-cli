@@ -34,18 +34,32 @@ class MultiAgentResult(TypedDict):
 
 def _score_notebooks(query: str, agents: list[AgentEntry]) -> list[RoutingScore]:
     """Score notebooks by keyword relevance. Higher = better match."""
-    query_terms = set(query.lower().split())
+    import re as _re
+    query_lower = query.lower()
+    query_terms = set(query_lower.split())
+    # Extract 4-digit years from query for precision matching
+    query_years = set(_re.findall(r"\b\d{4}\b", query_lower))
+
     scored = []
     for agent in agents:
         keywords = set(k.lower() for k in agent.get("keywords", []))
         domain = agent.get("domain", "general").lower()
+        title_lower = agent.get("title", "").lower()
+        source_count = agent.get("source_count", 1) or 1
 
         keyword_overlap = len(query_terms & keywords)
         domain_match = 1 if any(t in domain for t in query_terms) else 0
-        source_count = agent.get("source_count", 1) or 1
 
-        # Score: keyword overlap + domain bonus - log(source_count) to prefer smaller notebooks
-        score = keyword_overlap * 2 + domain_match * 3 - math.log(source_count + 1)
+        # Strong bonus when a queried year appears in the notebook title or keywords
+        # Penalty when a queried year is NOT found (prevents wrong-year notebooks winning)
+        year_score = 0
+        if query_years:
+            title_years = set(_re.findall(r"\b\d{4}\b", title_lower))
+            matching_years = query_years & title_years
+            year_score = len(matching_years) * 5 - len(query_years - title_years) * 3
+
+        # Score: keyword overlap + domain bonus + year precision - log(source_count)
+        score = keyword_overlap * 2 + domain_match * 3 + year_score - math.log(source_count + 1)
 
         scored.append({
             "notebook_id": agent["notebook_id"],
