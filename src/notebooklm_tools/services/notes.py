@@ -3,7 +3,8 @@
 from typing import TypedDict, Optional
 
 from ..core.client import NotebookLMClient
-from .errors import ValidationError, ServiceError, NotFoundError
+from ..utils.cache import get_cache
+from .errors import ValidationError, ServiceError
 
 
 class NoteInfo(TypedDict):
@@ -100,6 +101,7 @@ def create_note(
         raise ServiceError(f"Failed to create note: {e}")
 
     if result and result.get("id"):
+        get_cache().invalidate(f"notebook:{notebook_id}")
         preview = content[:100] + ("..." if len(content) > 100 else "")
         return {
             "note_id": result["id"],
@@ -149,6 +151,7 @@ def update_note(
         raise ServiceError(f"Failed to update note: {e}")
 
     if result:
+        get_cache().invalidate(f"notebook:{notebook_id}")
         parts = []
         if title:
             parts.append(f"title → '{title}'")
@@ -191,6 +194,7 @@ def delete_note(
         raise ServiceError(f"Failed to delete note: {e}")
 
     if result:
+        get_cache().invalidate(f"notebook:{notebook_id}")
         return {
             "note_id": note_id,
             "message": f"Note {note_id} deleted permanently.",

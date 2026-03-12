@@ -76,10 +76,23 @@ def _register_tools():
         chat,
         exports,
         notes,
+        cache,
+        case_files,
+        agents,
+        gdoc_sync,
     )
-    
+    # Vectorize tools are optional (require CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID)
+    try:
+        from .tools import vectorize  # noqa: F401
+    except Exception:
+        pass
+
     # Register collected tools with mcp
     register_all_tools(mcp)
+
+    # Register REST API routes
+    from .rest import register_rest_routes
+    register_rest_routes(mcp)
 
 
 # Register tools on import

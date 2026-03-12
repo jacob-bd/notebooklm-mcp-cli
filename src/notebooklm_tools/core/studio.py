@@ -28,21 +28,15 @@ class StudioMixin(BaseClient):
     # =========================================================================
 
     def _get_all_source_ids(self, notebook_id: str) -> list[str]:
-        """Get all source IDs from a notebook.
+        """Get all source IDs for a notebook using the session source cache.
 
-        Uses get_notebook_sources_with_types() for structured, reliable access.
-
-        Args:
-            notebook_id: The notebook UUID
-
-        Returns:
-            List of source UUIDs, or empty list if none found
+        Uses ``_get_cached_source_ids()`` from BaseClient to avoid redundant
+        ``get_notebook()`` calls when multiple studio operations run on the same
+        notebook in quick succession.
         """
         try:
-            sources = self.get_notebook_sources_with_types(notebook_id)
-            return [s["id"] for s in sources if s.get("id")]
+            return self._get_cached_source_ids(notebook_id)
         except Exception:
-            # Return empty list on error - caller methods will handle gracefully
             return []
 
     # =========================================================================

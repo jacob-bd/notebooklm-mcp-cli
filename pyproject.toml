@@ -44,6 +44,18 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+# Claude API bypass agent (pip install notebooklm-mcp-cli[agent])
+agent = [
+    "anthropic>=0.40.0",
+]
+# Cloudflare Vectorize + Workers AI pipeline
+vectorize = [
+    "httpx>=0.27.0",  # already a core dep, listed here for clarity
+]
+# All optional extras
+all = [
+    "anthropic>=0.40.0",
+]
 
 [project.scripts]
 # CLI entry point

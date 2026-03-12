@@ -10,9 +10,12 @@ Internal API. See CLAUDE.md for full documentation.
 
 import json
 import logging
+import math
 import os
 import random
 import re
+import threading
+import time
 import urllib.parse
 from typing import Any
 
@@ -262,6 +265,22 @@ class BaseClient:
         # Request counter for _reqid parameter (required for query endpoint)
         self._reqid_counter = random.randint(100000, 999999)
 
+        # ---- Rate-limit throttle ----
+        # Minimum interval between RPC calls (seconds). Configurable via env var.
+        # Set to 0 to disable. Default 250ms reduces 429 risk on burst operations.
+        self._min_request_interval: float = float(
+            os.environ.get("NOTEBOOKLM_REQUEST_INTERVAL", "0.25")
+        )
+        self._last_request_time: float = 0.0
+        self._throttle_lock = threading.Lock()
+
+        # ---- Session source_ids cache ----
+        # Short-lived in-session cache: notebook_id → (source_ids, expires_at)
+        # Prevents redundant get_notebook() calls within the same session (e.g.
+        # consecutive query() and studio creation calls on the same notebook).
+        self._notebook_sources_cache: dict[str, tuple[list[str], float]] = {}
+        self._SOURCES_SESSION_TTL: float = 60.0  # seconds
+
         # Only refresh CSRF token if not provided - tokens actually last hours/days, not minutes
         # The retry logic in _call_rpc() handles expired tokens gracefully
         if not self.csrf_token:
@@ -369,6 +388,51 @@ class BaseClient:
         if self.csrf_token:
             client.headers["X-Goog-Csrf-Token"] = self.csrf_token
         return client
+
+    # =========================================================================
+    # Rate Limiting & Session Caches
+    # =========================================================================
+
+    def _throttle(self) -> None:
+        """Enforce minimum interval between RPC calls to reduce 429 risk.
+
+        Thread-safe. Set ``NOTEBOOKLM_REQUEST_INTERVAL=0`` to disable.
+        """
+        interval = getattr(self, "_min_request_interval", 0.0)
+        if interval <= 0:
+            return
+        lock = getattr(self, "_throttle_lock", None)
+        ctx = lock if lock is not None else __import__("contextlib").nullcontext()
+        with ctx:
+            elapsed = time.monotonic() - getattr(self, "_last_request_time", 0.0)
+            wait = interval - elapsed
+            if wait > 0:
+                time.sleep(wait)
+            self._last_request_time = time.monotonic()
+
+    def _get_cached_source_ids(self, notebook_id: str) -> list[str]:
+        """Return source IDs for a notebook, using a short-lived in-session cache.
+
+        Avoids repeated ``get_notebook()`` calls when multiple operations (query,
+        studio creation, etc.) access the same notebook in quick succession.
+        """
+        entry = self._notebook_sources_cache.get(notebook_id)
+        if entry is not None:
+            source_ids, expires_at = entry
+            if time.monotonic() < expires_at:
+                return source_ids
+
+        notebook_data = self.get_notebook(notebook_id)
+        source_ids = self._extract_source_ids_from_notebook(notebook_data)
+        self._notebook_sources_cache[notebook_id] = (
+            source_ids,
+            time.monotonic() + self._SOURCES_SESSION_TTL,
+        )
+        return source_ids
+
+    def _invalidate_source_ids_cache(self, notebook_id: str) -> None:
+        """Evict a notebook's source_ids from the session cache after mutations."""
+        self._notebook_sources_cache.pop(notebook_id, None)
 
     # =========================================================================
     # RPC Request/Response Protocol
@@ -493,6 +557,7 @@ class BaseClient:
         2. Reload cookies from disk (handles external re-authentication)
         3. Run headless auth (auto-refresh if Chrome profile has saved login)
         """
+        self._throttle()  # proactive rate limiting
         client = self._get_client()
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)

@@ -158,10 +158,9 @@ class ConversationMixin(BaseClient):
 
         client = self._get_client()
 
-        # If no source_ids provided, get them from the notebook
+        # If no source_ids provided, get them from the session cache (or notebook API)
         if source_ids is None:
-            notebook_data = self.get_notebook(notebook_id)
-            source_ids = self._extract_source_ids_from_notebook(notebook_data)
+            source_ids = self._get_cached_source_ids(notebook_id)
 
         # Determine if this is a new conversation or follow-up
         is_new_conversation = conversation_id is None

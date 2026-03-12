@@ -1,8 +1,10 @@
 """Sources service — shared validation and logic for source management."""
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TypedDict, Optional
 
 from ..core.client import NotebookLMClient
+from ..utils.cache import get_cache, TTL
 from .errors import ValidationError, ServiceError
 
 VALID_SOURCE_TYPES = ("url", "text", "drive", "file")
@@ -136,7 +138,7 @@ def add_source(
             if not url:
                 raise ValidationError("url is required for source_type='url'")
             result = client.add_url_source(notebook_id, url, wait=wait, wait_timeout=wait_timeout)
-            return _extract_result(result, "url", url)
+            return _extract_result(result, "url", url, notebook_id)
 
         elif source_type == "text":
             if not text:
@@ -146,7 +148,7 @@ def add_source(
                 notebook_id, text, effective_title,
                 wait=wait, wait_timeout=wait_timeout,
             )
-            return _extract_result(result, "text", effective_title)
+            return _extract_result(result, "text", effective_title, notebook_id)
 
         elif source_type == "drive":
             if not document_id:
@@ -157,14 +159,14 @@ def add_source(
                 notebook_id, document_id, effective_title, mime_type,
                 wait=wait, wait_timeout=wait_timeout,
             )
-            return _extract_result(result, "drive", effective_title)
+            return _extract_result(result, "drive", effective_title, notebook_id)
 
         elif source_type == "file":
             if not file_path:
                 raise ValidationError("file_path is required for source_type='file'")
             result = client.add_file(notebook_id, file_path, wait=wait, wait_timeout=wait_timeout)
             fallback_title = str(file_path).split("/")[-1]
-            return _extract_result(result, "file", fallback_title)
+            return _extract_result(result, "file", fallback_title, notebook_id)
 
     except (ValidationError, ServiceError):
         raise
@@ -178,15 +180,30 @@ def add_source(
     raise ServiceError(f"Unexpected source type: {source_type}")
 
 
+def _invalidate_source_caches(source_id: str, notebook_id: str | None = None) -> None:
+    """Invalidate all cache entries related to a source (and optionally its notebook)."""
+    cache = get_cache()
+    cache.invalidate(f"source_guide:{source_id}")
+    cache.invalidate(f"source_content:{source_id}")
+    cache.invalidate(f"source_freshness:{source_id}")
+    if notebook_id:
+        cache.invalidate(f"notebook:{notebook_id}")
+        cache.invalidate("notebook_list")
+
+
 def _extract_result(
-    result: Optional[dict], source_type: str, fallback_title: str,
+    result: Optional[dict], source_type: str, fallback_title: str, notebook_id: str | None = None,
 ) -> AddSourceResult:
-    """Extract AddSourceResult from client response."""
+    """Extract AddSourceResult from client response and invalidate notebook cache."""
     if not result or not result.get("id"):
         raise ServiceError(
             f"Failed to add {source_type} source — no ID returned",
             user_message=f"Failed to add {source_type} source.",
         )
+    if notebook_id:
+        cache = get_cache()
+        cache.invalidate(f"notebook:{notebook_id}")
+        cache.invalidate("notebook_list")
     return {
         "source_type": source_type,
         "source_id": result["id"],
@@ -321,20 +338,41 @@ def list_drive_sources(
     drive_sources: list[DriveSourceInfo] = []
     other_sources: list[dict] = []
 
+    # Separate drive sources that need freshness checks
+    pending_freshness: list[dict] = []
     for source in sources:
         source_info: dict = {
             "id": source.get("id"),
             "title": source.get("title"),
             "type": source.get("source_type_name"),
         }
-
         if source.get("can_sync"):
-            is_fresh = client.check_source_freshness(source["id"])
-            source_info["stale"] = not is_fresh if is_fresh is not None else None
             source_info["drive_doc_id"] = source.get("drive_doc_id")
-            drive_sources.append(source_info)
+            pending_freshness.append(source_info)
         else:
             other_sources.append(source_info)
+
+    # Parallel + cached freshness checks (replaces N sequential API calls)
+    if pending_freshness:
+        cache = get_cache()
+
+        def _check_freshness(source_info: dict) -> dict:
+            sid = source_info["id"]
+            cache_key = f"source_freshness:{sid}"
+            cached = cache.get(cache_key)
+            if cached is not None:
+                is_fresh = cached
+            else:
+                is_fresh = client.check_source_freshness(sid)
+                if is_fresh is not None:
+                    cache.set(cache_key, is_fresh, TTL["source_freshness"])
+            source_info["stale"] = not is_fresh if is_fresh is not None else None
+            return source_info
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(_check_freshness, s): s for s in pending_freshness}
+            for future in as_completed(futures):
+                drive_sources.append(future.result())
 
     return {
         "drive_sources": drive_sources,
@@ -364,9 +402,13 @@ def sync_drive_sources(
         raise ValidationError("No source IDs provided for sync.")
 
     results: list[SyncResult] = []
+    cache = get_cache()
     for source_id in source_ids:
         try:
             result = client.sync_drive_source(source_id)
+            if result:
+                # Freshness state changed — invalidate cached stale status
+                cache.invalidate(f"source_freshness:{source_id}")
             results.append({"source_id": source_id, "synced": bool(result), "error": None})
         except Exception as e:
             results.append({"source_id": source_id, "synced": False, "error": str(e)})
@@ -405,6 +447,7 @@ def rename_source(
                 f"Rename returned no data for source {source_id}",
                 user_message="Failed to rename source.",
             )
+        get_cache().invalidate(f"notebook:{notebook_id}")
         return {
             "source_id": result["id"],
             "title": result["title"],
@@ -438,6 +481,7 @@ def delete_source(
                 f"Delete returned falsy for source {source_id}",
                 user_message="Failed to delete source.",
             )
+        _invalidate_source_caches(source_id)
     except ServiceError:
         raise
     except Exception as e:
@@ -483,12 +527,14 @@ def delete_sources(
 def describe_source(
     client: NotebookLMClient,
     source_id: str,
+    use_cache: bool = True,
 ) -> DescribeResult:
     """Get AI-generated source summary with keywords.
 
     Args:
         client: Authenticated NotebookLM client
         source_id: Source UUID
+        use_cache: Return cached summary when available (default True, 24hr TTL)
 
     Returns:
         DescribeResult with summary and keywords
@@ -496,6 +542,13 @@ def describe_source(
     Raises:
         ServiceError: If describe fails
     """
+    cache = get_cache()
+    cache_key = f"source_guide:{source_id}"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     try:
         result = client.get_source_guide(source_id)
         if not result:
@@ -503,10 +556,12 @@ def describe_source(
                 f"No description returned for source {source_id}",
                 user_message="Failed to get source summary.",
             )
-        return {
+        describe_result: DescribeResult = {
             "summary": result.get("summary", ""),
             "keywords": result.get("keywords", []),
         }
+        cache.set(cache_key, describe_result, TTL["source_guide"])
+        return describe_result
     except ServiceError:
         raise
     except Exception as e:
@@ -519,12 +574,14 @@ def describe_source(
 def get_source_content(
     client: NotebookLMClient,
     source_id: str,
+    use_cache: bool = True,
 ) -> SourceContentResult:
     """Get raw text content of a source (no AI processing).
 
     Args:
         client: Authenticated NotebookLM client
         source_id: Source UUID
+        use_cache: Return cached content when available (default True, 1hr TTL)
 
     Returns:
         SourceContentResult with content, title, type, and char_count
@@ -532,6 +589,13 @@ def get_source_content(
     Raises:
         ServiceError: If content retrieval fails
     """
+    cache = get_cache()
+    cache_key = f"source_content:{source_id}"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     try:
         result = client.get_source_fulltext(source_id)
         if not result:
@@ -540,12 +604,14 @@ def get_source_content(
                 user_message="Failed to get source content.",
             )
         content = result.get("content", "")
-        return {
+        content_result: SourceContentResult = {
             "content": content,
             "title": result.get("title", ""),
             "source_type": result.get("type", "unknown"),
             "char_count": len(content),
         }
+        cache.set(cache_key, content_result, TTL["source_content"])
+        return content_result
     except ServiceError:
         raise
     except Exception as e:

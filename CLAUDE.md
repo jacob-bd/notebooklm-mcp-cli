@@ -75,6 +75,16 @@ save_auth_tokens(cookies=<cookie_header>)
 | `NOTEBOOKLM_SESSION_ID` | No | (DEPRECATED - auto-extracted) |
 | `NOTEBOOKLM_BL` | No | Override for build label / bl URL param (auto-extracted from page) |
 | `NOTEBOOKLM_HL` | No | Interface language and default artifact language (default: `en`) |
+| `NOTEBOOKLM_REQUEST_INTERVAL` | No | Minimum seconds between API calls for proactive rate limiting (default: `0.25`) |
+| `NOTEBOOKLM_QUERY_TIMEOUT` | No | Query timeout in seconds (default: `120.0`) |
+| `ANTHROPIC_API_KEY` | No | Claude API key for agent query bypass (no NLM rate limits) |
+| `NOTEBOOKLM_AGENT_MODEL` | No | Claude model for agent queries (default: `claude-haiku-4-5-20251001`) |
+| `NOTEBOOKLM_AGENT_MAX_SOURCES` | No | Max sources to include in agent context (default: `20`) |
+| `NOTEBOOKLM_AGENT_MAX_CHARS` | No | Max chars per source in agent context (default: `50000`) |
+| `CLOUDFLARE_API_TOKEN` | No | CF API token for Vectorize + Workers AI (semantic search pipeline) |
+| `CLOUDFLARE_ACCOUNT_ID` | No | Cloudflare account ID for Vectorize |
+| `VECTORIZE_INDEX_NAME` | No | Vectorize index name (default: `notebooklm-sources`) |
+| `CF_AI_MODEL` | No | Cloudflare AI embedding model (default: `@cf/baai/bge-base-en-v1.5`) |
 
 ### Token Expiration
 

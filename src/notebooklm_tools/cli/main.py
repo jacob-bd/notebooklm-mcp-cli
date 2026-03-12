@@ -31,6 +31,7 @@ from notebooklm_tools.cli.commands.studio import (
 )
 from notebooklm_tools.cli.commands.download import app as download_app
 from notebooklm_tools.cli.commands.share import app as share_app
+from notebooklm_tools.cli.commands.cache import app as cache_app
 from notebooklm_tools.cli.commands.export import app as export_app
 from notebooklm_tools.cli.commands.verbs import (
     create_app,

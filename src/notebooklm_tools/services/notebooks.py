@@ -3,6 +3,7 @@
 from typing import TypedDict, Optional
 
 from ..core.client import NotebookLMClient
+from ..utils.cache import get_cache, TTL
 from .errors import ValidationError, ServiceError, NotFoundError, CreationError
 
 
@@ -71,12 +72,14 @@ class NotebookDeleteResult(TypedDict):
 def list_notebooks(
     client: NotebookLMClient,
     max_results: int = 100,
+    use_cache: bool = True,
 ) -> NotebookListResult:
     """List all notebooks.
 
     Args:
         client: Authenticated NotebookLM client
         max_results: Maximum notebooks to return
+        use_cache: Whether to return cached data (default True)
 
     Returns:
         NotebookListResult with notebooks and counts
@@ -84,6 +87,17 @@ def list_notebooks(
     Raises:
         ServiceError: If listing fails
     """
+    cache = get_cache()
+    cache_key = "notebook_list"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            # Apply max_results to cached result
+            if max_results < len(cached.get("notebooks", [])):
+                cached = dict(cached)
+                cached["notebooks"] = cached["notebooks"][:max_results]
+            return cached
+
     try:
         notebooks = client.list_notebooks()
     except Exception as e:
@@ -93,7 +107,7 @@ def list_notebooks(
     shared_count = len(notebooks) - owned_count
     shared_by_me_count = sum(1 for nb in notebooks if nb.is_owned and nb.is_shared)
 
-    return {
+    result: NotebookListResult = {
         "notebooks": [
             {
                 "id": nb.id,
@@ -105,18 +119,25 @@ def list_notebooks(
                 "created_at": nb.created_at,
                 "modified_at": nb.modified_at,
             }
-            for nb in notebooks[:max_results]
+            for nb in notebooks
         ],
         "count": len(notebooks),
         "owned_count": owned_count,
         "shared_count": shared_count,
         "shared_by_me_count": shared_by_me_count,
     }
+    cache.set(cache_key, result, TTL["notebook_list"])
+    # Apply max_results after caching full list
+    if max_results < len(result["notebooks"]):
+        result = dict(result)  # type: ignore[assignment]
+        result["notebooks"] = result["notebooks"][:max_results]
+    return result
 
 
 def get_notebook(
     client: NotebookLMClient,
     notebook_id: str,
+    use_cache: bool = True,
 ) -> NotebookDetailResult:
     """Get notebook details including source list.
 
@@ -134,6 +155,13 @@ def get_notebook(
         NotFoundError: If notebook not found
         ServiceError: If the API call fails
     """
+    cache = get_cache()
+    cache_key = f"notebook:{notebook_id}"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     try:
         nb = client.get_notebook(notebook_id)
     except Exception as e:
@@ -161,23 +189,27 @@ def get_notebook(
                     src_title = src[1] if len(src) > 1 else "Untitled"
                     sources.append({"id": src_id, "title": src_title})
 
-            return {
+            detail: NotebookDetailResult = {
                 "notebook_id": nb_id,
                 "title": title,
                 "source_count": len(sources),
                 "url": f"https://notebooklm.google.com/notebook/{nb_id}",
                 "sources": sources,
             }
+            cache.set(cache_key, detail, TTL["notebook"])
+            return detail
 
     # Fallback: if nb is a dataclass-like object with attrs (e.g. from list_notebooks)
     if hasattr(nb, "id"):
-        return {
+        detail = {
             "notebook_id": nb.id,
             "title": getattr(nb, "title", "Untitled"),
             "source_count": getattr(nb, "source_count", 0),
             "url": getattr(nb, "url", f"https://notebooklm.google.com/notebook/{nb.id}"),
             "sources": [],
         }
+        cache.set(cache_key, detail, TTL["notebook"])
+        return detail
 
     # Last-resort fallback
     raise ServiceError(
@@ -189,12 +221,14 @@ def get_notebook(
 def describe_notebook(
     client: NotebookLMClient,
     notebook_id: str,
+    use_cache: bool = True,
 ) -> NotebookSummaryResult:
     """Get AI-generated notebook summary with suggested topics.
 
     Args:
         client: Authenticated NotebookLM client
         notebook_id: Notebook UUID
+        use_cache: Whether to return cached summary (default True, 24hr TTL)
 
     Returns:
         NotebookSummaryResult with summary and topics
@@ -202,16 +236,25 @@ def describe_notebook(
     Raises:
         ServiceError: If the summary call fails
     """
+    cache = get_cache()
+    cache_key = f"notebook_summary:{notebook_id}"
+    if use_cache:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     try:
         result = client.get_notebook_summary(notebook_id)
     except Exception as e:
         raise ServiceError(f"Failed to get notebook summary: {e}")
 
     if result:
-        return {
+        summary_result: NotebookSummaryResult = {
             "summary": result.get("summary", ""),
             "suggested_topics": result.get("suggested_topics", []),
         }
+        cache.set(cache_key, summary_result, TTL["notebook_summary"])
+        return summary_result
 
     raise ServiceError(
         "Notebook summary returned no data",
@@ -241,6 +284,7 @@ def create_notebook(
         raise CreationError(f"Failed to create notebook: {e}")
 
     if nb and hasattr(nb, "id"):
+        get_cache().invalidate("notebook_list")  # list is now stale
         return {
             "notebook_id": nb.id,
             "title": nb.title,
@@ -285,6 +329,10 @@ def rename_notebook(
         raise ServiceError(f"Failed to rename notebook: {e}")
 
     if result:
+        cache = get_cache()
+        cache.invalidate("notebook_list")
+        cache.invalidate(f"notebook:{notebook_id}")
+        cache.invalidate(f"notebook_summary:{notebook_id}")
         return {
             "notebook_id": notebook_id,
             "new_title": new_title,
@@ -319,6 +367,10 @@ def delete_notebook(
         raise ServiceError(f"Failed to delete notebook: {e}")
 
     if result:
+        cache = get_cache()
+        cache.invalidate("notebook_list")
+        cache.invalidate(f"notebook:{notebook_id}")
+        cache.invalidate(f"notebook_summary:{notebook_id}")
         return {
             "message": f"Notebook {notebook_id} has been permanently deleted.",
         }
