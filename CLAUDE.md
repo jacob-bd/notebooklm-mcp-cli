@@ -190,6 +190,70 @@ src/notebooklm_tools/
 - `studio_revise` requires `confirm=True` - creates a new artifact with revisions applied
 - `note_delete` requires `confirm=True` - deletion is IRREVERSIBLE
 
+## GDoc-as-Agent-Instruction Pattern
+
+Each notebook can have a **designated Google Doc** that serves as both its data source and its agent configuration file. This is the canonical way to keep notebooks clean and agents self-updating.
+
+### Why This Matters
+
+- Instead of adding many sources, maintain **one GDoc per notebook**
+- Update the GDoc with new data → sync it → NotebookLM picks up the changes
+- The GDoc also contains **agent instructions** (persona, scope, response style)
+- After answering a query, the agent writes findings back as a **notebook note** — ready to be copied back into the GDoc's DATA section, completing the loop
+
+### GDoc Structure (Required Format)
+
+```markdown
+## AGENT INSTRUCTIONS
+You are the [Notebook Title] agent. You specialize in [domain].
+When answering questions, [behavior, tone, scope instructions].
+Only answer based on the documents in this notebook.
+
+## DATA
+[Facts, records, findings — updated by humans or pasted from agent notes]
+```
+
+The `## AGENT INSTRUCTIONS` section is read automatically. Everything between that heading and the next `##` is used as the agent's system context when routing queries to this notebook.
+
+### Setup Workflow
+
+```
+1. agent_gdoc_link(notebook_id, gdoc_id, source_id=<nlm_source_id>)
+   └─ Links the GDoc; source_id is the NotebookLM Drive source ID for that GDoc
+
+2. agent_gdoc_refresh_instructions(notebook_id)
+   └─ Reads the GDoc source content, extracts ## AGENT INSTRUCTIONS, caches it
+
+3. agent_registry_build(force=True)
+   └─ Rebuilds registry — instructions now embedded in AgentEntry
+
+4. notebook_agent_query(query)
+   └─ Routes to correct notebook, prepends instructions, returns answer
+   └─ Automatically writes findings back as a notebook note
+```
+
+### Audit Coverage
+
+```
+agent_gdoc_check()
+└─ Lists all notebooks: which have designated GDocs, which don't
+└─ Shows whether instructions are loaded for each linked notebook
+```
+
+### Self-Update Loop
+
+```
+Query → Agent reads instructions from GDoc → Answers → Saves findings as note
+                                                              ↓
+                          Human reviews note → Pastes into GDoc DATA section
+                                                              ↓
+                              source_sync_drive() → Notebook source updated
+                                                              ↓
+                                         Future queries see the new data
+```
+
+When the agent has Google Docs write access (future), this loop will be fully automatic.
+
 ## Features NOT Yet Implemented
 
 None - all NotebookLM features that can be accessed programmatically are implemented.

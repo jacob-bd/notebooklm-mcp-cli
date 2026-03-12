@@ -93,10 +93,14 @@ def notebook_agent_query(
     top = scored[0]
     notebook_id = top["notebook_id"]
 
-    # Step 3: Query the notebook
-    # chat.query() signature: query(client, notebook_id, query_text, ...)
-    from .chat import query
-    query_result = query(client, notebook_id, query)
+    # Find the matching agent entry to get per-notebook instructions
+    agent_entry = next((a for a in agents if a["notebook_id"] == notebook_id), {})
+    instructions = agent_entry.get("instructions", "")
+
+    # Step 3: Query the notebook — prepend instructions if present
+    from .chat import query as chat_query
+    effective_query = f"{instructions}\n\n---\n\n{query}" if instructions else query
+    query_result = chat_query(client, notebook_id, effective_query)
     answer = query_result.get("answer", "") if isinstance(query_result, dict) else str(query_result)
 
     # Step 4: Write-back as case file
@@ -107,6 +111,14 @@ def notebook_agent_query(
         case_file_save("research", f"query_{safe_q}.md", f"# Query: {query}\n\n{answer}")
     except Exception:
         pass
+
+    # Step 5: Self-update — append findings to the notebook note (GDoc data layer)
+    if agent_entry.get("gdoc_id"):
+        try:
+            from .gdoc_sync import agent_append_findings
+            agent_append_findings(client, notebook_id, query, answer)
+        except Exception:
+            pass
 
     return {
         "answer": answer,

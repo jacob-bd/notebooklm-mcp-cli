@@ -51,6 +51,8 @@ class GDocLink(TypedDict):
     gdoc_id: str
     gdoc_url: str
     artifact_id: Optional[str]
+    source_id: Optional[str]    # NotebookLM source ID for this GDoc
+    instructions: Optional[str] # Cached agent instructions from GDoc
     last_synced: Optional[str]
     sync_count: int
 
@@ -85,23 +87,36 @@ def link_notebook_gdoc(
     gdoc_id: str,
     gdoc_url: str = "",
     artifact_id: str = "",
+    source_id: str = "",
 ) -> GDocLinkResult:
-    """Associate a notebook with a Google Doc.
+    """Associate a notebook with a designated Google Doc.
+
+    The GDoc serves as both the data source and the agent instruction file.
+    Structure your GDoc with:
+      ## AGENT INSTRUCTIONS
+      [persona, scope, behavior for this notebook's agent]
+
+      ## DATA
+      [facts, records, findings — updated by humans or the agent]
 
     Args:
         notebook_id: Notebook UUID
         gdoc_id: Google Doc ID (the part after /document/d/ in the URL)
         gdoc_url: Full Google Doc URL (optional, inferred from gdoc_id if omitted)
         artifact_id: Optional artifact ID for direct export sync
+        source_id: NotebookLM source ID for this GDoc (enables instruction loading)
     """
     links = _load_links()
+    existing = links.get(notebook_id, {})
     url = gdoc_url or f"https://docs.google.com/document/d/{gdoc_id}/edit"
     links[notebook_id] = {
         "gdoc_id": gdoc_id,
         "gdoc_url": url,
-        "artifact_id": artifact_id or "",
-        "last_synced": None,
-        "sync_count": links.get(notebook_id, {}).get("sync_count", 0),
+        "artifact_id": artifact_id or existing.get("artifact_id", ""),
+        "source_id": source_id or existing.get("source_id", ""),
+        "instructions": existing.get("instructions", ""),
+        "last_synced": existing.get("last_synced"),
+        "sync_count": existing.get("sync_count", 0),
     }
     _save_links(links)
     return {
@@ -132,6 +147,8 @@ def list_gdoc_links() -> GDocListResult:
             "gdoc_id": info.get("gdoc_id", ""),
             "gdoc_url": info.get("gdoc_url", ""),
             "artifact_id": info.get("artifact_id"),
+            "source_id": info.get("source_id"),
+            "instructions": info.get("instructions"),
             "last_synced": info.get("last_synced"),
             "sync_count": info.get("sync_count", 0),
         })
@@ -149,9 +166,88 @@ def get_gdoc_link(notebook_id: str) -> Optional[GDocLink]:
         "gdoc_id": info.get("gdoc_id", ""),
         "gdoc_url": info.get("gdoc_url", ""),
         "artifact_id": info.get("artifact_id"),
+        "source_id": info.get("source_id"),
+        "instructions": info.get("instructions"),
         "last_synced": info.get("last_synced"),
         "sync_count": info.get("sync_count", 0),
     }
+
+
+_INSTRUCTIONS_MARKER = "## AGENT INSTRUCTIONS"
+_SECTION_END_RE = __import__("re").compile(r"^##\s+\S", __import__("re").MULTILINE)
+
+
+def read_gdoc_instructions(client, notebook_id: str) -> str:
+    """Read and cache agent instructions from the designated GDoc source.
+
+    The GDoc must contain a section starting with '## AGENT INSTRUCTIONS'.
+    Everything between that heading and the next '##' heading is the instruction text.
+
+    The extracted instructions are cached in gdoc_links.json so the registry
+    can load them without a live API call.
+
+    Returns the instruction text, or "" if none found.
+    """
+    import re
+    links = _load_links()
+    info = links.get(notebook_id)
+    if not info:
+        return ""
+
+    source_id = info.get("source_id", "")
+    if not source_id:
+        return ""
+
+    try:
+        from .sources import get_source_content
+        result = get_source_content(client, notebook_id, source_id)
+        content = result.get("content", "") if isinstance(result, dict) else str(result)
+    except Exception:
+        return ""
+
+    # Extract the AGENT INSTRUCTIONS section
+    idx = content.find(_INSTRUCTIONS_MARKER)
+    if idx == -1:
+        return ""
+
+    section_text = content[idx + len(_INSTRUCTIONS_MARKER):]
+    # Find next ## heading to end the section
+    m = _SECTION_END_RE.search(section_text)
+    instructions = section_text[:m.start()].strip() if m else section_text.strip()
+
+    # Cache instructions in gdoc_links.json
+    info["instructions"] = instructions
+    links[notebook_id] = info
+    _save_links(links)
+
+    return instructions
+
+
+def agent_append_findings(client, notebook_id: str, query: str, findings: str) -> dict:
+    """Write agent findings back to the notebook as a note.
+
+    This is the self-update mechanism: findings are saved as a note in the
+    notebook. When the designated GDoc has write access, the GDoc will be
+    updated directly. For now, notes serve as the agent's memory layer.
+
+    The findings note is formatted so it can be copied into the GDoc's DATA
+    section when reviewed.
+    """
+    from datetime import datetime, timezone
+    from .notes import create_note
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    content = f"**Agent Finding — {timestamp}**\n\n**Query:** {query}\n\n{findings}"
+
+    try:
+        result = create_note(client, notebook_id, content, title=f"[Agent] {query[:60]}")
+        return {
+            "notebook_id": notebook_id,
+            "note_id": result.get("note_id", ""),
+            "message": "Findings saved as notebook note.",
+        }
+    except Exception as e:
+        return {"notebook_id": notebook_id, "error": str(e), "message": "Could not save findings."}
 
 
 def _compile_notebook_markdown(client, notebook_id: str) -> tuple[str, int]:

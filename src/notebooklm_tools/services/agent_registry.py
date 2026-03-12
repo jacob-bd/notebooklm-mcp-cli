@@ -68,6 +68,9 @@ class AgentEntry(TypedDict):
     domain: str
     keywords: list[str]
     source_count: int
+    gdoc_id: str           # Designated GDoc ID (empty if not linked)
+    gdoc_source_id: str    # NotebookLM source ID for the GDoc (empty if not known)
+    instructions: str      # Agent instructions loaded from GDoc (empty if none)
 
 
 class RegistryResult(TypedDict):
@@ -117,18 +120,33 @@ def build_registry(client, force: bool = False) -> RegistryResult:
     notebooks_result = list_notebooks(client, max_results=500, use_cache=True)
     notebooks = notebooks_result.get("notebooks", [])
 
+    # Load GDoc links so we can attach instructions
+    from .gdoc_sync import _load_links as _load_gdoc_links
+    gdoc_links = _load_gdoc_links()
+
     agents: list[AgentEntry] = []
     for nb in notebooks:
+        nb_id = nb["id"]
         title = nb.get("title", "Untitled")
         source_count = nb.get("source_count", 0)
         keywords = _extract_keywords(title)
         domain = _classify_domain(title, keywords)
+
+        # Pull GDoc info and cached instructions if linked
+        link = gdoc_links.get(nb_id, {})
+        gdoc_id = link.get("gdoc_id", "")
+        gdoc_source_id = link.get("source_id", "")
+        instructions = link.get("instructions", "")
+
         agents.append({
-            "notebook_id": nb["id"],
+            "notebook_id": nb_id,
             "title": title,
             "domain": domain,
             "keywords": keywords,
             "source_count": source_count,
+            "gdoc_id": gdoc_id,
+            "gdoc_source_id": gdoc_source_id,
+            "instructions": instructions,
         })
 
     built_at = datetime.now(timezone.utc).isoformat()
@@ -163,6 +181,37 @@ def get_registry(filter_domain: Optional[str] = None) -> RegistryResult:
         "count": len(agents),
         "domains": domains,
         "built_at": data.get("built_at", ""),
+    }
+
+
+def check_gdoc_coverage() -> dict:
+    """Audit which notebooks have a designated GDoc linked and which don't.
+
+    Returns a summary with two lists: linked and unlinked notebooks.
+    Use this to identify gaps before running agent queries.
+    """
+    data = _load_raw()
+    agents = data.get("agents", [])
+    linked = []
+    unlinked = []
+    for a in agents:
+        entry = {
+            "notebook_id": a["notebook_id"],
+            "title": a["title"],
+            "domain": a.get("domain", "general"),
+        }
+        if a.get("gdoc_id"):
+            entry["gdoc_id"] = a["gdoc_id"]
+            entry["has_instructions"] = bool(a.get("instructions"))
+            linked.append(entry)
+        else:
+            unlinked.append(entry)
+    return {
+        "linked": linked,
+        "unlinked": unlinked,
+        "linked_count": len(linked),
+        "unlinked_count": len(unlinked),
+        "coverage_pct": round(len(linked) / len(agents) * 100) if agents else 0,
     }
 
 

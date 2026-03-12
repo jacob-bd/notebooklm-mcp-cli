@@ -5,6 +5,7 @@ from ._utils import get_client, logged_tool
 from ...services import agent_registry as registry_service
 from ...services import agent_routing as routing_service
 from ...services import agent as agent_service
+from ...services import gdoc_sync as gdoc_service
 
 
 @logged_tool()
@@ -131,6 +132,92 @@ def notebook_agent_query_claude(
         return {"status": "success", **result}
     except ImportError as e:
         return {"status": "error", "error": str(e), "hint": "Install anthropic: pip install anthropic"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def agent_gdoc_check() -> dict[str, Any]:
+    """Audit which notebooks have a designated GDoc linked and which don't.
+
+    Shows coverage: linked notebooks (with agent instructions) vs unlinked.
+    Use this before running agent queries to identify gaps.
+    Rebuild the registry after linking new GDocs to pick up instructions.
+    """
+    try:
+        result = registry_service.check_gdoc_coverage()
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def agent_gdoc_link(
+    notebook_id: str,
+    gdoc_id: str,
+    source_id: str = "",
+    gdoc_url: str = "",
+) -> dict[str, Any]:
+    """Link a designated Google Doc to a notebook for agent instructions and data.
+
+    The GDoc is the single source of truth for this notebook's agent:
+    - Its content feeds the notebook as a Drive source
+    - Its '## AGENT INSTRUCTIONS' section drives agent persona and behavior
+    - Agent findings are written back as notes, ready to be added to the GDoc
+
+    GDoc structure (recommended):
+      ## AGENT INSTRUCTIONS
+      You are the [Title] agent. [Describe scope, persona, response style.]
+
+      ## DATA
+      [Facts, records, findings — updated by humans or copied from agent notes]
+
+    After linking, run agent_registry_build(force=True) to load the instructions.
+    Then call agent_gdoc_refresh_instructions to pull the latest instructions.
+
+    Args:
+        notebook_id: Notebook UUID
+        gdoc_id: Google Doc ID (from the URL: /document/d/<gdoc_id>/edit)
+        source_id: NotebookLM source ID for the GDoc (enables instruction loading)
+        gdoc_url: Full GDoc URL (inferred if omitted)
+    """
+    try:
+        result = gdoc_service.link_notebook_gdoc(
+            notebook_id, gdoc_id, gdoc_url=gdoc_url, source_id=source_id
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
+def agent_gdoc_refresh_instructions(notebook_id: str) -> dict[str, Any]:
+    """Re-read agent instructions from the designated GDoc source and cache them.
+
+    Call this after updating the '## AGENT INSTRUCTIONS' section of a GDoc.
+    The instructions are cached in gdoc_links.json and loaded by the registry.
+
+    Args:
+        notebook_id: Notebook UUID
+    """
+    try:
+        client = get_client()
+        instructions = gdoc_service.read_gdoc_instructions(client, notebook_id)
+        if instructions:
+            return {
+                "status": "success",
+                "notebook_id": notebook_id,
+                "instructions_chars": len(instructions),
+                "instructions_preview": instructions[:200],
+                "message": "Instructions loaded and cached. Run agent_registry_build(force=True) to apply.",
+            }
+        else:
+            link = gdoc_service.get_gdoc_link(notebook_id)
+            if not link:
+                return {"status": "error", "error": "No GDoc linked to this notebook. Use agent_gdoc_link first."}
+            if not link.get("source_id"):
+                return {"status": "error", "error": "No source_id set. Provide the NotebookLM source ID for the GDoc when calling agent_gdoc_link."}
+            return {"status": "success", "notebook_id": notebook_id, "message": "No '## AGENT INSTRUCTIONS' section found in GDoc. Add one to enable per-notebook agent behavior."}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
