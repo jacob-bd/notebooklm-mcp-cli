@@ -81,3 +81,9 @@ markers = [
     "e2e: End-to-end tests requiring live authentication",
     "integration: Integration tests for CLI functionality",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]
