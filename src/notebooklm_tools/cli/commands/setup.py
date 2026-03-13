@@ -126,6 +126,11 @@ def _codex_config_path() -> Path:
     return Path.home() / ".codex"
 
 
+def _opencode_config_path() -> Path:
+    """Get OpenCode global config path."""
+    return Path.home() / ".config" / "opencode" / "opencode.json"
+
+
 # =============================================================================
 # Client definitions
 # =============================================================================
@@ -164,6 +169,11 @@ CLIENT_REGISTRY = {
     "codex": {
         "name": "Codex CLI",
         "description": "OpenAI Codex CLI",
+        "has_auto_setup": True,
+    },
+    "opencode": {
+        "name": "OpenCode",
+        "description": "OpenCode terminal AI assistant",
         "has_auto_setup": True,
     },
 }
@@ -349,6 +359,28 @@ enabled = true
         return True
 
 
+def _setup_opencode() -> bool:
+    """Add MCP to OpenCode config."""
+    config_path = _opencode_config_path()
+    config = _read_json_config(config_path)
+
+    mcp = config.get("mcp", {})
+    if "notebooklm" in mcp or "notebooklm-mcp" in mcp:
+        console.print(f"[green]✓[/green] Already configured in OpenCode")
+        return True
+
+    mcp["notebooklm"] = {
+        "type": "local",
+        "command": [MCP_SERVER_CMD],
+        "enabled": True,
+    }
+    config["mcp"] = mcp
+    _write_json_config(config_path, config)
+    console.print(f"[green]✓[/green] Added to OpenCode")
+    console.print(f"  [dim]{config_path}[/dim]")
+    return True
+
+
 def _detect_tool(client_id: str) -> bool:
     """Check if an AI tool is installed/present on the system.
 
@@ -377,6 +409,10 @@ def _detect_tool(client_id: str) -> bool:
         "codex": lambda: (
             shutil.which("codex") is not None
             or _codex_config_path().exists()
+        ),
+        "opencode": lambda: (
+            shutil.which("opencode") is not None
+            or _opencode_config_path().exists()
         ),
     }
     check_fn = checks.get(client_id)
@@ -431,7 +467,10 @@ def _is_already_configured(client_id: str) -> bool:
                     config = tomllib.loads(toml_path.read_text())
                     mcp = config.get("mcp_servers", {})
                     return "notebooklm" in mcp or "notebooklm-mcp" in mcp
-            return False
+        elif client_id == "opencode":
+            config = _read_json_config(_opencode_config_path())
+            mcp = config.get("mcp", {})
+            return "notebooklm" in mcp or "notebooklm-mcp" in mcp
     except Exception:
         pass
     return False
@@ -533,6 +572,7 @@ def _setup_all() -> None:
         "cline": _setup_cline,
         "antigravity": _setup_antigravity,
         "codex": _setup_codex,
+        "opencode": _setup_opencode,
     }
 
     success_count = 0
@@ -661,6 +701,7 @@ def setup_add(
         nlm setup add windsurf
         nlm setup add cline
         nlm setup add antigravity
+        nlm setup add opencode
         nlm setup add json
         nlm setup add all         # Interactive — detect and configure all
     """
@@ -694,6 +735,7 @@ def setup_add(
         "cline": _setup_cline,
         "antigravity": _setup_antigravity,
         "codex": _setup_codex,
+        "opencode": _setup_opencode,
     }
 
     success = setup_fn[client]()
@@ -773,6 +815,28 @@ def _remove_single(client: str) -> bool:
                 return False
         else:
             console.print("[yellow]Warning:[/yellow] 'codex' command not found")
+            return False
+
+    # OpenCode uses "mcp" key, not "mcpServers"
+    if client == "opencode":
+        config_path = _opencode_config_path()
+        if not config_path.exists():
+            console.print(f"[dim]No config file found for OpenCode.[/dim]")
+            return False
+        config = _read_json_config(config_path)
+        mcp = config.get("mcp", {})
+        removed = False
+        for key in ["notebooklm-mcp", "notebooklm"]:
+            if key in mcp:
+                del mcp[key]
+                removed = True
+        if removed:
+            config["mcp"] = mcp
+            _write_json_config(config_path, config)
+            console.print(f"[green]✓[/green] Removed from OpenCode")
+            return True
+        else:
+            console.print(f"[dim]NotebookLM MCP was not configured in OpenCode.[/dim]")
             return False
 
     # JSON config-based clients
@@ -942,7 +1006,15 @@ def setup_list() -> None:
             else:
                 config_path = "not installed"
 
-        table.add_row(info["name"], info["description"], status, config_path)
+        elif client_id == "opencode":
+            path = _opencode_config_path()
+            config = _read_json_config(path)
+            mcp = config.get("mcp", {})
+            if "notebooklm" in mcp or "notebooklm-mcp" in mcp:
+                status = "[green]✓[/green]"
+            config_path = str(path).replace(str(Path.home()), "~")
+
+        table.add_row(str(info["name"]), str(info["description"]), status, config_path)
 
     console.print(table)
     console.print("\n[dim]Add MCP server:  nlm setup add <client>[/dim]")
