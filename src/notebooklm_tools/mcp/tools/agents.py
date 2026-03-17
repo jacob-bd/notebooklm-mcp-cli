@@ -223,6 +223,32 @@ def agent_gdoc_refresh_instructions(notebook_id: str) -> dict[str, Any]:
 
 
 @logged_tool()
+def gws_auth_status() -> dict[str, Any]:
+    """Check gws (Google Workspace CLI) authentication status.
+
+    gws is used to write findings directly back to Google Docs when
+    SAPISIDHASH cookie auth is unavailable. Run `gws auth login -s docs`
+    in a terminal to authenticate if needed.
+    """
+    import shutil
+    import subprocess
+    if not shutil.which("gws"):
+        return {"status": "not_installed", "message": "gws not found. Install from https://github.com/googleworkspace/cli"}
+    try:
+        result = subprocess.run(["gws", "auth", "status"], capture_output=True, text=True, timeout=5)
+        import json as _json
+        data = _json.loads(result.stdout)
+        authenticated = data.get("auth_method", "none") != "none"
+        return {
+            "status": "authenticated" if authenticated else "unauthenticated",
+            "auth_method": data.get("auth_method", "none"),
+            "message": "Ready to write to Google Docs." if authenticated else "Run: gws auth login -s docs",
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@logged_tool()
 def notebook_prefetch(notebook_id: str) -> dict[str, Any]:
     """Pre-warm source content cache for a notebook before heavy agent usage.
 

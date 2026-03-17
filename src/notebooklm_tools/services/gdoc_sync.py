@@ -223,31 +223,159 @@ def read_gdoc_instructions(client, notebook_id: str) -> str:
     return instructions
 
 
+def _sapisidhash(sapisid: str, origin: str = "https://docs.google.com") -> str:
+    """Compute SAPISIDHASH for Google API authorization.
+
+    Format: SAPISIDHASH <timestamp>_<SHA1(timestamp SP SAPISID SP origin)>
+    This header, combined with the session cookies, authenticates requests to
+    Google REST APIs without a separate OAuth2 flow.
+    """
+    import hashlib
+    import time as _time
+    ts = str(int(_time.time()))
+    digest = hashlib.sha1(f"{ts} {sapisid} {origin}".encode()).hexdigest()
+    return f"SAPISIDHASH {ts}_{digest}"
+
+
+def _get_cookie_dict(client) -> dict[str, str]:
+    """Extract cookie dict from the NotebookLM client."""
+    try:
+        cookies = client._auth.cookies  # type: ignore[attr-defined]
+        if isinstance(cookies, dict):
+            return cookies
+        # list[dict] with name/value keys
+        return {c["name"]: c["value"] for c in cookies if "name" in c}
+    except Exception:
+        from ..core.auth import load_cached_tokens
+        tokens = load_cached_tokens()
+        return tokens.cookies if tokens else {}
+
+
+def gdoc_append_text(client, gdoc_id: str, text: str) -> dict:
+    """Append text to a Google Doc using session-cookie auth.
+
+    Tries three methods in order:
+      1. SAPISIDHASH + session cookies → Google Docs batchUpdate REST API
+      2. gws CLI subprocess (if installed and authenticated)
+      3. Returns error — caller should fall back to notebook note
+
+    The SAPISIDHASH method uses the same Google session cookies already stored
+    for NotebookLM, so no separate OAuth2 setup is needed.
+    """
+    import json as _json
+    import urllib.request
+
+    cookies = _get_cookie_dict(client)
+    sapisid = cookies.get("SAPISID") or cookies.get("__Secure-1PSID", "")
+
+    # --- Method 1: SAPISIDHASH via Docs REST API ---
+    if sapisid:
+        try:
+            url = f"https://docs.googleapis.com/v1/documents/{gdoc_id}:batchUpdate"
+            body = _json.dumps({
+                "requests": [{
+                    "insertText": {
+                        "location": {"index": 1},
+                        "text": text + "\n",
+                    }
+                }]
+            }).encode()
+            cookie_header = "; ".join(f"{k}={v}" for k, v in cookies.items())
+            sapis_hash = _sapisidhash(sapisid)
+            req = urllib.request.Request(
+                url,
+                data=body,
+                method="POST",
+                headers={
+                    "Content-Type": "application/json",
+                    "Cookie": cookie_header,
+                    "Authorization": sapis_hash,
+                    "X-Goog-AuthUser": "0",
+                    "Origin": "https://docs.google.com",
+                    "Referer": "https://docs.google.com/",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return {"method": "sapisidhash", "status": resp.status, "gdoc_id": gdoc_id}
+        except Exception as e:
+            sapisidhash_err = str(e)
+    else:
+        sapisidhash_err = "SAPISID cookie not found"
+
+    # --- Method 2: gws CLI subprocess ---
+    import shutil
+    import subprocess
+    if shutil.which("gws"):
+        try:
+            body = _json.dumps({
+                "requests": [{
+                    "insertText": {
+                        "location": {"index": 1},
+                        "text": text + "\n",
+                    }
+                }]
+            })
+            result = subprocess.run(
+                ["gws", "docs", "documents", "batchUpdate",
+                 "--params", _json.dumps({"documentId": gdoc_id}),
+                 "--json", body],
+                capture_output=True, text=True, timeout=15,
+            )
+            if result.returncode == 0:
+                return {"method": "gws", "gdoc_id": gdoc_id}
+            gws_err = result.stderr.strip() or result.stdout.strip()
+        except Exception as e:
+            gws_err = str(e)
+    else:
+        gws_err = "gws not installed"
+
+    return {
+        "error": "gdoc_write_failed",
+        "sapisidhash_error": sapisidhash_err,
+        "gws_error": gws_err,
+        "gdoc_id": gdoc_id,
+    }
+
+
 def agent_append_findings(client, notebook_id: str, query: str, findings: str) -> dict:
-    """Write agent findings back to the notebook as a note.
+    """Write agent findings back to the designated GDoc and as a notebook note.
 
-    This is the self-update mechanism: findings are saved as a note in the
-    notebook. When the designated GDoc has write access, the GDoc will be
-    updated directly. For now, notes serve as the agent's memory layer.
+    Self-update loop:
+      1. Try to append text directly to the linked GDoc (SAPISIDHASH / gws)
+      2. Always also create a notebook note (visible in NotebookLM UI)
 
-    The findings note is formatted so it can be copied into the GDoc's DATA
-    section when reviewed.
+    The GDoc append lands in the document immediately — next time the Drive
+    source is synced, NotebookLM picks up the new data automatically.
     """
     from datetime import datetime, timezone
     from .notes import create_note
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    content = f"**Agent Finding — {timestamp}**\n\n**Query:** {query}\n\n{findings}"
+    append_text = f"\n\n---\n**Agent Finding — {timestamp}**\n**Query:** {query}\n\n{findings}"
+    note_content = f"**Agent Finding — {timestamp}**\n\n**Query:** {query}\n\n{findings}"
 
+    result: dict = {"notebook_id": notebook_id}
+
+    # Try GDoc write first
+    link = get_gdoc_link(notebook_id)
+    if link and link.get("gdoc_id"):
+        gdoc_result = gdoc_append_text(client, link["gdoc_id"], append_text)
+        result["gdoc_write"] = gdoc_result
+        if "error" not in gdoc_result:
+            result["message"] = f"Findings appended to GDoc ({gdoc_result.get('method')}) and saved as note."
+        else:
+            result["message"] = "GDoc write failed — findings saved as notebook note only."
+    else:
+        result["message"] = "No GDoc linked — findings saved as notebook note."
+
+    # Always create a notebook note too
     try:
-        result = create_note(client, notebook_id, content, title=f"[Agent] {query[:60]}")
-        return {
-            "notebook_id": notebook_id,
-            "note_id": result.get("note_id", ""),
-            "message": "Findings saved as notebook note.",
-        }
+        note_result = create_note(client, notebook_id, note_content, title=f"[Agent] {query[:60]}")
+        result["note_id"] = note_result.get("note_id", "")
     except Exception as e:
-        return {"notebook_id": notebook_id, "error": str(e), "message": "Could not save findings."}
+        result["note_error"] = str(e)
+
+    return result
 
 
 def _compile_notebook_markdown(client, notebook_id: str) -> tuple[str, int]:
