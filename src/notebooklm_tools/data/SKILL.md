@@ -1,6 +1,6 @@
 ---
 name: nlm-skill
-version: "0.4.9"
+version: "0.5.0"
 description: "Expert guide for the NotebookLM CLI (`nlm`) and MCP server - interfaces for Google NotebookLM. Use this skill when users want to interact with NotebookLM programmatically, including: creating/managing notebooks, adding sources (URLs, YouTube, text, Google Drive), generating content (podcasts, reports, quizzes, flashcards, mind maps, slides, infographics, videos, data tables), conducting research, chatting with sources, or automating NotebookLM workflows. Triggers on mentions of \"nlm\", \"notebooklm\", \"notebook lm\", \"podcast generation\", \"audio overview\", or any NotebookLM-related automation task."
 ---
 
@@ -236,6 +236,7 @@ nlm research status <nb-id> --full            # Full details
 # Import discovered sources
 nlm research import <nb-id> <task-id>            # Import all
 nlm research import <nb-id> <task-id> --indices 0,2,5  # Import specific
+nlm research import <nb-id> <task-id> --timeout 600    # Custom timeout (default: 300s)
 ```
 
 **Modes**: `fast` (~30s, ~10 sources) | `deep` (~5min, ~40+ sources, web only)
@@ -688,6 +689,7 @@ nlm pipeline run <id> ingest-and-podcast --url "https://example.com"
 | "Source not found" | Invalid ID | `nlm source list <nb-id>` |
 | "Rate limit exceeded" | Too many calls | Wait 30s, retry |
 | "Research already in progress" | Pending research | Use `--force` or import first |
+| "Import timed out" | Too many sources | Use `--timeout 600` for larger notebooks |
 | Browser doesn't launch | Port conflict | Close browser, retry |
 
 ## Rate Limiting

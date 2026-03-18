@@ -73,9 +73,9 @@ def start_research(
                     console.print("[yellow]Warning:[/yellow] Previous research completed with sources not yet imported.")
                     console.print(f"  Task ID: {existing.get('task_id', 'unknown')}")
                     console.print(f"  Sources available: {existing.get('source_count', 0)}")
-                    console.print("\n[dim]Use --force to start a new research (will discard existing results).[/dim]")
-                    console.print("[dim]Or run 'nlm research import' to save the existing results first.[/dim]")
-                    raise typer.Exit(1)
+                    console.print("\n[dim]Starting new research will discard existing results.[/dim]")
+                    console.print("[dim]Run 'nlm research import' first to save them, or proceed to overwrite.[/dim]")
+                    typer.confirm("Continue and start new research?", abort=True)
             
             result = research_service.start_research(
                 client, notebook_id, query,
@@ -235,6 +235,10 @@ def import_research(
         None, "--indices", "-i",
         help="Comma-separated indices of sources to import (default: all)",
     ),
+    timeout: float = typer.Option(
+        300.0, "--timeout", "-t",
+        help="Import timeout in seconds (default: 300)",
+    ),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """
@@ -276,6 +280,7 @@ def import_research(
             result = research_service.import_research(
                 client, notebook_id, task_id,
                 source_indices=source_indices,
+                timeout=timeout,
             )
         
         console.print(f"[green]✓[/green] {result['message']}")

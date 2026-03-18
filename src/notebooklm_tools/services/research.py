@@ -179,6 +179,7 @@ def import_research(
     notebook_id: str,
     task_id: str,
     source_indices: Optional[list[int]] = None,
+    timeout: float = 300.0,
 ) -> ResearchImportResult:
     """Import discovered sources from a completed research task.
 
@@ -187,6 +188,7 @@ def import_research(
         notebook_id: Notebook UUID
         task_id: Research task ID
         source_indices: Indices of sources to import (default: all)
+        timeout: HTTP timeout in seconds (default: 300s)
 
     Returns:
         ResearchImportResult
@@ -236,6 +238,7 @@ def import_research(
             notebook_id=notebook_id,
             task_id=task_id,
             sources=sources_to_import,
+            timeout=timeout,
         )
     except Exception as e:
         raise ServiceError(f"Failed to import sources: {e}")

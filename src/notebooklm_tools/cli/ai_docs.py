@@ -313,6 +313,7 @@ nlm research status <notebook-id> --full             # Full details
 # Import discovered sources
 nlm research import <notebook-id> <task-id>              # Import all
 nlm research import <notebook-id> <task-id> --indices 0,2,5  # Import specific
+nlm research import <notebook-id> <task-id> --timeout 600    # Custom timeout (default: 300s)
 ```
 
 **Verb-First:**

@@ -711,6 +711,7 @@ def research_import_verb(
     notebook: str = typer.Argument(..., help="Notebook ID or alias"),
     task_id: Optional[str] = typer.Argument(None, help="Research task ID (auto-detects if not provided)"),
     indices: Optional[str] = typer.Option(None, "--indices", "-i", help="Comma-separated indices of sources to import (default: all)"),
+    timeout: float = typer.Option(300.0, "--timeout", "-t", help="Import timeout in seconds (default: 300)"),
     profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Import discovered sources into notebook."""
@@ -718,6 +719,7 @@ def research_import_verb(
         notebook_id=notebook,
         task_id=task_id,
         indices=indices,
+        timeout=timeout,
         profile=profile
     )
 

@@ -272,6 +272,7 @@ class ResearchMixin(BaseClient):
         notebook_id: str,
         task_id: str,
         sources: list[dict],
+        timeout: float = 300.0,
     ) -> list[dict]:
         """Import research sources into the notebook.
         
@@ -279,6 +280,7 @@ class ResearchMixin(BaseClient):
             notebook_id: The notebook UUID
             task_id: The research task ID
             sources: List of source dicts with url, title, result_type
+            timeout: HTTP timeout in seconds (default: 300s for large notebooks)
             
         Returns:
             List of imported sources with id and title
@@ -328,8 +330,7 @@ class ResearchMixin(BaseClient):
         body = self._build_request_body(self.RPC_IMPORT_RESEARCH, params)
         url = self._build_url(self.RPC_IMPORT_RESEARCH, f"/notebook/{notebook_id}")
 
-        # Import can take a long time when fetching multiple web sources
-        response = client.post(url, content=body, timeout=120.0)
+        response = client.post(url, content=body, timeout=timeout)
         response.raise_for_status()
 
         parsed = self._parse_response(response.text)

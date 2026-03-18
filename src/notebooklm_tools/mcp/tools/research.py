@@ -80,6 +80,7 @@ def research_import(
     notebook_id: str,
     task_id: str,
     source_indices: list[int] | None = None,
+    timeout: float = 300.0,
 ) -> dict[str, Any]:
     """Import discovered sources into notebook.
 
@@ -89,12 +90,14 @@ def research_import(
         notebook_id: Notebook UUID
         task_id: Research task ID
         source_indices: Source indices to import (default: all)
+        timeout: Import timeout in seconds (default: 300, increase for large notebooks)
     """
     try:
         client = get_client()
         result = research_service.import_research(
             client, notebook_id, task_id,
             source_indices=source_indices,
+            timeout=timeout,
         )
         return {"status": "success", **result}
     except ServiceError as e:

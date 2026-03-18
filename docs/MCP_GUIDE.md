@@ -118,7 +118,7 @@ source_add(
 |------|-------------|
 | `research_start` | Start web/Drive research |
 | `research_status` | Poll research progress |
-| `research_import` | Import discovered sources |
+| `research_import` | Import discovered sources (`timeout` param for large notebooks) |
 
 ### Notes (1 unified tool)
 
@@ -215,7 +215,7 @@ tag(action="select", query="ai research")  # Find notebooks by tag match
 ```
 1. research_start(query="AI trends 2026", mode="deep")
 2. research_status(notebook_id, max_wait=300)  # wait for completion
-3. research_import(notebook_id, task_id)
+3. research_import(notebook_id, task_id, timeout=600)  # optional: increase for large notebooks
 4. studio_create(notebook_id, artifact_type="audio", confirm=True)
 5. studio_status(notebook_id)  # poll until complete
 6. download_artifact(notebook_id, artifact_type="audio", output_path="podcast.mp3")

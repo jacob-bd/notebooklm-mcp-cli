@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-18
+
+### Fixed
+- **Research Import Timeout (Issue #97)** — `research import` now uses a 300-second default timeout (up from 120s), fixing consistent timeouts on notebooks with many sources. The timeout is configurable via `--timeout` / `-t` in CLI and `timeout` parameter in MCP.
+- **Research Start Deadlock (Issue #97)** — `research start` no longer hard-exits when previous research has un-imported sources. Instead, it shows a warning and prompts interactively, so users can choose to proceed or import first. Previously, if import timed out, users were stuck — unable to import or start new research without `--force`.
+
+### Added
+- **Configurable Import Timeout** — `nlm research import <notebook> <task-id> --timeout 600` for extra-large notebooks. Available in both CLI (`--timeout` / `-t`) and MCP (`timeout` parameter on `research_import`). Default: 300 seconds.
+- **2 new unit tests** for timeout parameter forwarding (total: 624 tests)
+
 ## [0.4.9] - 2026-03-16
 
 ### Added

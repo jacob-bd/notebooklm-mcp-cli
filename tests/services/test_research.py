@@ -189,3 +189,29 @@ class TestImportResearch:
         mock_client.import_research_sources.return_value = None
         with pytest.raises(ServiceError, match="no data"):
             import_research(mock_client, "nb-1", "task-1")
+
+    def test_import_passes_custom_timeout(self, mock_client):
+        """Verify that a custom timeout is forwarded to the client."""
+        mock_client.poll_research.return_value = {
+            "status": "completed",
+            "sources": [{"title": "A"}],
+        }
+        mock_client.import_research_sources.return_value = [{"title": "A"}]
+
+        import_research(mock_client, "nb-1", "task-1", timeout=600.0)
+
+        call_kwargs = mock_client.import_research_sources.call_args.kwargs
+        assert call_kwargs["timeout"] == 600.0
+
+    def test_import_uses_default_timeout(self, mock_client):
+        """Verify that the default 300s timeout is used when none specified."""
+        mock_client.poll_research.return_value = {
+            "status": "completed",
+            "sources": [{"title": "A"}],
+        }
+        mock_client.import_research_sources.return_value = [{"title": "A"}]
+
+        import_research(mock_client, "nb-1", "task-1")
+
+        call_kwargs = mock_client.import_research_sources.call_args.kwargs
+        assert call_kwargs["timeout"] == 300.0
