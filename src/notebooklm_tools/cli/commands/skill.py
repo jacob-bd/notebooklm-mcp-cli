@@ -19,54 +19,62 @@ app = typer.Typer(
 )
 
 # Tool configuration mapping
+# "user"/"project" values are BASE skill directories — all skills from data/skills/
+# are installed as subdirectories within these paths.
 TOOL_CONFIGS = {
     "claude-code": {
-        "user": Path.home() / ".claude/skills/nlm-skill",
-        "project": Path(".claude/skills/nlm-skill"),
+        "user": Path.home() / ".claude/skills",
+        "project": Path(".claude/skills"),
         "format": "skill.md",
         "description": "Claude Code CLI and Desktop",
     },
     "cursor": {
-        "user": Path.home() / ".cursor/skills/nlm-skill",
-        "project": Path(".cursor/skills/nlm-skill"),
+        "user": Path.home() / ".cursor/skills",
+        "project": Path(".cursor/skills"),
         "format": "skill.md",
         "description": "Cursor AI editor",
     },
     "codex": {
-        "user": Path.home() / ".agents/skills/nlm-skill",
-        "project": Path(".agents/skills/nlm-skill"),
+        "user": Path.home() / ".agents/skills",
+        "project": Path(".agents/skills"),
         "format": "skill.md",
         "description": "OpenAI Codex CLI",
     },
     "opencode": {
-        "user": Path.home() / ".config/opencode/skills/nlm-skill",
-        "project": Path(".opencode/skills/nlm-skill"),
+        "user": Path.home() / ".config/opencode/skills",
+        "project": Path(".opencode/skills"),
         "format": "skill.md",
         "description": "OpenCode AI assistant",
     },
     "gemini-cli": {
-        "user": Path.home() / ".gemini/skills/nlm-skill",
-        "project": Path(".gemini/skills/nlm-skill"),
+        "user": Path.home() / ".gemini/skills",
+        "project": Path(".gemini/skills"),
         "format": "skill.md",
         "description": "Google Gemini CLI",
     },
     "antigravity": {
-        "user": Path.home() / ".gemini/antigravity/skills/nlm-skill",
-        "project": Path(".agent/skills/nlm-skill"),
+        "user": Path.home() / ".gemini/antigravity/skills",
+        "project": Path(".agent/skills"),
         "format": "skill.md",
         "description": "Antigravity agent framework",
     },
     "cline": {
-        "user": Path.home() / ".cline/skills/nlm-skill",
-        "project": Path(".cline/skills/nlm-skill"),
+        "user": Path.home() / ".cline/skills",
+        "project": Path(".cline/skills"),
         "format": "skill.md",
         "description": "Cline CLI terminal agent",
     },
     "openclaw": {
-        "user": Path.home() / ".openclaw/workspace/skills/nlm-skill",
-        "project": Path(".openclaw/workspace/skills/nlm-skill"),
+        "user": Path.home() / ".openclaw/workspace/skills",
+        "project": Path(".openclaw/workspace/skills"),
         "format": "skill.md",
         "description": "OpenClaw AI agent framework",
+    },
+    "gws": {
+        "user": Path.home() / ".gws/skills",
+        "project": Path(".gws/skills"),
+        "format": "skill.md",
+        "description": "Google Workspace CLI (gws)",
     },
     "other": {
         "project": Path("./nlm-skill-export"),
@@ -116,8 +124,8 @@ def check_install_status(tool: str, level: str = "user") -> tuple[bool, Optional
 
     # Check format
     if config["format"] == "skill.md":
-        # Check for SKILL.md in directory
-        skill_file = install_path / "SKILL.md"
+        # Check for nlm-skill/SKILL.md in the base skills directory
+        skill_file = install_path / "nlm-skill" / "SKILL.md"
         return skill_file.exists(), install_path
     elif config["format"] == "agents.md":
         # Check for markers in AGENTS.md
@@ -169,7 +177,8 @@ def _get_installed_version(tool: str, level: str) -> Optional[str]:
         except Exception:
             return None
     elif format_type == "skill.md":
-        skill_file = install_path / "SKILL.md"
+        # Primary skill is at nlm-skill/SKILL.md within the base directory
+        skill_file = install_path / "nlm-skill" / "SKILL.md"
     elif format_type == "all":
         skill_file = install_path / "nlm-skill" / "SKILL.md"
     else:
@@ -208,33 +217,55 @@ def _inject_version_to_agents_md(agents_path: Path) -> None:
 
 
 
-def install_skill_md(install_path: Path) -> None:
-    """Install SKILL.md format to a directory."""
+def get_skill_names() -> list[str]:
+    """Return sorted list of skill directory names from data/skills/."""
     data_dir = get_data_dir()
+    skills_dir = data_dir / "skills"
+    if not skills_dir.exists():
+        return []
+    return sorted(d.name for d in skills_dir.iterdir() if d.is_dir() and (d / "SKILL.md").exists())
 
-    # Create directory
-    install_path.mkdir(parents=True, exist_ok=True)
 
-    # Copy SKILL.md
-    skill_src = data_dir / "SKILL.md"
-    skill_dst = install_path / "SKILL.md"
-    shutil.copy2(skill_src, skill_dst)
+def install_skill_md(base_path: Path) -> None:
+    """Install all skills from data/skills/ to base_path/<skill-name>/."""
+    data_dir = get_data_dir()
+    skills_src = data_dir / "skills"
 
-    # Inject current version into frontmatter
-    _inject_version_to_frontmatter(skill_dst)
+    # Create base directory
+    base_path.mkdir(parents=True, exist_ok=True)
 
-    # Copy references directory
-    ref_src = data_dir / "references"
-    ref_dst = install_path / "references"
-    if ref_dst.exists():
-        shutil.rmtree(ref_dst)
-    shutil.copytree(ref_src, ref_dst)
+    if not skills_src.exists():
+        # Fallback: legacy single-skill install from data/SKILL.md
+        skill_dst = base_path / "nlm-skill"
+        skill_dst.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(data_dir / "SKILL.md", skill_dst / "SKILL.md")
+        _inject_version_to_frontmatter(skill_dst / "SKILL.md")
+        ref_src = data_dir / "references"
+        if ref_src.exists():
+            shutil.copytree(ref_src, skill_dst / "references", dirs_exist_ok=True)
+        console.print(f"[green]✓[/green] Installed nlm-skill (v{__version__}) to {base_path}")
+        return
 
-    console.print(f"[green]✓[/green] Installed SKILL.md (v{__version__}) to {install_path}")
-    console.print(f"  [dim]• SKILL.md")
-    console.print(f"  [dim]• references/command_reference.md")
-    console.print(f"  [dim]• references/troubleshooting.md")
-    console.print(f"  [dim]• references/workflows.md")
+    installed: list[str] = []
+    for skill_dir in sorted(skills_src.iterdir()):
+        if not skill_dir.is_dir():
+            continue
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.exists():
+            continue
+
+        dst = base_path / skill_dir.name
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(skill_dir, dst)
+
+        # Inject version into the SKILL.md
+        _inject_version_to_frontmatter(dst / "SKILL.md")
+        installed.append(skill_dir.name)
+
+    console.print(f"[green]✓[/green] Installed {len(installed)} skills (v{__version__}) to {base_path}")
+    for name in installed:
+        console.print(f"  [dim]• {name}[/dim]")
 
 
 def install_agents_md(install_path: Path) -> None:
@@ -292,63 +323,86 @@ def install_all_formats(install_path: Path) -> None:
     # Create export directory
     install_path.mkdir(parents=True, exist_ok=True)
 
-    # Copy SKILL.md format (with references) - using "nlm-skill" as folder name
-    skill_dir = install_path / "nlm-skill"
-    skill_dir.mkdir()
-    shutil.copy2(data_dir / "SKILL.md", skill_dir / "SKILL.md")
-    shutil.copytree(data_dir / "references", skill_dir / "references")
+    # Copy all skills from data/skills/ into a "skills/" subdirectory
+    skills_src = data_dir / "skills"
+    skills_dst = install_path / "skills"
+    if skills_src.exists():
+        shutil.copytree(skills_src, skills_dst)
+        # Inject version into each skill
+        for skill_dir in skills_dst.iterdir():
+            if skill_dir.is_dir():
+                skill_md = skill_dir / "SKILL.md"
+                if skill_md.exists():
+                    _inject_version_to_frontmatter(skill_md)
+    else:
+        # Fallback: legacy single-skill
+        skill_dir = install_path / "nlm-skill"
+        skill_dir.mkdir()
+        shutil.copy2(data_dir / "SKILL.md", skill_dir / "SKILL.md")
+        shutil.copytree(data_dir / "references", skill_dir / "references")
 
     # Copy AGENTS.md section
     agents_file = install_path / "AGENTS_SECTION.md"
     shutil.copy2(data_dir / "AGENTS_SECTION.md", agents_file)
 
     # Create README
-    readme_content = """# NotebookLM Skill Export
+    skill_names = get_skill_names()
+    skills_list = "\n".join(f"- `{n}/`" for n in skill_names) if skill_names else "- `nlm-skill/`"
+    readme_content = f"""# NotebookLM Skill Export
 
 This directory contains NotebookLM skill files in multiple formats.
 
-## Formats Available
+## Skills Included ({len(skill_names)} total)
 
-### nlm-skill/
-- `SKILL.md` - Main skill file for Claude Code, OpenCode, Gemini CLI, Antigravity
-- `references/` - Additional reference documentation
+{skills_list}
 
-This is the standard skill directory structure used by all automated installations.
+Each skill directory contains a `SKILL.md` following the OpenClaw/gws skill format:
+- **Atomic skills** (`nlm-*`): focused docs for individual command groups
+- **Recipe skills** (`recipe-*`): step-by-step automation workflows
+- **Persona skills** (`persona-*`): role-based behavioral configurations
 
 ### AGENTS_SECTION.md
-- Section format for Codex AGENTS.md (copy/paste into your AGENTS.md)
+Section format for Codex AGENTS.md (copy/paste into your AGENTS.md)
 
 ## Installation
 
+Copy the `skills/` directory contents to your agent tool's skills folder:
+
 ### Claude Code
 ```bash
-cp -r nlm-skill ~/.claude/skills/
+cp -r skills/* ~/.claude/skills/
 ```
 
 ### OpenCode
 ```bash
-cp -r nlm-skill ~/.config/opencode/skills/
+cp -r skills/* ~/.config/opencode/skills/
 ```
 
 ### Gemini CLI
 ```bash
-cp -r nlm-skill ~/.gemini/skills/
+cp -r skills/* ~/.gemini/skills/
 ```
 
-### Antigravity
+### Antigravity / OpenClaw
 ```bash
-cp -r nlm-skill ~/.gemini/antigravity/skills/
+cp -r skills/* ~/.openclaw/workspace/skills/
+```
+
+### Google Workspace CLI (gws)
+```bash
+cp -r skills/* ~/.gws/skills/
 ```
 
 Or for project-level installation, copy to:
 - Claude Code: `.claude/skills/`
 - OpenCode: `.opencode/skills/`
 - Gemini CLI: `.gemini/skills/`
-- Antigravity: `.agent/skills/`
+- Antigravity / OpenClaw: `.agent/skills/` or `.openclaw/workspace/skills/`
+- gws: `.gws/skills/`
 
 ### Codex
 ```bash
-cp -r nlm-skill ~/.agents/skills/
+cp -r skills/* ~/.agents/skills/
 ```
 
 ## Automated Installation
@@ -358,13 +412,14 @@ Instead of manual copying, you can use:
 nlm skill install <tool>
 ```
 
-Where `<tool>` is: claude-code, cursor, codex, opencode, gemini-cli, antigravity, cline, openclaw.
+Where `<tool>` is: claude-code, cursor, codex, opencode, gemini-cli, antigravity, cline, openclaw, gws.
 """
 
     (install_path / "README.md").write_text(readme_content)
 
-    console.print(f"[green]✓[/green] Exported all formats to {install_path}")
-    console.print(f"  [dim]• nlm-skill/ (skill directory for Claude Code, OpenCode, Gemini, Antigravity)")
+    n_skills = len(skill_names)
+    console.print(f"[green]✓[/green] Exported {n_skills} skills to {install_path}")
+    console.print(f"  [dim]• skills/ ({n_skills} skill directories)")
     console.print(f"  [dim]• AGENTS_SECTION.md (for Codex)")
     console.print(f"  [dim]• README.md (installation instructions)")
 
@@ -529,10 +584,20 @@ def uninstall(
 
     try:
         if format_type == "skill.md":
-            # Remove directory
-            if install_path.exists():
-                shutil.rmtree(install_path)
-            console.print(f"[green]✓[/green] Removed {install_path}")
+            # Remove all nlm/recipe/persona skill directories from the base path
+            skill_names = get_skill_names()
+            removed = []
+            for name in skill_names:
+                skill_path = install_path / name
+                if skill_path.exists():
+                    shutil.rmtree(skill_path)
+                    removed.append(name)
+            if removed:
+                console.print(f"[green]✓[/green] Removed {len(removed)} skills from {install_path}")
+                for name in removed:
+                    console.print(f"  [dim]• {name}[/dim]")
+            else:
+                console.print(f"[yellow]![/yellow] No skill directories found in {install_path}")
 
         elif format_type == "agents.md":
             # Remove section from AGENTS.md
@@ -637,8 +702,10 @@ def list_tools() -> None:
             project_status,
         )
 
+    skill_names = get_skill_names()
     console.print(table)
-    console.print("\n[dim]Legend: ✓ = installed, - = not installed, N/A = not applicable[/dim]")
+    console.print(f"\n[dim]Legend: ✓ = installed, - = not installed, N/A = not applicable[/dim]")
+    console.print(f"[dim]Installs {len(skill_names)} skills per tool: {', '.join(skill_names[:4])}{'...' if len(skill_names) > 4 else ''}[/dim]")
     if has_outdated:
         console.print(f"[yellow]⚠  Some skills are outdated (current: v{__version__}). Run 'nlm skill update' to update all.[/yellow]")
 
@@ -733,16 +800,76 @@ def update(
 
 
 @app.command("show")
-def show() -> None:
+def show(
+    name: Optional[str] = typer.Argument(
+        None,
+        help="Skill name to show (e.g. nlm-skill, persona-researcher). Omit to list all.",
+    ),
+) -> None:
     """
-    Display the NotebookLM skill content.
+    Display skill content. Shows all available skills if no name given.
+
+    Examples:
+        nlm skill show                   # List all skills
+        nlm skill show nlm-skill         # Show main skill
+        nlm skill show persona-researcher
     """
     data_dir = get_data_dir()
-    skill_file = data_dir / "SKILL.md"
+    skills_dir = data_dir / "skills"
 
-    if not skill_file.exists():
-        console.print(f"[red]Error:[/red] SKILL.md not found")
-        raise typer.Exit(1)
+    if name:
+        # Show a specific skill
+        skill_file = skills_dir / name / "SKILL.md" if skills_dir.exists() else data_dir / "SKILL.md"
+        if not skill_file.exists():
+            # Fallback to legacy location
+            legacy = data_dir / "SKILL.md"
+            if legacy.exists() and name in ("nlm-skill", "main"):
+                console.print(legacy.read_text())
+                return
+            console.print(f"[red]Error:[/red] Skill '{name}' not found")
+            skill_names = get_skill_names()
+            if skill_names:
+                console.print(f"Available: {', '.join(skill_names)}")
+            raise typer.Exit(1)
+        console.print(skill_file.read_text())
+    else:
+        # List all available skills
+        skill_names = get_skill_names()
+        if not skill_names:
+            # Fallback to legacy
+            legacy = data_dir / "SKILL.md"
+            if legacy.exists():
+                console.print(legacy.read_text())
+            else:
+                console.print("[red]Error:[/red] No skills found")
+                raise typer.Exit(1)
+            return
 
-    content = skill_file.read_text()
-    console.print(content)
+        table = Table(title=f"Available NotebookLM Skills ({len(skill_names)} total)")
+        table.add_column("Skill", style="cyan")
+        table.add_column("Category")
+        table.add_column("Description")
+
+        import re as _re
+        for skill_name in skill_names:
+            skill_md = skills_dir / skill_name / "SKILL.md"
+            category = "atomic"
+            description = ""
+            if skill_name.startswith("recipe-"):
+                category = "recipe"
+            elif skill_name.startswith("persona-"):
+                category = "persona"
+
+            try:
+                content = skill_md.read_text()
+                m = _re.search(r'description:\s*"([^"]+)"', content)
+                if m:
+                    desc = m.group(1)
+                    description = desc[:80] + "..." if len(desc) > 80 else desc
+            except Exception:
+                pass
+
+            table.add_row(skill_name, category, description)
+
+        console.print(table)
+        console.print(f"\n[dim]Run 'nlm skill show <name>' to view a specific skill[/dim]")
