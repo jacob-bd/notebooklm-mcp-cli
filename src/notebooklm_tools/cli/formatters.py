@@ -17,6 +17,11 @@ class OutputFormat(str, Enum):
     COMPACT = "compact"
 
 
+def print_json(data: Any) -> None:
+    """Print JSON output while preserving non-ASCII characters."""
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
 def detect_output_format(
     json_flag: bool = False,
     quiet_flag: bool = False,
@@ -298,7 +303,7 @@ class JsonFormatter(Formatter):
             if full and created:
                 item["created_at"] = created if isinstance(created, str) else created.isoformat()
             data.append(item)
-        print(json.dumps(data, indent=2))
+        print_json(data)
 
     def format_sources(
         self,
@@ -327,7 +332,7 @@ class JsonFormatter(Formatter):
                 if full:
                     item['is_stale'] = getattr(src, 'is_stale', False)
             data.append(item)
-        print(json.dumps(data, indent=2))
+        print_json(data)
 
     def format_artifacts(
         self,
@@ -357,7 +362,7 @@ class JsonFormatter(Formatter):
                     item['title'] = getattr(art, 'title', '')
                     item['url'] = getattr(art, 'url', '')
             data.append(item)
-        print(json.dumps(data, indent=2))
+        print_json(data)
 
     def format_item(self, item: Any, title: str = "") -> None:
         if hasattr(item, "model_dump"):
@@ -366,7 +371,7 @@ class JsonFormatter(Formatter):
             data = {k: v for k, v in item.__dict__.items() if not k.startswith("_")}
         else:
             data = {"value": item}
-        print(json.dumps(data, indent=2))
+        print_json(data)
 
 
 class CompactFormatter(Formatter):
