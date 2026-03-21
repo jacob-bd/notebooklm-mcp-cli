@@ -8,6 +8,8 @@ Version numbers in pyproject.toml (no git tags).
 ## [Unreleased]
 
 ### Added
+- Nightly/manual CI runs now upload `pytest.xml` and `coverage.xml` artifacts for failure review.
+- Helper regression tests now cover auth/sync/server parsing plus receipt and refresh-log helpers.
 - Nightly documentation refresh automation (PRD-NR01) with launchd scheduling helpers in
   `00_run/install_refresh_schedule.sh` and `00_run/uninstall_refresh_schedule.sh`, plus `Makefile` targets
   `install-schedule`/`uninstall-schedule`.
@@ -17,6 +19,7 @@ Version numbers in pyproject.toml (no git tags).
 - `notebooklm-sync --all --apply --changed-only` mode for automated nightly updates (runs only changed repos by default).
 
 ### Changed
+- `PROJECT_PRIMER.md` operator auth and scheduled doc-sync guidance were refreshed.
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
 - Added a packaged `notebook_map.template.yaml` bootstrap file instead of bundling mutable runtime state.
 - Security and code-tour docs updated to reflect persisted local doc-refresh state.

@@ -5,6 +5,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * *"
+
+permissions:
+  contents: read
 
 jobs:
   test-and-build:
@@ -26,7 +32,23 @@ jobs:
         run: uv sync --extra dev
 
       - name: Run tests with coverage report
-        run: uv run pytest --cov=notebooklm_mcp --cov-report=term-missing -q
+        run: >
+          uv run pytest
+          --cov=notebooklm_mcp
+          --cov-report=term-missing
+          --cov-report=xml:coverage.xml
+          --junitxml=pytest.xml
+          -q
+
+      - name: Upload test and coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-results
+          path: |
+            pytest.xml
+            coverage.xml
+          if-no-files-found: warn
 
       - name: Build package
         run: uv build

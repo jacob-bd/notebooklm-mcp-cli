@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- **Generated**: 2026-02-26 00:45
-- **Repo SHA**: a04cebb
+- **Generated**: 2026-03-21 08:16
+- **Repo SHA**: 3bb9b9c
 - **Generator**: generate-project-primer v1.0.0
 - **Source Docs**:
   - README.md
@@ -235,15 +235,24 @@ Before using the MCP, you need to authenticate with NotebookLM. Run:
 # Recommended: Auto mode (launches Chrome, you log in)
 notebooklm-mcp-auth
 
-# Alternative: File mode (manual cookie extraction)
-notebooklm-mcp-auth --file
+# Fallback: File mode (manual cookie extraction to a non-repo file)
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
 ```
 
-**Auto mode** launches a dedicated Chrome profile, you log in to Google, and cookies are extracted automatically. Your login persists for future auth refreshes.
+**Auto mode** launches a dedicated Chrome profile, you log in to Google, and cookies are extracted automatically. Your login persists for future auth refreshes. This is the recommended operator path because it avoids copying live cookies into your repo working tree.
 
-**File mode** shows instructions for manually extracting cookies from Chrome DevTools and saving them to a file.
+**File mode** is the manual fallback when auto mode cannot connect or Chrome tooling is interfering. If you use it, save the cookie header to a local file outside the repo. A format-only example lives in `cookies.example.txt`.
 
 After successful auth, add the MCP to your AI tool and restart.
+
+For a read-only smoke after auth:
+
+```bash
+# Shell smoke
+notebooklm-sync --list
+```
+
+Then, in your MCP client, run a read-only notebook listing and fetch a known notebook with `notebook_get`. The full operator workflow lives in **[docs/CLI.md](docs/CLI.md)**.
 
 For detailed instructions, troubleshooting, and how the authentication system works, see **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)**.
 
@@ -448,7 +457,7 @@ The `notebooklm-sync` command provides deterministic document syncing with recei
 # List existing notebooks
 notebooklm-sync --list
 
-# Batch refresh all mapped repos
+# Batch refresh all mapped repos (applied mode)
 notebooklm-sync --all --apply
 
 # Batch refresh only changed kitted repos
@@ -487,9 +496,30 @@ notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the arc
 # Install nightly 2 AM refresh schedule
 make install-schedule
 
+# Preview scheduled command behavior without applying changes
+notebooklm-sync --all
+
 # Remove the schedule
 make uninstall-schedule
 ```
+
+### Scheduled Sync Operations (PRD-NR01)
+
+For recurring documentation refreshes, install the launchd job with `make install-schedule`.
+The generated job runs:
+
+```bash
+notebooklm-sync --all --apply --changed-only
+```
+
+It appends batch run output to:
+
+```bash
+~/.config/notebooklm-mcp/refresh.log
+```
+
+This is the supported baseline for unattended operation. Use `make uninstall-schedule` before archival
+or when transferring automation ownership to another machine.
 
 ## Authentication Lifecycle
 
@@ -669,14 +699,34 @@ uv run pytest tests/test_file.py::test_function -v
 
 **Python requirement:** >=3.11
 
-## Authentication (SIMPLIFIED!)
+## Authentication (Operator Path First)
 
-**You only need to provide COOKIES!** The CSRF token and session ID are now **automatically extracted** when needed.
+**You only need to provide cookies.** The CSRF token and session ID are
+**automatically extracted** when needed.
 
-### Method 1: Chrome DevTools MCP (Recommended)
+### Method 1: Local Operator Refresh (Recommended)
 
-**Option A - Fast (Recommended):**
-Extract CSRF token and session ID directly from network request - **no page fetch needed!**
+For local recovery, smoke checks, or day-to-day operator work, prefer the CLI:
+
+```bash
+# Recommended path
+notebooklm-mcp-auth
+
+# Manual fallback if auto mode cannot connect
+notebooklm-mcp-auth --file ~/Downloads/notebooklm-cookies.txt
+```
+
+Auto mode is the preferred path because it avoids pasting live cookies into the
+repo working tree. If file mode is needed, store the cookie file outside the
+repo. `cookies.example.txt` is a format-only example.
+
+### Method 2: Chrome DevTools MCP / In-Tool Save
+
+If you're already inside an assistant workflow with Chrome DevTools access, you
+can save cookies directly from a live request.
+
+**Option A - Fast:**
+Extract CSRF token and session ID directly from the network request.
 
 ```python
 # 1. Navigate to NotebookLM page
@@ -694,13 +744,13 @@ save_auth_tokens(
 ```
 
 **Option B - Minimal (slower first call):**
-Save only cookies, tokens extracted from page on first API call
+Save only cookies and let the client extract the rest on demand.
 
 ```python
 save_auth_tokens(cookies=<cookie_header>)
 ```
 
-### Method 2: Environment Variables
+### Method 3: Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -714,7 +764,9 @@ save_auth_tokens(cookies=<cookie_header>)
 - **CSRF token**: Auto-refreshed on each client initialization
 - **Session ID**: Auto-refreshed on each client initialization
 
-When API calls fail with auth errors, re-extract fresh cookies from Chrome DevTools.
+When API calls fail with auth errors, prefer `notebooklm-mcp-auth` for local
+operator recovery. Use Chrome DevTools extraction when you specifically need the
+in-session `save_auth_tokens(...)` path.
 
 ## Architecture
 
@@ -758,12 +810,42 @@ notebooklm-sync --repo C012_round-table --tier3 --audio --yes
 
 # Custom focus for audio
 notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
+
+# Nightly batch mode (used by launchd)
+notebooklm-sync --all --apply --changed-only
 ```
 
 **Key features:**
 - **Idempotence**: SHA256 hashes skip unchanged files
 - **Cross-notebook safety**: Uses mapped notebook_id to prevent accidental source deletion
 - **Receipts**: JSON audit trail with timestamps, actions, and source IDs
+
+## Operations and Scheduling for Docs
+
+Use the scheduled refresh pipeline when maintaining doc hygiene across repos:
+
+- `make install-schedule` installs a macOS launchd job at 02:00 local time.
+- `make uninstall-schedule` removes that launchd job.
+- Scheduled job command:
+
+```bash
+notebooklm-sync --all --apply --changed-only
+```
+
+- Runbook logs are written to:
+
+```bash
+~/.config/notebooklm-mcp/refresh.log
+```
+
+- Manual fallback checks (before/after automation):
+  - `notebooklm-sync --list`
+  - `notebooklm-sync --repo C012_round-table --tier3 --yes`
+  - `notebooklm-sync --all --apply --changed-only`
+
+- If batch runs fail due auth or transient API issues, fix the local auth context first and rerun the same command.
+
+For CLI references and scheduled-operations details, see **[docs/CLI.md](./docs/CLI.md)**.
 
 ## MCP Tools Provided
 
@@ -1715,7 +1797,7 @@ uv run pytest tests/test_file.py::test_function -v
 
 ## Operations
 
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-02-26
 **Version**: 0.1.0
 
 Day-to-day operation of the NotebookLM MCP Server.
@@ -1799,6 +1881,47 @@ notebooklm-mcp-auth
 
 # 5. Verify: "List my NotebookLM notebooks"
 ```
+
+### Doc Sync Workflow
+
+Use the nightly doc sync pipeline to keep mapped repositories up to date:
+
+1. Confirm your map exists at:
+
+   ```bash
+   ~/.config/notebooklm-mcp/notebook_map.yaml
+   ```
+
+2. Run a dry-run first:
+
+   ```bash
+   notebooklm-sync --all
+   ```
+
+3. Run an applied pass for changed repos:
+
+   ```bash
+   notebooklm-sync --all --apply --changed-only
+   ```
+
+4. Review logs and receipts:
+
+   ```bash
+   tail -f ~/.config/notebooklm-mcp/refresh.log
+   ls ~/.config/notebooklm-mcp/sync_receipts/
+   ```
+
+### Scheduled Doc Sync (Optional)
+
+```bash
+# Install nightly 2 AM run
+make install-schedule
+
+# Remove recurring run
+make uninstall-schedule
+```
+
+The scheduled job executes `notebooklm-sync --all --apply --changed-only`.
 
 ### Common Operations
 
@@ -1938,6 +2061,9 @@ This MCP provides **31 tools** - significant context consumption.
 |-----|----------|---------|
 | Auth tokens | `~/.notebooklm-mcp/auth.json` | Cached credentials |
 | Chrome profile | `~/.notebooklm-mcp/chrome-profile/` | Persistent login |
+| Sync map | `~/.config/notebooklm-mcp/notebook_map.yaml` | Repo-to-notebook mapping |
+| Sync receipts | `~/.config/notebooklm-mcp/sync_receipts/` | JSON batch and per-run receipts |
+| Sync log | `~/.config/notebooklm-mcp/refresh.log` | Nightly/batch refresh log |
 | MCP logs | AI tool's log output | Debug MCP issues |
 
 ## Upgrading
@@ -2154,7 +2280,11 @@ auth.json
 .notebooklm-mcp/
 chrome-profile/
 cookies.txt
+notebooklm-cookies.txt
 ```
+
+`cookies.example.txt` may stay tracked as a format example, but live cookie files
+should remain outside the repo.
 
 ## Related Documentation
 
