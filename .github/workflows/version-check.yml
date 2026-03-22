@@ -1,0 +1,67 @@
+name: Version Alignment Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - 'src/notebooklm_tools/__init__.py'
+      - 'src/notebooklm_tools/data/SKILL.md'
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  check-versions:
+    name: Verify version alignment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract and compare versions
+        run: |
+          set -euo pipefail
+
+          # Extract version from pyproject.toml
+          TOML_VERSION=$(grep '^version = ' pyproject.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+
+          # Extract version from __init__.py
+          INIT_VERSION=$(grep '__version__' src/notebooklm_tools/__init__.py | sed 's/__version__ = "\(.*\)"/\1/')
+
+          # Extract version from SKILL.md (YAML frontmatter)
+          SKILL_VERSION=$(grep '^version:' src/notebooklm_tools/data/SKILL.md | head -1 | sed 's/version: "\(.*\)"/\1/')
+
+          echo "📦 pyproject.toml:  $TOML_VERSION"
+          echo "🐍 __init__.py:     $INIT_VERSION"
+          echo "🤖 SKILL.md:        $SKILL_VERSION"
+
+          FAILED=0
+
+          if [ "$TOML_VERSION" != "$INIT_VERSION" ]; then
+            echo ""
+            echo "❌ MISMATCH: pyproject.toml ($TOML_VERSION) ≠ __init__.py ($INIT_VERSION)"
+            FAILED=1
+          fi
+
+          if [ "$TOML_VERSION" != "$SKILL_VERSION" ]; then
+            echo ""
+            echo "❌ MISMATCH: pyproject.toml ($TOML_VERSION) ≠ SKILL.md ($SKILL_VERSION)"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "🛑 Version alignment check FAILED."
+            echo "   All three files must declare the same version before releasing."
+            echo ""
+            echo "   Files to update:"
+            echo "     - pyproject.toml        → version = \"X.Y.Z\""
+            echo "     - src/notebooklm_tools/__init__.py → __version__ = \"X.Y.Z\""
+            echo "     - src/notebooklm_tools/data/SKILL.md → version: \"X.Y.Z\""
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All versions aligned at $TOML_VERSION"
