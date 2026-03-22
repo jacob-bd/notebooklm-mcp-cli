@@ -97,6 +97,7 @@ Then use natural language: *"Create a notebook about quantum computing and gener
 - **[MCP Guide](docs/MCP_GUIDE.md)** — All 35 MCP tools with examples
 - **[Authentication](docs/AUTHENTICATION.md)** — Setup and troubleshooting
 - **[API Reference](docs/API_REFERENCE.md)** — Internal API docs for contributors
+- **[Revision History](REVISION_HISTORY.md)** — Repo-local integration and operator notes
 
 ## Important Disclaimer
 
@@ -332,18 +333,44 @@ nlm doctor
 
 ### Install AI Skills (Optional)
 
-Install the NotebookLM expert guide for your AI assistant to help it use the tools effectively. Supported for **Cline**, **Antigravity**, **OpenClaw**, **Codex**, **OpenCode**, **Claude Code**, and **Gemini CLI**.
+Install the NotebookLM expert guide for your AI assistant to help it use the tools effectively. Supported for **Cline**, **Antigravity**, **OpenClaw**, **OpenCode**, **Claude Code**, and **Gemini CLI / Codex-compatible agents**.
 
 ```bash
 # Install skill files
+nlm skill install claude-code
+nlm skill install agents      # Gemini CLI, Codex, and other .agents/skills consumers
 nlm skill install cline
 nlm skill install openclaw
-nlm skill install codex
 nlm skill install antigravity
+nlm skill install other --level project   # Export all client formats for reuse
 
 # Update skills
 nlm skill update
 ```
+
+### Shared-State Deployment Example
+
+One validated deployment pattern is to keep NotebookLM state in a durable shared path and have both the CLI and MCP server use that same location:
+
+```bash
+export NOTEBOOKLM_MCP_CLI_PATH="<NLM_DATA_ROOT>"
+
+uv tool install notebooklm-mcp-cli
+nlm setup add codex
+nlm skill install agents
+nlm skill install other --level project
+nlm config set auth.browser brave
+nlm login
+nlm login --check
+```
+
+Operational notes from that setup:
+
+- Set `NOTEBOOKLM_MCP_CLI_PATH` in the shell/profile that normally launches manual `nlm` commands so CLI use and MCP-launched use share the same auth, profiles, and cached state.
+- If a generated Codex MCP entry does not include `NOTEBOOKLM_MCP_CLI_PATH`, patch the client config so the launched `notebooklm-mcp` process inherits it.
+- `nlm skill install agents` is the right path for Codex and other `.agents/skills` consumers; use `nlm skill install other --level project` when you want a reusable exported bundle for future client installs.
+- The same shared data root and exported skill bundle can be reused later for Claude Code or other agent runtimes without creating a second NotebookLM state tree.
+- See [REVISION_HISTORY.md](REVISION_HISTORY.md) for a concise summary of the validated `mcp_stuff` promotion and install workflow.
 
 ### Remove from a tool
 
