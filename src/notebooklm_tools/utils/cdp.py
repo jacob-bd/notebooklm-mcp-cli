@@ -27,6 +27,21 @@ import websocket
 _cached_ws: websocket.WebSocket | None = None
 _cached_ws_url: str | None = None
 
+
+def _normalize_ws_url(url: str | None) -> str | None:
+    """Normalize WebSocket URLs to use 127.0.0.1 instead of localhost.
+
+    On Windows, Chrome's debugger binds to IPv4 only, but
+    websocket-client may resolve 'localhost' to ::1 (IPv6),
+    causing WinError 10013.  Using the explicit IPv4 loopback
+    address avoids the ambiguity on all platforms.
+
+    See: https://github.com/jacob-bd/notebooklm-mcp-cli/issues/108
+    """
+    if url and "://localhost:" in url:
+        url = url.replace("://localhost:", "://127.0.0.1:")
+    return url
+
 from notebooklm_tools.core.exceptions import AuthenticationError
 
 __all__ = [
@@ -527,7 +542,7 @@ def get_debugger_url(
         try:
             response = httpx_client.get(f"http://localhost:{port}/json/version", timeout=timeout)
             data = response.json()
-            return data.get("webSocketDebuggerUrl")
+            return _normalize_ws_url(data.get("webSocketDebuggerUrl"))
         except Exception:
             # Don't sleep on the last try
             if attempt < tries - 1:
@@ -566,7 +581,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
         response = httpx_client.put(f"{cdp_http_url}/json/new", timeout=10)
         if response.status_code == 200 and response.text.strip():
             page = response.json()
-            ws_url = page.get("webSocketDebuggerUrl")
+            ws_url = _normalize_ws_url(page.get("webSocketDebuggerUrl"))
             if ws_url:
                 navigate_to_url(ws_url, NOTEBOOKLM_URL)
             return page
@@ -873,7 +888,7 @@ def extract_cookies_from_page(
             hint="Try manually navigating to notebooklm.google.com and try again.",
         )
 
-    ws_url = page.get("webSocketDebuggerUrl")
+    ws_url = _normalize_ws_url(page.get("webSocketDebuggerUrl"))
     if not ws_url:
         raise AuthenticationError(
             message="No WebSocket URL for NotebookLM page",
@@ -1043,7 +1058,7 @@ def run_headless_auth(
         if not page:
             return None
 
-        ws_url = page.get("webSocketDebuggerUrl")
+        ws_url = _normalize_ws_url(page.get("webSocketDebuggerUrl"))
         if not ws_url:
             return None
 
