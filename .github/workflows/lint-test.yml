@@ -36,4 +36,4 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Run tests with pytest
-        run: uv run --dev --with pytest-github-actions-annotate-failures pytest -v --tb=short -m "not e2e"
+        run: uv run --dev --with pytest-github-actions-annotate-failures --with pytest-asyncio pytest -v --tb=short -m "not e2e"
