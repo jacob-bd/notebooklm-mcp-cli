@@ -1,26 +1,114 @@
-# Line ending normalization
-# Ensure consistent line endings across platforms
+# Line ending normalization for cross-platform Syncthing workspaces
+# Canonical template: C010_standards/templates/.gitattributes.template
+# Policy: All text stored as LF in the repo. Syncthing syncs byte-for-byte
+# between Mac and PC, so CRLF committed on one machine pollutes the other.
+# This file is the single fix: git normalizes on checkout/commit regardless
+# of which machine wrote the file.
+#
+# Deploy: copy to <repo>/.gitattributes
+# Renormalize after first deploy: git add --renormalize . && git commit
 
-# Shell scripts
+# ── Default catch-all ──────────────────────────────────────────────────
+# Auto-detect text files and force LF. This catches anything the
+# explicit rules below miss.
+* text=auto eol=lf
+
+# ── Git config ─────────────────────────────────────────────────────────
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# ── Shell scripts ──────────────────────────────────────────────────────
 *.sh text eol=lf
 *.command text eol=lf
+*.bash text eol=lf
+*.zsh text eol=lf
 
-# Python
+# ── Python ─────────────────────────────────────────────────────────────
 *.py text eol=lf
+*.pyi text eol=lf
+*.pyx text eol=lf
 
-# YAML/JSON configs
+# ── Config / build files ──────────────────────────────────────────────
+*.toml text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf
+*.txt text eol=lf
+*.lock text eol=lf
+*.template text eol=lf
+*.env text eol=lf
+
+# ── Data / markup ─────────────────────────────────────────────────────
 *.yaml text eol=lf
 *.yml text eol=lf
 *.json text eol=lf
+*.jsonl text eol=lf
+*.csv text eol=lf
+*.tsv text eol=lf
+*.xml text eol=lf
+*.html text eol=lf
+*.htm text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.jsx text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.sql text eol=lf
 
-# Markdown
+# ── Documentation ─────────────────────────────────────────────────────
 *.md text eol=lf
+*.rst text eol=lf
 
-# PowerShell can use CRLF on Windows
+# ── Makefiles and Docker ──────────────────────────────────────────────
+Makefile text eol=lf
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# ── Misc text ─────────────────────────────────────────────────────────
+*.rules text eol=lf
+*.excalidraw text eol=lf
+*.graphql text eol=lf
+*.proto text eol=lf
+
+# ── PowerShell (Windows-native, allow CRLF) ───────────────────────────
 *.ps1 text
 
-# Binary files
+# ── Binary files (never normalize) ────────────────────────────────────
 *.xlsx binary
+*.xls binary
+*.docx binary
+*.pptx binary
+*.pdf binary
 *.png binary
 *.jpg binary
+*.jpeg binary
 *.gif binary
+*.ico binary
+*.webp binary
+*.svg text eol=lf
+*.mp3 binary
+*.mp4 binary
+*.wav binary
+*.flac binary
+*.ogg binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.bz2 binary
+*.7z binary
+*.whl binary
+*.pyc binary
+*.pyo binary
+*.so binary
+*.dll binary
+*.dylib binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.pickle binary
+*.pkl binary
+*.npy binary
+*.npz binary
+*.parquet binary
+*.feather binary
+*.arrow binary
