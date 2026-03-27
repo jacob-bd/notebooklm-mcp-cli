@@ -93,14 +93,11 @@ class EnterpriseAdapter:
 
     def add_url_source(self, notebook_id: str, url: str, **kwargs) -> dict | None:
         """Add a URL source."""
-        return self._ec.add_source(notebook_id, url)
+        return self._ec.add_source_url(notebook_id, url)
 
-    def add_text_source(self, notebook_id: str, text: str, title: str = "", **kwargs):
-        """Not available via REST API."""
-        raise NotImplementedError(
-            "Adding text sources is not available in the Enterprise REST API. "
-            "Use URL sources or the web UI."
-        )
+    def add_text_source(self, notebook_id: str, text: str, title: str = "", **kwargs) -> dict | None:
+        """Add a text source."""
+        return self._ec.add_source_text(notebook_id, text, title or "Pasted Text")
 
     def delete_source(self, notebook_id: str, source_id: str) -> bool:
         """Delete a source."""
@@ -160,10 +157,11 @@ class EnterpriseAdapter:
     def add_collaborator(self, notebook_id: str, email: str, role: str = "viewer", **kwargs) -> bool:
         """Share notebook with a user."""
         role_map = {
-            "viewer": "NOTEBOOK_VIEWER",
-            "editor": "NOTEBOOK_EDITOR",
+            "viewer": "PROJECT_ROLE_READER",
+            "editor": "PROJECT_ROLE_WRITER",
+            "owner": "PROJECT_ROLE_OWNER",
         }
-        api_role = role_map.get(role, "NOTEBOOK_VIEWER")
+        api_role = role_map.get(role, "PROJECT_ROLE_READER")
         return self._ec.share_notebook(notebook_id, email, api_role)
 
     # =========================================================================
