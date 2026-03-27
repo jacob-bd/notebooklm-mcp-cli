@@ -88,8 +88,11 @@ class EnterpriseAdapter:
     # =========================================================================
 
     def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict]:
-        """List sources in a notebook."""
-        return self._ec.list_sources(notebook_id)
+        """List sources in a notebook (from GET notebook response)."""
+        nb = self._ec.get_notebook(notebook_id)
+        if nb and "sources" in nb:
+            return nb["sources"]
+        return []
 
     def add_url_source(self, notebook_id: str, url: str, **kwargs) -> dict | None:
         """Add a URL source."""
@@ -124,12 +127,68 @@ class EnterpriseAdapter:
     # Studio / Audio
     # =========================================================================
 
-    def create_audio_overview(self, notebook_id: str, **kwargs) -> dict | None:
-        """Generate an audio overview."""
-        result = self._ec.generate_audio_overview(notebook_id)
+    def create_audio_overview(
+        self,
+        notebook_id: str,
+        source_ids: list[str] | None = None,
+        language: str = "en",
+        focus_prompt: str = "",
+        **kwargs,
+    ) -> dict | None:
+        """Generate an audio overview via Enterprise REST API."""
+        result = self._ec.generate_audio_overview(
+            notebook_id,
+            source_ids=source_ids,
+            focus=focus_prompt,
+            language=language,
+        )
         if result:
-            return {"status": "started", "raw": result}
+            ao = result.get("audioOverview", result)
+            return {
+                "artifact_id": ao.get("audioOverviewId", ""),
+                "status": ao.get("status", "in_progress"),
+            }
         return None
+
+    def create_video_overview(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Video generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_infographic(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Infographic generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_slide_deck(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Slide deck generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_report(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Report generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_flashcards(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Flashcard generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_quiz(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Quiz generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def create_data_table(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Data table generation is not available in the Enterprise REST API. Use the web UI."
+        )
+
+    def generate_mind_map(self, notebook_id: str, **kwargs):
+        raise NotImplementedError(
+            "Mind map generation is not available in the Enterprise REST API. Use the web UI."
+        )
 
     def poll_studio_status(self, notebook_id: str) -> list:
         """Not available via REST API."""

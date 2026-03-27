@@ -140,12 +140,24 @@ class EnterpriseClient:
     def get_notebook(self, notebook_id: str) -> dict | None:
         result = self._request("GET", f"notebooks/{notebook_id}")
         if result:
+            # Parse sources from the notebook response
+            sources = []
+            for src in result.get("sources", []):
+                sid = src.get("sourceId", {})
+                source_id = sid.get("id", "") if isinstance(sid, dict) else str(sid)
+                sources.append({
+                    "id": source_id,
+                    "title": src.get("title", "Untitled"),
+                    "status": src.get("settings", {}).get("status", ""),
+                    "name": src.get("name", ""),
+                })
             return {
                 "notebook_id": result.get("notebookId", notebook_id),
                 "title": result.get("title", "Untitled"),
                 "url": self.web_url(notebook_id),
                 "metadata": result.get("metadata", {}),
                 "name": result.get("name", ""),
+                "sources": sources,
             }
         return None
 
