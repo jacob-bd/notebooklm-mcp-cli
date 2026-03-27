@@ -118,6 +118,39 @@ This means you can stay logged into multiple Google accounts simultaneously with
 
 ---
 
+## Enterprise / Google Workspace
+
+If your organization uses **Google Workspace** with a managed NotebookLM instance (e.g., `notebooklm.cloud.google.com` instead of `notebooklm.google.com`), set the `NOTEBOOKLM_BASE_URL` environment variable before authenticating:
+
+```bash
+# Set the enterprise URL
+export NOTEBOOKLM_BASE_URL=https://notebooklm.cloud.google.com
+
+# Then authenticate as usual
+nlm login
+```
+
+All CLI commands, MCP tools, and internal API calls will use this URL automatically. If the variable is not set, the default personal URL (`https://notebooklm.google.com`) is used.
+
+> **Tip:** Add the export to your shell profile (`~/.zshrc`, `~/.bashrc`) so it persists across sessions.
+
+For MCP server configuration, pass the variable in your client config:
+
+```json
+{
+  "mcpServers": {
+    "notebooklm-mcp": {
+      "command": "notebooklm-mcp",
+      "env": {
+        "NOTEBOOKLM_BASE_URL": "https://notebooklm.cloud.google.com"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## Method 2: File Mode
 
 This method lets you manually extract and provide cookies. Use this if:

@@ -5,10 +5,11 @@ import re
 from pathlib import Path
 
 from notebooklm_tools.core.exceptions import AuthenticationError
+from notebooklm_tools.utils.config import get_base_url
 
 # NotebookLM domain for cookie filtering
 NOTEBOOKLM_DOMAIN = ".google.com"
-NOTEBOOKLM_URL = "https://notebooklm.google.com"
+NOTEBOOKLM_URL = get_base_url()
 
 
 def parse_cookies_from_file(file_path: str | Path) -> dict[str, str]:

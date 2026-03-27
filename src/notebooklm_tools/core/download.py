@@ -83,7 +83,7 @@ class DownloadMixin(BaseClient):
             "_PAGE_FETCH_HEADERS",
             {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
         )
-        headers = {**base_headers, "Referer": "https://notebooklm.google.com/"}
+        headers = {**base_headers, "Referer": f"{self._get_base_url()}/"}
 
         # Use httpx.Cookies for proper cross-domain redirect handling
         cookies = self._get_httpx_cookies()

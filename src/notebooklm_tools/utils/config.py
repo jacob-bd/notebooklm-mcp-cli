@@ -20,6 +20,16 @@ from pydantic import BaseModel, Field
 STORAGE_DIR_NAME = ".notebooklm-mcp-cli"
 
 
+def get_base_url() -> str:
+    """Get the NotebookLM base URL.
+
+    Defaults to the personal URL (https://notebooklm.google.com).
+    Set NOTEBOOKLM_BASE_URL to override, e.g. for enterprise:
+        export NOTEBOOKLM_BASE_URL=https://notebooklm.cloud.google.com
+    """
+    return os.environ.get("NOTEBOOKLM_BASE_URL", "https://notebooklm.google.com").rstrip("/")
+
+
 def get_default_language() -> str:
     """Get default language from NOTEBOOKLM_HL env var, falling back to 'en'.
 

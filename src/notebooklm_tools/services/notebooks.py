@@ -3,6 +3,7 @@
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
+from ..utils.config import get_base_url
 from .errors import CreationError, NotFoundError, ServiceError, ValidationError
 
 
@@ -173,7 +174,7 @@ def get_notebook(
                 "notebook_id": nb_id,
                 "title": title,
                 "source_count": len(sources),
-                "url": f"https://notebooklm.google.com/notebook/{nb_id}",
+                "url": f"{get_base_url()}/notebook/{nb_id}",
                 "sources": sources,
             }
 
@@ -183,7 +184,7 @@ def get_notebook(
             "notebook_id": nb.id,
             "title": getattr(nb, "title", "Untitled"),
             "source_count": getattr(nb, "source_count", 0),
-            "url": getattr(nb, "url", f"https://notebooklm.google.com/notebook/{nb.id}"),
+            "url": getattr(nb, "url", f"{get_base_url()}/notebook/{nb.id}"),
             "sources": [],
         }
 

@@ -29,6 +29,7 @@ from .utils import (
     _format_debug_json,
     _parse_url_params,
 )
+from notebooklm_tools.utils.config import get_base_url
 
 # Configure logger (API internals only logged at DEBUG level, usually disabled)
 logger = logging.getLogger("notebooklm_mcp.api")
@@ -52,6 +53,21 @@ class BaseClient:
     from this base class.
     """
 
+    @classmethod
+    def _get_base_url(cls) -> str:
+        return get_base_url()
+
+    @classmethod
+    def _get_batchexecute_url(cls) -> str:
+        return f"{cls._get_base_url()}/_/LabsTailwindUi/data/batchexecute"
+
+    @classmethod
+    def _get_upload_url(cls) -> str:
+        return f"{cls._get_base_url()}/upload/_/"
+
+    # Keep class-level attributes for backward compatibility with code that
+    # reads them directly (e.g. tests). These are the defaults; runtime code
+    # should use the _get_*() methods which respect NOTEBOOKLM_BASE_URL.
     BASE_URL = "https://notebooklm.google.com"
     BATCHEXECUTE_URL = f"{BASE_URL}/_/LabsTailwindUi/data/batchexecute"
     UPLOAD_URL = "https://notebooklm.google.com/upload/_/"
@@ -349,8 +365,8 @@ class BaseClient:
                 cookies=cookies,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                    "Origin": self.BASE_URL,
-                    "Referer": f"{self.BASE_URL}/",
+                    "Origin": self._get_base_url(),
+                    "Referer": f"{self._get_base_url()}/",
                     "X-Same-Domain": "1",
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
                 },
@@ -371,8 +387,8 @@ class BaseClient:
             cookies=cookies,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                "Origin": self.BASE_URL,
-                "Referer": f"{self.BASE_URL}/",
+                "Origin": self._get_base_url(),
+                "Referer": f"{self._get_base_url()}/",
                 "X-Same-Domain": "1",
             },
             timeout=30.0,
@@ -417,7 +433,7 @@ class BaseClient:
             params["f.sid"] = self._session_id
 
         query = urllib.parse.urlencode(params)
-        return f"{self.BATCHEXECUTE_URL}?{query}"
+        return f"{self._get_batchexecute_url()}?{query}"
 
     def _parse_response(self, response_text: str) -> Any:
         """Parse the batchexecute response."""
@@ -678,7 +694,7 @@ class BaseClient:
         with httpx.Client(
             cookies=cookies, headers=headers, follow_redirects=True, timeout=15.0
         ) as client:
-            response = client.get(f"{self.BASE_URL}/")
+            response = client.get(f"{self._get_base_url()}/")
 
             # Check if redirected to login (cookies expired)
             if "accounts.google.com" in str(response.url):

@@ -64,7 +64,8 @@ class Notebook:
     @property
     def url(self) -> str:
         """Get the NotebookLM web URL for this notebook."""
-        return f"https://notebooklm.google.com/notebook/{self.id}"
+        from notebooklm_tools.utils.config import get_base_url
+        return f"{get_base_url()}/notebook/{self.id}"
 
     @property
     def ownership(self) -> str:

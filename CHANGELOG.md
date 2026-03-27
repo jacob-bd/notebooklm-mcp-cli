@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.11] - 2026-03-27
+
+### Added
+- **Enterprise / Google Workspace support (PR #114)** — Configurable base URL via `NOTEBOOKLM_BASE_URL` environment variable. Set to `https://notebooklm.cloud.google.com` (or your organization's URL) to use NotebookLM with managed Workspace accounts. All API calls, authentication, file uploads, and URL detection are updated to use the configured base URL. Default remains `https://notebooklm.google.com` for personal accounts (fully backward compatible). Thanks to **@Robiton** for this contribution!
+
+### Documentation
+- Added "Enterprise / Google Workspace" section to `docs/AUTHENTICATION.md`
+- Added `NOTEBOOKLM_BASE_URL` to environment variables table in `docs/MCP_GUIDE.md`
+
 ## [0.5.10] - 2026-03-27
 
 ### Fixed

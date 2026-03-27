@@ -284,6 +284,7 @@ pipeline(action="run", notebook_id="abc", pipeline_name="ingest-and-podcast", in
 | `NOTEBOOKLM_MCP_DEBUG` | Enable debug logging |
 | `NOTEBOOKLM_HL` | Interface language and default artifact language (default: en) |
 | `NOTEBOOKLM_QUERY_TIMEOUT` | Query timeout (seconds) |
+| `NOTEBOOKLM_BASE_URL` | Override base URL for Enterprise/Workspace (default: `https://notebooklm.google.com`) |
 
 ---
 

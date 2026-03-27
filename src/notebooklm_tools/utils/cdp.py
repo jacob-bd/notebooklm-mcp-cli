@@ -44,6 +44,7 @@ def _normalize_ws_url(url: str | None) -> str | None:
 
 
 from notebooklm_tools.core.exceptions import AuthenticationError  # noqa: E402
+from notebooklm_tools.utils.config import get_base_url  # noqa: E402
 
 __all__ = [
     "get_chrome_path",
@@ -58,7 +59,7 @@ __all__ = [
 
 CDP_DEFAULT_PORT = 9222
 CDP_PORT_RANGE = range(9222, 9232)  # Ports to scan for existing/available
-NOTEBOOKLM_URL = "https://notebooklm.google.com/"
+NOTEBOOKLM_URL = f"{get_base_url()}/"
 
 import logging as _logging  # noqa: E402
 
@@ -569,7 +570,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
 
     for page in pages:
         url = page.get("url", "")
-        if "notebooklm.google.com" in url:
+        if _is_notebooklm_url(url):
             return page
 
     try:
@@ -698,6 +699,11 @@ def navigate_to_url(ws_url: str, url: str) -> None:
     execute_cdp_command(ws_url, "Page.navigate", {"url": url})
 
 
+def _is_notebooklm_url(url: str) -> bool:
+    """Check if a URL belongs to any NotebookLM domain (personal or enterprise)."""
+    return "notebooklm.google.com" in url or "notebooklm.cloud.google.com" in url
+
+
 def is_logged_in(url: str) -> bool:
     """Check login status by URL.
 
@@ -705,7 +711,7 @@ def is_logged_in(url: str) -> bool:
     """
     if "accounts.google.com" in url:
         return False
-    return "notebooklm.google.com" in url
+    return _is_notebooklm_url(url)
 
 
 def extract_build_label(html: str) -> str:
@@ -885,7 +891,7 @@ def extract_cookies_from_page(
     if not page:
         raise AuthenticationError(
             message="Failed to open NotebookLM page",
-            hint="Try manually navigating to notebooklm.google.com and try again.",
+            hint=f"Try manually navigating to {get_base_url()} and try again.",
         )
 
     ws_url = _normalize_ws_url(page.get("webSocketDebuggerUrl"))
@@ -897,7 +903,7 @@ def extract_cookies_from_page(
 
     # Navigate to NotebookLM if needed
     current_url = page.get("url", "")
-    if "notebooklm.google.com" not in current_url:
+    if not _is_notebooklm_url(current_url):
         navigate_to_url(ws_url, NOTEBOOKLM_URL)
 
     # Check login status

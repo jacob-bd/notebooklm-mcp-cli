@@ -272,7 +272,7 @@ class ConversationMixin(BaseClient):
             url_params["f.sid"] = self._session_id
 
         query_string = urllib.parse.urlencode(url_params)
-        url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}?{query_string}"
+        url = f"{self._get_base_url()}{self.QUERY_ENDPOINT}?{query_string}"
 
         response = client.post(url, content=body, timeout=timeout)
         response.raise_for_status()

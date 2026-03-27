@@ -565,14 +565,14 @@ class SourceMixin(BaseClient):
         """
         import json
 
-        url = f"{self.UPLOAD_URL}?authuser=0"
+        url = f"{self._get_upload_url()}?authuser=0"
         cookies = self._get_httpx_cookies()
 
         headers = {
             "Accept": "*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-            "Origin": "https://notebooklm.google.com",
-            "Referer": "https://notebooklm.google.com/",
+            "Origin": self._get_base_url(),
+            "Referer": f"{self._get_base_url()}/",
             "x-goog-authuser": "0",
             "x-goog-upload-command": "start",
             "x-goog-upload-header-content-length": str(file_size),
@@ -621,8 +621,8 @@ class SourceMixin(BaseClient):
         headers = {
             "Accept": "*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-            "Origin": "https://notebooklm.google.com",
-            "Referer": "https://notebooklm.google.com/",
+            "Origin": self._get_base_url(),
+            "Referer": f"{self._get_base_url()}/",
             "x-goog-authuser": "0",
             "x-goog-upload-command": "upload, finalize",
             "x-goog-upload-offset": "0",
