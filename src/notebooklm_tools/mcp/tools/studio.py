@@ -5,7 +5,7 @@ from typing import Any
 from ...core.api_profile import get_api_profile
 from ...services import ServiceError, ValidationError
 from ...services import studio as studio_service
-from ...utils.config import get_default_language
+from ...utils.config import get_base_url, get_default_language
 from ._utils import coerce_list, get_client, logged_tool
 
 
