@@ -45,7 +45,6 @@ pytest_tmp_*
 **/pip-unpack-*
 
 # Generic temp files (Python tempfile module, pytest, etc.)
-# Note: Syncthing cannot parse [a-z0-9_] character classes — use plain glob
 **/tmp?*
 
 # Repo-specific patterns (preserved from previous .stignore)
