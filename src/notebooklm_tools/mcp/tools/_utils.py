@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 
+from notebooklm_tools.core.api_profile import get_api_profile
 from notebooklm_tools.core.auth import load_cached_tokens
 from notebooklm_tools.core.client import NotebookLMClient
 from notebooklm_tools.core.utils import extract_cookies_from_chrome_export
@@ -31,13 +32,28 @@ def set_query_timeout(timeout: float) -> None:
     _query_timeout = timeout
 
 
-def get_client() -> NotebookLMClient:
+def get_client():
     """Get or create the API client (thread-safe).
 
-    Tries environment variables first, falls back to cached tokens from auth CLI.
+    In enterprise mode, returns an EnterpriseAdapter using the official REST API.
+    In personal mode, returns a NotebookLMClient using batchexecute.
     """
     global _client
 
+    # Enterprise mode: use official REST API with GCP OAuth2
+    if os.environ.get("NOTEBOOKLM_MODE", "personal").lower() == "enterprise":
+        if _client is not None:
+            return _client
+        with _client_lock:
+            if _client is not None:
+                return _client
+            from notebooklm_tools.core.enterprise_adapter import EnterpriseAdapter
+            from notebooklm_tools.core.enterprise_client import EnterpriseClient
+
+            _client = EnterpriseAdapter(EnterpriseClient())
+        return _client
+
+    # Personal mode: use batchexecute with cookie auth
     # Check if we need to reload due to profile switch
     cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
     if not cookie_header and _client is not None:
@@ -92,6 +108,7 @@ def get_client() -> NotebookLMClient:
             csrf_token=csrf_token,
             session_id=session_id,
             build_label=build_label,
+            api_profile=get_api_profile(),
         )
     return _client
 

@@ -59,7 +59,20 @@ __all__ = [
 
 CDP_DEFAULT_PORT = 9222
 CDP_PORT_RANGE = range(9222, 9232)  # Ports to scan for existing/available
-NOTEBOOKLM_URL = f"{get_base_url()}/"
+
+
+def _get_notebooklm_url() -> str:
+    """Get the NotebookLM URL for CDP navigation, including enterprise path if needed."""
+    import os
+    mode = os.environ.get("NOTEBOOKLM_MODE", "personal").lower()
+    if mode == "enterprise":
+        project_id = os.environ.get("NOTEBOOKLM_PROJECT_ID", "")
+        location = os.environ.get("NOTEBOOKLM_LOCATION", "global")
+        return f"https://notebooklm.cloud.google.com/{location}/?project={project_id}"
+    return f"{get_base_url()}/"
+
+
+NOTEBOOKLM_URL = _get_notebooklm_url()
 
 import logging as _logging  # noqa: E402
 

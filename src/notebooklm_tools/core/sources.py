@@ -268,25 +268,31 @@ class SourceMixin(BaseClient):
         Returns:
             Source dict with id and title, or None on failure
         """
-        # URL position differs for YouTube vs regular websites:
-        # - YouTube: position 7
-        # - Regular websites: position 2
-        is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
-
-        if is_youtube:
-            # YouTube: [null, null, null, null, null, null, null, [url], null, null, 1]
-            source_data = [None, None, None, None, None, None, None, [url], None, None, 1]
-        else:
-            # Regular website: [null, null, [url], null, null, null, null, null, null, null, 1]
+        if self._profile.is_enterprise:
+            # Enterprise format: [notebook_path, [[null, null, [url], null*7, 1]]]
             source_data = [None, None, [url], None, None, None, None, None, None, None, 1]
+            params = [
+                self._profile.notebook_path(notebook_id),
+                [source_data],
+            ]
+        else:
+            # URL position differs for YouTube vs regular websites:
+            # - YouTube: position 7
+            # - Regular websites: position 2
+            is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
 
-        params = [
-            [source_data],
-            notebook_id,
-            [2],
-            [1, None, None, None, None, None, None, None, None, None, [1]],
-        ]
-        source_path = f"/notebook/{notebook_id}"
+            if is_youtube:
+                source_data = [None, None, None, None, None, None, None, [url], None, None, 1]
+            else:
+                source_data = [None, None, [url], None, None, None, None, None, None, None, 1]
+
+            params = [
+                [source_data],
+                notebook_id,
+                [2],
+                [1, None, None, None, None, None, None, None, None, None, [1]],
+            ]
+        source_path = self._profile.notebook_url_path(notebook_id)
 
         try:
             result = self._call_rpc(

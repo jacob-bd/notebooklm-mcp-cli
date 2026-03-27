@@ -81,7 +81,7 @@ class SharingMixin(BaseClient):
 
         # Construct public link if public
         if is_public:
-            public_link = f"{self._get_base_url()}/notebook/{notebook_id}"
+            public_link = self._profile.web_url(notebook_id)
 
         access_level = "public" if is_public else "restricted"
 
@@ -111,7 +111,7 @@ class SharingMixin(BaseClient):
         self._call_rpc(self.RPC_SHARE_NOTEBOOK, params)
 
         if is_public:
-            return f"{self._get_base_url()}/notebook/{notebook_id}"
+            return self._profile.web_url(notebook_id)
         return None
 
     def add_collaborator(

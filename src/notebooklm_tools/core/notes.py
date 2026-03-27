@@ -38,36 +38,52 @@ class NotesMixin(BaseClient):
         if title is None:
             title = "New Note"
 
-        # RPC format: [notebook_id, "", [1], None, title]
-        # Then we need to update it with content using update_note
-        params = [notebook_id, "", [1], None, title]
-        result = self._call_rpc(self.RPC_CREATE_NOTE, params, f"/notebook/{notebook_id}")
+        if self._profile.is_enterprise:
+            # Enterprise: [notebook_path, [null, content, [2], [], title]]
+            params = [
+                self._profile.notebook_path(notebook_id),
+                [None, content or "", [2], [], title],
+            ]
+        else:
+            # RPC format: [notebook_id, "", [1], None, title]
+            # Then we need to update it with content using update_note
+            params = [notebook_id, "", [1], None, title]
+        result = self._call_rpc(
+            self.RPC_CREATE_NOTE, params, self._profile.notebook_url_path(notebook_id)
+        )
 
         if result and isinstance(result, list) and len(result) > 0:
-            # Response: [[note_id, ...]]
-            note_data = result[0] if isinstance(result[0], list) else result
-            note_id = (
-                note_data[0] if isinstance(note_data, list) and len(note_data) > 0 else note_data
-            )
+            if self._profile.is_enterprise:
+                # Enterprise response: [note_id, content, metadata, null, title, ...]
+                note_id = result[0] if isinstance(result[0], str) else None
+                returned_title = result[4] if len(result) > 4 else title
+                if note_id:
+                    return {"id": note_id, "title": returned_title, "content": content or ""}
+            else:
+                # Personal response: [[note_id, ...]]
+                note_data = result[0] if isinstance(result[0], list) else result
+                note_id = (
+                    note_data[0] if isinstance(note_data, list) and len(note_data) > 0 else note_data
+                )
 
-            if note_id:
-                # Now update with content if provided
-                if content:
-                    update_result = self.update_note(
-                        note_id, content=content, title=title, notebook_id=notebook_id
-                    )
-                    if update_result:
+                if note_id:
+                    # Now update with content if provided
+                    if content:
+                        update_result = self.update_note(
+                            note_id, content=content, title=title, notebook_id=notebook_id
+                        )
+                        if update_result:
+                            return {
+                                "id": note_id,
+                                "title": title,
+                                "content": content,
+                            }
+                    else:
                         return {
                             "id": note_id,
                             "title": title,
-                            "content": content,
+                            "content": "",
                         }
-                else:
-                    return {
-                        "id": note_id,
-                        "title": title,
-                        "content": "",
-                    }
 
         return None
 
@@ -81,8 +97,13 @@ class NotesMixin(BaseClient):
             List of note dicts with id, title, content, created_at
         """
         # RPC_GET_NOTES returns both notes and mind maps
-        params = [notebook_id]
-        result = self._call_rpc(self.RPC_GET_NOTES, params, f"/notebook/{notebook_id}")
+        if self._profile.is_enterprise:
+            params = [self._profile.notebook_path(notebook_id)]
+        else:
+            params = [notebook_id]
+        result = self._call_rpc(
+            self.RPC_GET_NOTES, params, self._profile.notebook_url_path(notebook_id)
+        )
 
         notes = []
         if result and isinstance(result, list) and len(result) > 0:

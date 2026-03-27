@@ -4,7 +4,8 @@ from typing import Any
 
 from ...services import ServiceError, ValidationError
 from ...services import studio as studio_service
-from ...utils.config import get_base_url, get_default_language
+from ...core.api_profile import get_api_profile
+from ...utils.config import get_default_language
 from ._utils import coerce_list, get_client, logged_tool
 
 
@@ -161,7 +162,7 @@ def studio_create(
         )
         return {
             "status": "success",
-            "notebook_url": f"{get_base_url()}/notebook/{notebook_id}",
+            "notebook_url": get_api_profile().web_url(notebook_id),
             **result,
         }
     except (ValidationError, ServiceError) as e:
@@ -231,7 +232,7 @@ def studio_status(
                 "in_progress": result["in_progress"],
             },
             "artifacts": result["artifacts"],
-            "notebook_url": f"{get_base_url()}/notebook/{notebook_id}",
+            "notebook_url": get_api_profile().web_url(notebook_id),
         }
     except (ValidationError, ServiceError) as e:
         return {
@@ -338,7 +339,7 @@ def studio_revise(
         )
         return {
             "status": "success",
-            "notebook_url": f"{get_base_url()}/notebook/{notebook_id}",
+            "notebook_url": get_api_profile().web_url(notebook_id),
             **result,
         }
     except (ValidationError, ServiceError) as e:

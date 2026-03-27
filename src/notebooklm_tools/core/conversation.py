@@ -234,19 +234,29 @@ class ConversationMixin(BaseClient):
             # Check if we have cached history for this conversation
             conversation_history = self._build_conversation_history(conversation_id)
 
-        # Build source IDs structure: [[[sid]]] for each source (3 brackets, not 4!)
-        sources_array = [[[sid]] for sid in source_ids] if source_ids else []
-
-        # Query params structure (from network capture)
-        # For new conversations: params[2] = None
-        # For follow-ups: params[2] = [[answer, null, 2], [query, null, 1], ...]
-        params = [
-            sources_array,
-            query_text,
-            conversation_history,  # None for new, history array for follow-ups
-            [2, None, [1]],
-            conversation_id,
-        ]
+        # Build source IDs structure
+        if self._profile.is_enterprise:
+            # Enterprise: [[["sid1"]], [["sid2"]]] — each source in its own group
+            sources_array = [[[sid]] for sid in source_ids] if source_ids else []
+            # Enterprise query params: [sources, query_text, {70000: notebook_path}]
+            params = [
+                sources_array,
+                query_text,
+                self._profile.notebook_metadata(notebook_id),
+            ]
+        else:
+            # Personal: [[[sid]]] for each source (3 brackets, not 4!)
+            sources_array = [[[sid]] for sid in source_ids] if source_ids else []
+            # Query params structure (from network capture)
+            # For new conversations: params[2] = None
+            # For follow-ups: params[2] = [[answer, null, 2], [query, null, 1], ...]
+            params = [
+                sources_array,
+                query_text,
+                conversation_history,  # None for new, history array for follow-ups
+                [2, None, [1]],
+                conversation_id,
+            ]
 
         # Use compact JSON format matching Chrome (no spaces)
         params_json = json.dumps(params, separators=(",", ":"), ensure_ascii=False)
@@ -268,11 +278,15 @@ class ConversationMixin(BaseClient):
             "_reqid": str(self._reqid_counter),
             "rt": "c",
         }
+        # Add enterprise-specific query params
+        if hasattr(self, '_profile') and self._profile.extra_query_params:
+            url_params.update(self._profile.extra_query_params)
         if self._session_id:
             url_params["f.sid"] = self._session_id
 
         query_string = urllib.parse.urlencode(url_params)
-        url = f"{self._get_base_url()}{self.QUERY_ENDPOINT}?{query_string}"
+        query_ep = self._profile.query_endpoint if hasattr(self, '_profile') else self.QUERY_ENDPOINT
+        url = f"{self._get_base_url()}{query_ep}?{query_string}"
 
         response = client.post(url, content=body, timeout=timeout)
         response.raise_for_status()

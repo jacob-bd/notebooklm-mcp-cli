@@ -30,6 +30,7 @@ from .utils import (
     _parse_url_params,
 )
 from notebooklm_tools.utils.config import get_base_url
+from .api_profile import APIProfile, get_api_profile
 
 # Configure logger (API internals only logged at DEBUG level, usually disabled)
 logger = logging.getLogger("notebooklm_mcp.api")
@@ -53,17 +54,16 @@ class BaseClient:
     from this base class.
     """
 
-    @classmethod
-    def _get_base_url(cls) -> str:
-        return get_base_url()
+    def _get_base_url(self) -> str:
+        return self._profile.base_url if hasattr(self, '_profile') else get_base_url()
 
-    @classmethod
-    def _get_batchexecute_url(cls) -> str:
-        return f"{cls._get_base_url()}/_/LabsTailwindUi/data/batchexecute"
+    def _get_batchexecute_url(self) -> str:
+        if hasattr(self, '_profile'):
+            return f"{self._profile.base_url}{self._profile.batchexecute_path}"
+        return f"{self._get_base_url()}/_/LabsTailwindUi/data/batchexecute"
 
-    @classmethod
-    def _get_upload_url(cls) -> str:
-        return f"{cls._get_base_url()}/upload/_/"
+    def _get_upload_url(self) -> str:
+        return f"{self._get_base_url()}/upload/_/"
 
     # Keep class-level attributes for backward compatibility with code that
     # reads them directly (e.g. tests). These are the defaults; runtime code
@@ -264,6 +264,7 @@ class BaseClient:
         csrf_token: str = "",
         session_id: str = "",
         build_label: str = "",
+        api_profile: APIProfile | None = None,
     ):
         """
         Initialize the base client.
@@ -273,12 +274,19 @@ class BaseClient:
             csrf_token: CSRF token (optional - will be auto-extracted from page if not provided)
             session_id: Session ID (optional - will be auto-extracted from page if not provided)
             build_label: Build label / bl param (optional - auto-extracted from page if not provided)
+            api_profile: API profile for personal/enterprise mode (auto-detected if not provided)
         """
+        self._profile = api_profile or get_api_profile()
+
+        # Override RPC IDs from profile (enterprise uses different IDs)
+        for attr_name, rpc_id in self._profile.rpc_ids.items():
+            setattr(self, attr_name, rpc_id)
+
         self.cookies = cookies
         self.csrf_token = csrf_token
         self._client: httpx.Client | None = None
         self._session_id = session_id
-        self._bl = build_label
+        self._bl = build_label or self._profile.bl_fallback
 
         # Conversation cache for follow-up queries
         # Key: conversation_id, Value: list of ConversationTurn objects
@@ -421,6 +429,11 @@ class BaseClient:
 
     def _build_url(self, rpc_id: str, source_path: str = "/") -> str:
         """Build the batchexecute URL with query params."""
+        # For enterprise, prepend location to source_path if not already there
+        if hasattr(self, '_profile') and self._profile.is_enterprise and self._profile.location:
+            if not source_path.startswith(f"/{self._profile.location}"):
+                source_path = f"/{self._profile.location}{source_path}"
+
         params = {
             "rpcids": rpc_id,
             "source-path": source_path,
@@ -428,6 +441,10 @@ class BaseClient:
             "hl": os.environ.get("NOTEBOOKLM_HL", "en"),
             "rt": "c",
         }
+
+        # Add enterprise-specific query params (authuser, pageId)
+        if hasattr(self, '_profile') and self._profile.extra_query_params:
+            params.update(self._profile.extra_query_params)
 
         if self._session_id:
             params["f.sid"] = self._session_id
@@ -694,7 +711,13 @@ class BaseClient:
         with httpx.Client(
             cookies=cookies, headers=headers, follow_redirects=True, timeout=15.0
         ) as client:
-            response = client.get(f"{self._get_base_url()}/")
+            # Enterprise needs the location path + project param; root URL gives 404
+            if self._profile.is_enterprise:
+                fetch_url = f"{self._get_base_url()}/{self._profile.location}/?project={self._profile.project_id}"
+            else:
+                fetch_url = f"{self._get_base_url()}/"
+
+            response = client.get(fetch_url)
 
             # Check if redirected to login (cookies expired)
             if "accounts.google.com" in str(response.url):
