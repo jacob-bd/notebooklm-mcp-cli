@@ -131,7 +131,17 @@ class EnterpriseAdapter:
         focus_prompt: str = "",
         **kwargs,
     ) -> dict | None:
-        """Generate an audio overview via Enterprise REST API."""
+        """Generate an audio overview via Enterprise REST API.
+
+        Automatically deletes any existing audio overview first
+        (enterprise allows only one per notebook).
+        """
+        # Enterprise only allows one audio overview per notebook — delete first
+        try:
+            self._ec.delete_audio_overview(notebook_id)
+        except Exception:
+            pass  # No existing overview to delete, that's fine
+
         result = self._ec.generate_audio_overview(
             notebook_id,
             source_ids=source_ids,
