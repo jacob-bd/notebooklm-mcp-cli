@@ -118,9 +118,14 @@ class EnterpriseClient:
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            # Re-raise without the original exception to avoid leaking auth headers
+            # Include response body for debugging but strip auth headers
+            detail = ""
+            try:
+                detail = e.response.text[:500]
+            except Exception:
+                pass
             raise httpx.HTTPStatusError(
-                f"API error: {e.response.status_code} for {method} {path}",
+                f"API error: {e.response.status_code} for {method} {path}. {detail}",
                 request=e.request,
                 response=e.response,
             ) from None
