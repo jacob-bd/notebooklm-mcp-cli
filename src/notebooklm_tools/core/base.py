@@ -55,15 +55,13 @@ class BaseClient:
     """
 
     def _get_base_url(self) -> str:
-        return self._profile.base_url if hasattr(self, '_profile') else get_base_url()
+        return self._profile.base_url
 
     def _get_batchexecute_url(self) -> str:
-        if hasattr(self, '_profile'):
-            return f"{self._profile.base_url}{self._profile.batchexecute_path}"
-        return f"{self._get_base_url()}/_/LabsTailwindUi/data/batchexecute"
+        return f"{self._profile.base_url}{self._profile.batchexecute_path}"
 
     def _get_upload_url(self) -> str:
-        return f"{self._get_base_url()}/upload/_/"
+        return f"{self._profile.base_url}/upload/_/"
 
     # Keep class-level attributes for backward compatibility with code that
     # reads them directly (e.g. tests). These are the defaults; runtime code
@@ -429,11 +427,6 @@ class BaseClient:
 
     def _build_url(self, rpc_id: str, source_path: str = "/") -> str:
         """Build the batchexecute URL with query params."""
-        # For enterprise, prepend location to source_path if not already there
-        if hasattr(self, '_profile') and self._profile.is_enterprise and self._profile.location:
-            if not source_path.startswith(f"/{self._profile.location}"):
-                source_path = f"/{self._profile.location}{source_path}"
-
         params = {
             "rpcids": rpc_id,
             "source-path": source_path,
@@ -442,8 +435,7 @@ class BaseClient:
             "rt": "c",
         }
 
-        # Add enterprise-specific query params (authuser, pageId)
-        if hasattr(self, '_profile') and self._profile.extra_query_params:
+        if self._profile.extra_query_params:
             params.update(self._profile.extra_query_params)
 
         if self._session_id:
@@ -711,13 +703,7 @@ class BaseClient:
         with httpx.Client(
             cookies=cookies, headers=headers, follow_redirects=True, timeout=15.0
         ) as client:
-            # Enterprise needs the location path + project param; root URL gives 404
-            if self._profile.is_enterprise:
-                fetch_url = f"{self._get_base_url()}/{self._profile.location}/?project={self._profile.project_id}"
-            else:
-                fetch_url = f"{self._get_base_url()}/"
-
-            response = client.get(fetch_url)
+            response = client.get(f"{self._get_base_url()}/")
 
             # Check if redirected to login (cookies expired)
             if "accounts.google.com" in str(response.url):

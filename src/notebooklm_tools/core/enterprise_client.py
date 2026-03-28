@@ -16,9 +16,21 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import re
+
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Valid ID format: UUID or alphanumeric with dashes
+_VALID_ID = re.compile(r"^[a-zA-Z0-9\-]+$")
+
+
+def _validate_id(value: str, name: str = "id") -> str:
+    """Validate that an ID is safe for URL interpolation."""
+    if not value or not _VALID_ID.match(value):
+        raise ValueError(f"Invalid {name}: {value!r}")
+    return value
 
 
 class EnterpriseClient:
@@ -103,7 +115,15 @@ class EnterpriseClient:
             self._access_token = None
             response = self._client.request(method, url, headers=self._headers(), **kwargs)
 
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            # Re-raise without the original exception to avoid leaking auth headers
+            raise httpx.HTTPStatusError(
+                f"API error: {e.response.status_code} for {method} {path}",
+                request=e.request,
+                response=e.response,
+            ) from None
         return response.json() if response.content else None
 
     # =========================================================================
@@ -138,6 +158,7 @@ class EnterpriseClient:
         return notebooks
 
     def get_notebook(self, notebook_id: str) -> dict | None:
+        _validate_id(notebook_id, "notebook_id")
         result = self._request("GET", f"notebooks/{notebook_id}")
         if result:
             # Parse sources from the notebook response
@@ -176,6 +197,7 @@ class EnterpriseClient:
 
     def delete_notebook(self, notebook_id: str) -> bool:
         """Delete notebook(s) via batchDelete (POST, not DELETE)."""
+        _validate_id(notebook_id, "notebook_id")
         body = {"names": [self._resource_name(notebook_id)]}
         self._request("POST", "notebooks:batchDelete", json=body)
         return True
@@ -236,7 +258,8 @@ class EnterpriseClient:
 
     def upload_file(self, notebook_id: str, file_path: str, display_name: str = "") -> dict | None:
         """Upload a local file as a source."""
-        path = Path(file_path)
+        _validate_id(notebook_id, "notebook_id")
+        path = Path(file_path).resolve()
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 

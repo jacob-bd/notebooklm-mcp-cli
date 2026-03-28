@@ -36,10 +36,7 @@ class NotebookMixin(BaseClient):
 
     def list_notebooks(self, debug: bool = False) -> list[Notebook]:
         """List all notebooks."""
-        if self._profile.is_enterprise:
-            params = [self._profile.resource_prefix, None, None, 1]
-        else:
-            params = [None, 1, None, [2]]
+        params = [None, 1, None, [2]]
 
         result = self._call_rpc(self.RPC_LIST_NOTEBOOKS, params)
 
@@ -129,24 +126,16 @@ class NotebookMixin(BaseClient):
 
     def get_notebook(self, notebook_id: str) -> dict | None:
         """Get notebook details."""
-        if self._profile.is_enterprise:
-            params = [self._profile.notebook_path(notebook_id)]
-        else:
-            params = [notebook_id, None, [2], None, 0]
         return self._call_rpc(
             self.RPC_GET_NOTEBOOK,
-            params,
-            self._profile.notebook_url_path(notebook_id),
+            [notebook_id, None, [2], None, 0],
+            f"/notebook/{notebook_id}",
         )
 
     def get_notebook_summary(self, notebook_id: str) -> dict[str, Any]:
         """Get AI-generated summary and suggested topics for a notebook."""
-        if self._profile.is_enterprise:
-            params = [self._profile.notebook_path(notebook_id), [2]]
-        else:
-            params = [notebook_id, [2]]
         result = self._call_rpc(
-            self.RPC_GET_SUMMARY, params, self._profile.notebook_url_path(notebook_id)
+            self.RPC_GET_SUMMARY, [notebook_id, [2]], f"/notebook/{notebook_id}"
         )
         summary = ""
         suggested_topics = []
@@ -177,19 +166,13 @@ class NotebookMixin(BaseClient):
 
     def create_notebook(self, title: str = "") -> Notebook | None:
         """Create a new notebook."""
-        if self._profile.is_enterprise:
-            params = [
-                self._profile.resource_prefix,
-                [title, None, None, None, None, [None, None, None, None, None, None, 1]],
-            ]
-        else:
-            params = [
-                title,
-                None,
-                None,
-                [2],
-                [1, None, None, None, None, None, None, None, None, None, [1]],
-            ]
+        params = [
+            title,
+            None,
+            None,
+            [2],
+            [1, None, None, None, None, None, None, None, None, None, [1]],
+        ]
         result = self._call_rpc(self.RPC_CREATE_NOTEBOOK, params)
         if result and isinstance(result, list) and len(result) >= 3:
             notebook_id = result[2]

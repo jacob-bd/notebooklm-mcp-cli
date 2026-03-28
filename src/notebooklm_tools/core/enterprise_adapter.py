@@ -6,7 +6,6 @@ wraps EnterpriseClient to provide the same interface, translating
 responses into the data structures the service layer expects.
 """
 
-from .api_profile import get_api_profile
 from .data_types import Notebook
 from .enterprise_client import EnterpriseClient
 
@@ -20,9 +19,6 @@ class EnterpriseAdapter:
 
     def __init__(self, enterprise_client: EnterpriseClient):
         self._ec = enterprise_client
-        self._profile = get_api_profile()
-        # Conversation cache stub (query not supported via REST)
-        self._conversation_cache: dict = {}
 
     def close(self):
         self._ec.close()
