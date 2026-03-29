@@ -66,6 +66,10 @@ def source_add(
             return {"status": "success", "ready": wait, **result}
 
         # Single source add (existing behavior)
+        if source_type == "file" and file_path:
+            from notebooklm_tools.utils.security import sanitize_input_path
+            file_path = str(sanitize_input_path(file_path))
+
         result = sources_service.add_source(
             client,
             notebook_id,

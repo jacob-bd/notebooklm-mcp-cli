@@ -48,6 +48,11 @@ async def download_artifact(
         download_artifact(notebook_id="abc123", artifact_type="slide_deck", output_path="slides.pptx", slide_deck_format="pptx")
     """
     try:
+        from notebooklm_tools.utils.security import sanitize_output_path
+        
+        # Protect against Arbitrary File Write / RCE
+        output_path = str(sanitize_output_path(output_path))
+        
         client = get_client()
         result = await downloads_service.download_async(
             client,
