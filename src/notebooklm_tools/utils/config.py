@@ -376,6 +376,12 @@ def save_config(config: Config) -> None:
     # Convert to TOML format
     toml_content = _config_to_toml(config)
     config_file.write_text(toml_content)
+    
+    # Secure file permissions to protect tokens/configs
+    try:
+        os.chmod(config_file, 0o600)
+    except Exception:
+        pass
 
 
 def _config_to_toml(config: Config) -> str:
