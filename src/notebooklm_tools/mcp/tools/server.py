@@ -1,5 +1,6 @@
-"""Server tools - Server info."""
+"""Server tools - Server info with auth status."""
 
+import subprocess
 from typing import Any
 
 from notebooklm_tools import __version__
@@ -7,12 +8,38 @@ from notebooklm_tools import __version__
 from ._utils import logged_tool
 
 
+def _check_enterprise_auth() -> str:
+    """Check if GCP OAuth is available."""
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "print-access-token"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return "authenticated (gcloud)"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return "not authenticated — run 'gcloud auth login'"
+
+
+def _check_personal_auth() -> str:
+    """Check if personal cookies exist."""
+    try:
+        from notebooklm_tools.core.auth import load_cached_tokens
+        cached = load_cached_tokens()
+        if cached and cached.cookies:
+            return "authenticated (cookies)"
+    except Exception:
+        pass
+    return "not authenticated — run 'nlm login'"
+
+
 @logged_tool()
 def server_info() -> dict[str, Any]:
-    """Get server version and mode info.
+    """Get server version, mode, and auth status.
 
     Returns:
-        dict with version and configuration info.
+        dict with version, configuration, and auth status for both modes.
     """
     from notebooklm_tools.utils.config import get_config
 
@@ -27,13 +54,16 @@ def server_info() -> dict[str, Any]:
         "mode": mode,
         "fork": "Robiton/notebooklm-mcp-cli (enterprise + personal)",
         "switch_mode": "Use configure_mode tool or: nlm config set enterprise.mode <personal|enterprise>",
+        "auth_status": {
+            "enterprise": _check_enterprise_auth(),
+            "personal": _check_personal_auth(),
+        },
     }
 
     if mode == "enterprise":
         info["project_id"] = project_id
         info["location"] = location
         info["api"] = "Discovery Engine REST API (stable)"
-        info["auth"] = "GCP OAuth2 (gcloud auth login)"
         info["supported_operations"] = [
             "notebook_list", "notebook_create", "notebook_get", "notebook_delete",
             "source_add (URL, text, YouTube, Drive, file upload)",
@@ -42,13 +72,11 @@ def server_info() -> dict[str, Any]:
             "podcast_create (standalone, no notebook needed)",
             "notebook_share",
         ]
-        info["unsupported_operations"] = [
+        info["unsupported_in_enterprise"] = [
             "chat/query", "video", "reports", "flashcards", "quizzes",
             "infographics", "slides", "mind_maps", "notes", "research",
-            "rename_notebook",
         ]
     else:
-        info["api"] = "batchexecute (all features)"
-        info["auth"] = "Browser cookies (nlm login)"
+        info["api"] = "batchexecute (all features supported)"
 
     return info

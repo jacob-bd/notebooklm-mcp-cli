@@ -155,7 +155,7 @@ def _resolve_source_ids(
     except Exception as e:
         raise ServiceError(
             f"Failed to fetch sources: {e}",
-            user_message="Could not retrieve notebook sources.",
+            user_message=f"Could not retrieve notebook sources. {e}",
         ) from e
 
     if not ids:
@@ -273,10 +273,16 @@ def create_artifact(
 
     except (ValidationError, ServiceError):
         raise
+    except NotImplementedError as e:
+        # Enterprise mode: surface the clear message about unsupported operations
+        raise ServiceError(
+            str(e),
+            user_message=str(e),
+        ) from e
     except Exception as e:
         raise ServiceError(
             f"Failed to create {artifact_type}: {e}",
-            user_message=f"Could not create {artifact_type.replace('_', ' ')}.",
+            user_message=f"Could not create {artifact_type.replace('_', ' ')}. {e}",
         ) from e
 
 

@@ -1,5 +1,6 @@
 """Setup tools — Configure NotebookLM mode (personal/enterprise)."""
 
+import subprocess
 from typing import Any
 
 from ._utils import logged_tool, reset_client
@@ -31,27 +32,53 @@ def configure_mode(
         return {"status": "error", "error": "mode must be 'personal' or 'enterprise'"}
 
     if mode == "enterprise" and not project_id:
-        return {
-            "status": "error",
-            "error": "project_id is required for enterprise mode. "
-                     "Find it in your NotebookLM URL: ...?project=YOUR_PROJECT_ID",
-        }
+        # Check if we already have a project_id in config
+        from notebooklm_tools.utils.config import get_config
+        existing = get_config().enterprise.project_id
+        if not existing:
+            return {
+                "status": "error",
+                "error": "project_id is required for enterprise mode. "
+                         "Find it in your NotebookLM URL: ...?project=YOUR_PROJECT_ID",
+            }
+        project_id = existing
 
-    from notebooklm_tools.utils.config import get_config, reset_config, save_config
-
-    # Pre-check: warn if switching to personal without cookies
+    # Pre-check auth for the target mode
     if mode == "personal":
         from notebooklm_tools.core.auth import load_cached_tokens
         cached = load_cached_tokens()
         if not cached or not cached.cookies:
             return {
-                "status": "warning",
+                "status": "error",
                 "mode": mode,
-                "message": "Mode set to personal, but no personal auth tokens found. "
+                "message": "Cannot switch to personal mode — no personal auth tokens found. "
                            "Run 'nlm login' in your terminal first to authenticate "
-                           "with your personal Google account, then try again.",
+                           "with your personal Google account.",
                 "auth_required": True,
             }
+
+    if mode == "enterprise":
+        try:
+            result = subprocess.run(
+                ["gcloud", "auth", "print-access-token"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return {
+                    "status": "error",
+                    "mode": mode,
+                    "message": "Cannot switch to enterprise mode — no GCP auth token found. "
+                               "Run 'gcloud auth login' in your terminal first.",
+                    "auth_required": True,
+                }
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return {
+                "status": "error",
+                "message": "gcloud CLI not found or timed out. "
+                           "Install it with 'brew install google-cloud-sdk' and run 'gcloud auth login'.",
+            }
+
+    from notebooklm_tools.utils.config import get_config, reset_config, save_config
 
     config = get_config()
     config.enterprise.mode = mode
@@ -67,14 +94,14 @@ def configure_mode(
     result = {
         "status": "success",
         "mode": mode,
-        "message": f"Mode set to {mode}.",
+        "message": f"Mode set to {mode}. All subsequent calls will use {mode} mode.",
     }
 
     if mode == "enterprise":
         result["project_id"] = project_id
         result["location"] = location
-        result["auth_hint"] = "Run 'gcloud auth login' if not already authenticated."
+        result["auth"] = "GCP OAuth2 (gcloud)"
     else:
-        result["auth_hint"] = "Run 'nlm login' if not already authenticated."
+        result["auth"] = "Browser cookies (nlm login)"
 
     return result
