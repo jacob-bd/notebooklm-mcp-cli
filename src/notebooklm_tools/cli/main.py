@@ -237,9 +237,17 @@ def login_callback(
 
         launched_local_chrome = False
 
-        if provider == "openclaw":
-            console.print("[bold]Using external CDP authentication provider[/bold]")
-            console.print(f"[dim]Provider: openclaw | CDP: {cdp_url}[/dim]\n")
+        # Default cdp_url for the builtin provider — used to detect when the
+        # user explicitly passes their own --cdp-url value.
+        _BUILTIN_CDP_DEFAULT = "http://127.0.0.1:18800"
+
+        if provider == "openclaw" or (provider == "builtin" and cdp_url != _BUILTIN_CDP_DEFAULT):
+            # External CDP path: connect to an already-running browser.
+            # Triggered by --provider openclaw OR when the user explicitly
+            # passes a --cdp-url (indicating they have a running Chrome).
+            label = "openclaw" if provider == "openclaw" else "builtin (external CDP)"
+            console.print("[bold]Using external CDP authentication[/bold]")
+            console.print(f"[dim]Provider: {label} | CDP: {cdp_url}[/dim]\n")
 
             result = extract_cookies_via_existing_cdp(
                 cdp_url=cdp_url,
