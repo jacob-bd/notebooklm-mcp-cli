@@ -253,6 +253,9 @@ def download_infographic(
     ),
     artifact_id: str | None = typer.Option(None, "--id", help="Specific artifact ID"),
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable download progress bar"),
+    clean: bool = typer.Option(
+        False, "--clean", help="Remove NotebookLM watermark after download (requires Pillow)"
+    ),
 ):
     """Download Infographic (PNG)."""
     _streaming_download(
@@ -264,6 +267,22 @@ def download_infographic(
         "infographic.png",
         "Downloading infographic",
     )
+
+    if clean:
+        try:
+            from notebooklm_tools.core.watermark import remove_watermark
+
+            # Resolve actual output path (mirrors _streaming_download logic)
+            actual_output = output or f"{notebook_id}_infographic.png"
+            result = remove_watermark(actual_output, actual_output)
+            typer.echo(f"\u2713 Watermark removed: {result}")
+        except ImportError:
+            typer.echo(
+                "\u26a0 Watermark removal requires Pillow: pip install Pillow",
+                err=True,
+            )
+        except Exception as e:
+            typer.echo(f"\u26a0 Watermark removal failed: {e}", err=True)
 
 
 # --- Simple (synchronous) downloads ---
