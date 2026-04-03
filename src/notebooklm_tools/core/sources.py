@@ -268,16 +268,12 @@ class SourceMixin(BaseClient):
         Returns:
             Source dict with id and title, or None on failure
         """
-        # URL position differs for YouTube vs regular websites:
-        # - YouTube: position 7
-        # - Regular websites: position 2
+        # URL position differs for YouTube vs regular websites
         is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
 
         if is_youtube:
-            # YouTube: [null, null, null, null, null, null, null, [url], null, null, 1]
             source_data = [None, None, None, None, None, None, None, [url], None, None, 1]
         else:
-            # Regular website: [null, null, [url], null, null, null, null, null, null, null, 1]
             source_data = [None, None, [url], None, None, None, None, None, None, None, 1]
 
         params = [
@@ -565,14 +561,14 @@ class SourceMixin(BaseClient):
         """
         import json
 
-        url = f"{self.UPLOAD_URL}?authuser=0"
+        url = f"{self._get_upload_url()}?authuser=0"
         cookies = self._get_httpx_cookies()
 
         headers = {
             "Accept": "*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-            "Origin": "https://notebooklm.google.com",
-            "Referer": "https://notebooklm.google.com/",
+            "Origin": self._get_base_url(),
+            "Referer": f"{self._get_base_url()}/",
             "x-goog-authuser": "0",
             "x-goog-upload-command": "start",
             "x-goog-upload-header-content-length": str(file_size),
@@ -621,8 +617,8 @@ class SourceMixin(BaseClient):
         headers = {
             "Accept": "*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-            "Origin": "https://notebooklm.google.com",
-            "Referer": "https://notebooklm.google.com/",
+            "Origin": self._get_base_url(),
+            "Referer": f"{self._get_base_url()}/",
             "x-goog-authuser": "0",
             "x-goog-upload-command": "upload, finalize",
             "x-goog-upload-offset": "0",

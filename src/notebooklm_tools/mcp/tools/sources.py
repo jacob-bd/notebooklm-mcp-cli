@@ -7,6 +7,50 @@ from ...services import sources as sources_service
 from ._utils import coerce_list, get_client, logged_tool
 
 
+def _paywall_check_url(url: str) -> dict[str, Any] | None:
+    """Check a single URL for paywall/login walls.
+
+    Returns a paywall error dict if blocked, None if OK to proceed.
+    Respects config sources.paywall_check and sources.approved_domains.
+    """
+    from urllib.parse import urlparse
+
+    from ...utils.config import get_config
+    config = get_config()
+    if not config.sources.paywall_check:
+        return None
+
+    domain = urlparse(url).netloc.lower()
+    if domain.startswith("www."):
+        domain = domain[4:]
+
+    # Skip check if domain is in user's approved list
+    for approved in config.sources.approved_domains:
+        if domain == approved or domain.endswith("." + approved):
+            return None
+
+    check = sources_service.check_url_accessibility(url)
+    if not check["likely_paywall"]:
+        return None
+
+    return {
+        "status": "paywall_detected",
+        "url": url,
+        "domain": check["domain"],
+        "reason": check["reason"],
+        "message": (
+            f"This URL appears to require a login or paid subscription: {url}\n"
+            "NotebookLM may not be able to access the content."
+        ),
+        "hint": (
+            f"If you have an account on {check['domain']!r}, add it to your approved domains so "
+            "future checks are skipped:\n"
+            f"  nlm config set sources.approved_domains [\"{check['domain']}\"]\n"
+            "To add this URL anyway, call source_add with skip_paywall_check=True."
+        ),
+    }
+
+
 @logged_tool()
 def source_add(
     notebook_id: str,
@@ -20,10 +64,16 @@ def source_add(
     doc_type: str = "doc",
     wait: bool = False,
     wait_timeout: float = 120.0,
+    skip_paywall_check: bool = False,
 ) -> dict[str, Any]:
     """Add a source to a notebook. Unified tool for all source types.
 
     Supports: url, text, drive, file
+
+    For URL sources, a paywall/login check is performed before adding. If the URL
+    appears to require authentication or a subscription, the tool returns a
+    "paywall_detected" status with instructions. Set skip_paywall_check=True to
+    bypass (e.g. the user confirms they have an account on that site).
 
     Args:
         notebook_id: Notebook UUID
@@ -41,11 +91,12 @@ def source_add(
         doc_type: Drive doc type: doc|slides|sheets|pdf (for source_type=drive)
         wait: If True, wait for source processing to complete before returning
         wait_timeout: Max seconds to wait if wait=True (default 120)
+        skip_paywall_check: If True, skip paywall/login check and add URL anyway
 
     Example:
         source_add(notebook_id="abc", source_type="url", url="https://example.com")
         source_add(notebook_id="abc", source_type="url", urls=["https://a.com", "https://b.com"])
-        source_add(notebook_id="abc", source_type="url", url="https://example.com", wait=True)
+        source_add(notebook_id="abc", source_type="url", url="https://ft.com/article", skip_paywall_check=True)
         source_add(notebook_id="abc", source_type="file", file_path="/path/to/doc.pdf", wait=True)
     """
     try:
@@ -56,17 +107,75 @@ def source_add(
 
         # Bulk URL add: when urls list is provided
         if urls and source_type == "url":
+            # Paywall check each URL individually; skip those that are blocked
+            if not skip_paywall_check:
+                blocked = []
+                allowed_urls = []
+                for u in urls:
+                    pw = _paywall_check_url(u)
+                    if pw:
+                        blocked.append(pw)
+                    else:
+                        allowed_urls.append(u)
+
+                if blocked and not allowed_urls:
+                    # All URLs blocked
+                    return {
+                        "status": "paywall_detected",
+                        "message": f"All {len(blocked)} URL(s) appear to require login or payment.",
+                        "blocked": blocked,
+                        "hint": "Set skip_paywall_check=True to add anyway, or use approved_domains.",
+                    }
+
+                if blocked:
+                    # Partial — add allowed, report blocked
+                    result = sources_service.add_sources(
+                        client,
+                        notebook_id,
+                        [{"source_type": "url", "url": u} for u in allowed_urls],
+                        wait=wait,
+                        wait_timeout=wait_timeout,
+                    )
+                    return {
+                        "status": "partial",
+                        "ready": wait,
+                        "added_count": result["added_count"],
+                        "failed_count": result["failed_count"] + len(blocked),
+                        "results": result["results"],
+                        "failures": result["failures"],
+                        "paywall_blocked": blocked,
+                        "message": (
+                            f"Added {result['added_count']} URL(s). "
+                            f"{len(blocked)} URL(s) skipped — possible paywall/login required."
+                        ),
+                    }
+            else:
+                allowed_urls = urls
+
             result = sources_service.add_sources(
                 client,
                 notebook_id,
-                [{"source_type": "url", "url": u} for u in urls],
+                [{"source_type": "url", "url": u} for u in allowed_urls],
                 wait=wait,
                 wait_timeout=wait_timeout,
             )
-            return {"status": "success", "ready": wait, **result}
+            out: dict[str, Any] = {"ready": wait, **result}
+            out["status"] = "success" if not result["failures"] else "partial"
+            if result["failures"]:
+                out["message"] = (
+                    f"Added {result['added_count']} URL(s). "
+                    f"{result['failed_count']} failed — see 'failures' for details."
+                )
+            return out
+
+        # Single URL: paywall check
+        if source_type == "url" and url and not skip_paywall_check:
+            pw = _paywall_check_url(url)
+            if pw:
+                return pw
 
         # Single source add (existing behavior)
-        result = sources_service.add_source(
+        result_single = sources_service.add_source(
             client,
             notebook_id,
             source_type,
@@ -79,7 +188,7 @@ def source_add(
             wait=wait,
             wait_timeout=wait_timeout,
         )
-        return {"status": "success", "ready": wait, **result}
+        return {"status": "success", "ready": wait, **result_single}
     except ServiceError as e:
         err = {"status": "error", "error": e.user_message}
         if getattr(e, "hint", None):

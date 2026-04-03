@@ -20,6 +20,16 @@ from pydantic import BaseModel, Field
 STORAGE_DIR_NAME = ".notebooklm-mcp-cli"
 
 
+def get_base_url() -> str:
+    """Get the NotebookLM base URL.
+
+    Defaults to the personal URL (https://notebooklm.google.com).
+    Set NOTEBOOKLM_BASE_URL to override, e.g. for enterprise:
+        export NOTEBOOKLM_BASE_URL=https://notebooklm.cloud.google.com
+    """
+    return os.environ.get("NOTEBOOKLM_BASE_URL", "https://notebooklm.google.com").rstrip("/")
+
+
 def get_default_language() -> str:
     """Get default language from NOTEBOOKLM_HL env var, falling back to 'en'.
 
@@ -320,11 +330,34 @@ class AuthConfig(BaseModel):
     default_profile: str = Field(default="default", description="Default profile name")
 
 
+class EnterpriseConfig(BaseModel):
+    """Enterprise NotebookLM configuration."""
+
+    mode: str = Field(default="personal", description="Mode: personal or enterprise")
+    project_id: str = Field(default="", description="GCP project number for enterprise")
+    location: str = Field(default="global", description="GCP location: global, us, or eu")
+
+
+class SourcesConfig(BaseModel):
+    """Source management configuration."""
+
+    paywall_check: bool = Field(
+        default=True,
+        description="Check URLs for paywalls/login walls before adding",
+    )
+    approved_domains: list[str] = Field(
+        default_factory=list,
+        description="Domains to skip paywall checks (e.g. sites you have accounts on)",
+    )
+
+
 class Config(BaseModel):
     """Main configuration model."""
 
     output: OutputConfig = Field(default_factory=OutputConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
+    enterprise: EnterpriseConfig = Field(default_factory=EnterpriseConfig)
+    sources: SourcesConfig = Field(default_factory=SourcesConfig)
 
 
 def load_config() -> Config:
@@ -355,6 +388,14 @@ def load_config() -> Config:
     if profile := os.environ.get("NLM_PROFILE"):
         config_data.setdefault("auth", {})["default_profile"] = profile
 
+    # Enterprise overrides
+    if mode := os.environ.get("NOTEBOOKLM_MODE"):
+        config_data.setdefault("enterprise", {})["mode"] = mode
+    if project_id := os.environ.get("NOTEBOOKLM_PROJECT_ID"):
+        config_data.setdefault("enterprise", {})["project_id"] = project_id
+    if location := os.environ.get("NOTEBOOKLM_LOCATION"):
+        config_data.setdefault("enterprise", {})["location"] = location
+
     return Config(**config_data)
 
 
@@ -381,6 +422,18 @@ def _config_to_toml(config: Config) -> str:
     lines.append("[auth]")
     lines.append(f'browser = "{config.auth.browser}"')
     lines.append(f'default_profile = "{config.auth.default_profile}"')
+    lines.append("")
+
+    lines.append("[enterprise]")
+    lines.append(f'mode = "{config.enterprise.mode}"')
+    lines.append(f'project_id = "{config.enterprise.project_id}"')
+    lines.append(f'location = "{config.enterprise.location}"')
+    lines.append("")
+
+    lines.append("[sources]")
+    lines.append(f"paywall_check = {'true' if config.sources.paywall_check else 'false'}")
+    approved = ", ".join(f'"{d}"' for d in config.sources.approved_domains)
+    lines.append(f"approved_domains = [{approved}]")
     lines.append("")
 
     return "\n".join(lines)

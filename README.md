@@ -12,7 +12,7 @@
 
 **Programmatic access to Google NotebookLM** — via command-line interface (CLI) or Model Context Protocol (MCP) server.
 
-> **Note:** Tested with Pro/free tier accounts. May work with NotebookLM Enterprise accounts but has not been tested.
+> **Supports both Personal and Enterprise NotebookLM.** Personal uses browser cookie auth (all features). Enterprise uses the official Discovery Engine REST API with GCP OAuth2 (stable, documented — see [Enterprise Mode](#enterprise-mode) below).
 
 📺 **Watch the Demos**
 
@@ -253,6 +253,48 @@ nlm setup remove claude-code
 nlm setup remove cursor
 # ... or any configured tool
 ```
+
+## Enterprise Mode
+
+If you use **NotebookLM Enterprise** (notebooklm.cloud.google.com), configure enterprise mode:
+
+### Via CLI
+```bash
+nlm config set enterprise.mode enterprise
+nlm config set enterprise.project_id YOUR_PROJECT_NUMBER
+nlm config set enterprise.location global    # or "us" or "eu"
+```
+
+### Via MCP (Claude Desktop)
+Ask Claude to call:
+```
+configure_mode(mode="enterprise", project_id="YOUR_PROJECT_NUMBER", location="global")
+```
+
+### Enterprise Authentication
+Enterprise uses GCP OAuth2 instead of browser cookies:
+```bash
+gcloud auth login
+```
+
+### Switch Back to Personal
+```bash
+nlm config set enterprise.mode personal
+```
+
+### Enterprise Feature Support
+
+| Feature | Personal | Enterprise |
+|---------|----------|------------|
+| Notebooks (list/create/get/delete) | All | All |
+| Sources (add URL/text/YouTube/Drive/file) | All | All |
+| Audio Overview (podcast) | Yes | Yes |
+| Standalone Podcast API | No | Yes |
+| Sharing | Public + email | Email only (org-scoped) |
+| Chat/Query | Yes | Not in REST API |
+| Video, Reports, Flashcards, etc. | Yes | Not in REST API |
+
+Environment variables (`NOTEBOOKLM_MODE`, `NOTEBOOKLM_PROJECT_ID`, `NOTEBOOKLM_LOCATION`) override config.toml when set.
 
 ## Authentication
 

@@ -260,10 +260,7 @@ class TestAddSources:
     """Test add_sources (bulk) function."""
 
     def test_batch_url_sources(self, mock_client):
-        mock_client.add_url_sources.return_value = [
-            {"id": "s1", "title": "Example"},
-            {"id": "s2", "title": "Example Org"},
-        ]
+        # Each URL is processed individually via add_url_source
         result = add_sources(
             mock_client,
             "nb-1",
@@ -273,18 +270,15 @@ class TestAddSources:
             ],
         )
         assert result["added_count"] == 2
+        assert result["failed_count"] == 0
         assert len(result["results"]) == 2
-        assert result["results"][0]["source_id"] == "s1"
-        assert result["results"][1]["source_id"] == "s2"
-        # Should call batch method once, not individual add_url_source
-        mock_client.add_url_sources.assert_called_once()
-        mock_client.add_url_source.assert_not_called()
+        assert result["results"][0]["source_id"] == "src-1"
+        # Individual add_url_source called for each URL, not batch
+        assert mock_client.add_url_source.call_count == 2
+        mock_client.add_url_sources.assert_not_called()
 
     def test_mixed_types_batches_urls(self, mock_client):
-        """URL sources are batched; text sources fall back to individual calls."""
-        mock_client.add_url_sources.return_value = [
-            {"id": "s1", "title": "Example"},
-        ]
+        """All source types are processed individually."""
         result = add_sources(
             mock_client,
             "nb-1",
@@ -294,7 +288,8 @@ class TestAddSources:
             ],
         )
         assert result["added_count"] == 2
-        mock_client.add_url_sources.assert_called_once()
+        assert result["failed_count"] == 0
+        mock_client.add_url_source.assert_called_once()
         mock_client.add_text_source.assert_called_once()
 
     def test_empty_list_raises(self, mock_client):
@@ -311,42 +306,47 @@ class TestAddSources:
                 ],
             )
 
-    def test_url_missing_raises(self, mock_client):
-        with pytest.raises(ValidationError, match="url is required"):
-            add_sources(
-                mock_client,
-                "nb-1",
-                [
-                    {"source_type": "url"},
-                ],
-            )
+    def test_url_missing_goes_to_failures(self, mock_client):
+        """Missing URL is captured per-source without raising."""
+        result = add_sources(
+            mock_client,
+            "nb-1",
+            [
+                {"source_type": "url"},
+            ],
+        )
+        assert result["added_count"] == 0
+        assert result["failed_count"] == 1
+        assert "url is required" in result["failures"][0]["error"]
 
-    def test_batch_no_id_raises_service_error(self, mock_client):
-        mock_client.add_url_sources.return_value = [{}]
-        with pytest.raises(ServiceError, match="no ID returned"):
-            add_sources(
-                mock_client,
-                "nb-1",
-                [
-                    {"source_type": "url", "url": "https://example.com"},
-                ],
-            )
+    def test_no_id_goes_to_failures(self, mock_client):
+        """Source with no ID returned is captured as a failure."""
+        mock_client.add_url_source.return_value = {}
+        result = add_sources(
+            mock_client,
+            "nb-1",
+            [
+                {"source_type": "url", "url": "https://example.com"},
+            ],
+        )
+        assert result["added_count"] == 0
+        assert result["failed_count"] == 1
 
-    def test_batch_api_error_wraps(self, mock_client):
-        mock_client.add_url_sources.side_effect = RuntimeError("boom")
-        with pytest.raises(ServiceError, match="Failed to batch-add"):
-            add_sources(
-                mock_client,
-                "nb-1",
-                [
-                    {"source_type": "url", "url": "https://example.com"},
-                ],
-            )
+    def test_api_error_goes_to_failures(self, mock_client):
+        """API errors are captured as failures, not raised."""
+        mock_client.add_url_source.side_effect = RuntimeError("boom")
+        result = add_sources(
+            mock_client,
+            "nb-1",
+            [
+                {"source_type": "url", "url": "https://example.com"},
+            ],
+        )
+        assert result["added_count"] == 0
+        assert result["failed_count"] == 1
+        assert result["failures"][0]["url"] == "https://example.com"
 
     def test_wait_forwarded(self, mock_client):
-        mock_client.add_url_sources.return_value = [
-            {"id": "s1", "title": "Example"},
-        ]
         add_sources(
             mock_client,
             "nb-1",
@@ -356,9 +356,9 @@ class TestAddSources:
             wait=True,
             wait_timeout=60,
         )
-        mock_client.add_url_sources.assert_called_once_with(
+        mock_client.add_url_source.assert_called_once_with(
             "nb-1",
-            ["https://example.com"],
+            "https://example.com",
             wait=True,
             wait_timeout=60,
         )

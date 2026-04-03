@@ -22,12 +22,14 @@ from .notebooks import (
 )
 from .notes import note
 from .pipeline import pipeline
+from .podcast import podcast_create, podcast_download
 from .research import (
     research_import,
     research_start,
     research_status,
 )
 from .server import server_info
+from .setup import configure_mode
 from .sharing import (
     notebook_share_batch,
     notebook_share_invite,
@@ -103,4 +105,9 @@ __all__ = [
     "pipeline",
     # Tag/Smart Select (1 consolidated — action: add|remove|list|select)
     "tag",
+    # Podcast (2 — enterprise standalone, no notebook needed)
+    "podcast_create",
+    "podcast_download",
+    # Setup (1 — configure personal/enterprise mode)
+    "configure_mode",
 ]

@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "notebooklm-mcp-cli"
-version = "0.5.10"
-description = "Unified CLI and MCP server for Google NotebookLM"
+version = "1.0.0"
+description = "Unified CLI and MCP server for Google NotebookLM (Enterprise + Personal)"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Jacob Ben-David" }
+    { name = "Jacob Ben-David" },
+    { name = "Brian Worrell" }
 ]
 keywords = ["notebooklm", "mcp", "cli", "google", "ai", "research", "podcast"]
 classifiers = [

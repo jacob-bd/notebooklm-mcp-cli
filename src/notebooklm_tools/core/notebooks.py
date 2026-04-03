@@ -36,7 +36,6 @@ class NotebookMixin(BaseClient):
 
     def list_notebooks(self, debug: bool = False) -> list[Notebook]:
         """List all notebooks."""
-        # [null, 1, null, [2]] - params for list notebooks
         params = [None, 1, None, [2]]
 
         result = self._call_rpc(self.RPC_LIST_NOTEBOOKS, params)

@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from notebooklm_tools.utils.config import get_base_url
+
 # Use logging instead of print to avoid corrupting MCP stdio protocol
 logger = logging.getLogger(__name__)
 
@@ -477,8 +479,8 @@ class AuthManager:
         headers = {
             "Cookie": cookies_to_header(profile.cookies),
             "Content-Type": "application/x-www-form-urlencoded",
-            "Origin": "https://notebooklm.google.com",
-            "Referer": "https://notebooklm.google.com/",
+            "Origin": get_base_url(),
+            "Referer": f"{get_base_url()}/",
         }
         if profile.csrf_token:
             headers["X-Goog-Csrf-Token"] = profile.csrf_token

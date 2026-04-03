@@ -4,9 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**NotebookLM MCP Server & CLI** - Provides programmatic access to NotebookLM (notebooklm.google.com) via both a Model Context Protocol server and a comprehensive command-line interface.
+**NotebookLM MCP Server & CLI** - Provides programmatic access to NotebookLM via both a Model Context Protocol server and a comprehensive command-line interface.
 
-Tested with personal/free tier accounts. May work with Google Workspace accounts but has not been tested.
+Supports both **Personal** (notebooklm.google.com) and **Enterprise** (notebooklm.cloud.google.com) modes.
+
+### Enterprise Mode
+- Uses the official Discovery Engine REST API (`discoveryengine.googleapis.com/v1alpha`)
+- Auth: GCP OAuth2 via `gcloud auth login`
+- Config stored in `~/.notebooklm-mcp-cli/config.toml` under `[enterprise]` section
+- Configure via: `nlm config set enterprise.mode enterprise` or `configure_mode` MCP tool
+- Enterprise-specific files: `core/enterprise_client.py`, `core/enterprise_adapter.py`
+- Standalone Podcast API: `mcp/tools/podcast.py` (v1 stable, no notebook required)
 
 ## Development Commands
 

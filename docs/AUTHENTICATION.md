@@ -280,3 +280,133 @@ No action required from users.
 - Each browser profile contains your Google login for NotebookLM
 - Never share your `auth.json` files or commit them to version control
 - The `cookies.txt` file in the repo is a template - don't commit real cookies
+
+---
+
+## Enterprise Authentication (notebooklm.cloud.google.com)
+
+Enterprise NotebookLM uses a completely separate authentication system from the personal site.
+It uses GCP OAuth2 (via `gcloud`) instead of browser cookies.
+
+**Important:** Enterprise and personal auth are **completely independent**.
+- Enterprise GCP tokens do NOT work for the personal site
+- Personal cookies do NOT work for the enterprise site
+- You must authenticate for each mode separately
+
+### Prerequisites
+
+1. Install the [Google Cloud SDK](https://cloud.google.com/sdk/docs/install):
+   ```bash
+   brew install google-cloud-sdk   # macOS
+   ```
+
+2. Log in with your Google Workspace account:
+   ```bash
+   gcloud auth login
+   ```
+   This opens a browser where you authenticate with the Google account that has enterprise NotebookLM access.
+
+3. (Optional) Set your default project:
+   ```bash
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+### Finding Your Project ID
+
+Your GCP project ID (a numeric string like `204404889700`) appears in the NotebookLM enterprise URL:
+
+```
+https://notebooklm.cloud.google.com/global/?project=204404889700
+```
+
+### Configuring Enterprise Mode
+
+```bash
+# Set enterprise mode and project ID persistently
+nlm config set enterprise.mode enterprise
+nlm config set enterprise.project_id 204404889700
+nlm config set enterprise.location global   # or "us" or "eu"
+
+# Or use the MCP tool (from within Claude)
+configure_mode(mode="enterprise", project_id="204404889700")
+```
+
+Configuration is saved to `~/.notebooklm-mcp-cli/config.toml` and persists across restarts.
+
+### Switching Between Modes
+
+```bash
+# Switch to enterprise
+nlm config set enterprise.mode enterprise
+
+# Switch back to personal (requires nlm login first)
+nlm config set enterprise.mode personal
+```
+
+Or use the `configure_mode` MCP tool, which validates auth before switching:
+
+```
+configure_mode(mode="personal")    # Checks cookies exist
+configure_mode(mode="enterprise")  # Checks gcloud token exists
+```
+
+### Enterprise Token Refresh
+
+GCP tokens expire after ~1 hour. The CLI refreshes them automatically via:
+```bash
+gcloud auth print-access-token
+```
+
+If you see `401 Unauthorized` errors in enterprise mode, re-authenticate:
+```bash
+gcloud auth login
+```
+
+### What Enterprise Mode Supports
+
+| Feature | Enterprise | Personal |
+|---------|-----------|----------|
+| Notebook CRUD | ✅ | ✅ |
+| URL/text/Drive/file sources | ✅ | ✅ |
+| Audio overview | ✅ | ✅ |
+| Standalone podcast | ✅ | ❌ |
+| Chat / query | ❌ | ✅ |
+| Video | ❌ | ✅ |
+| Reports, flashcards, slides | ❌ | ✅ |
+| Mind maps, infographics | ❌ | ✅ |
+| Notes | ❌ | ✅ |
+
+Enterprise uses the official Discovery Engine REST API (`discoveryengine.googleapis.com/v1alpha`).
+Features not in that API (video, reports, etc.) are personal-only.
+
+### IAM Requirements
+
+Your GCP account needs these roles for full enterprise access:
+
+| Role | Required For |
+|------|-------------|
+| `roles/discoveryengine.admin` | Notebooks, sources, audio overview |
+| `roles/discoveryengine.podcastApiUser` | Standalone podcast creation |
+
+Ask your GCP project admin to grant these if needed.
+
+### Troubleshooting Enterprise Auth
+
+**"gcloud: command not found"**
+Install the Google Cloud SDK: `brew install google-cloud-sdk`
+
+**"401 Unauthorized"**
+Your GCP token expired. Run `gcloud auth login` again.
+
+**"403 Forbidden"**
+Your account lacks the required IAM role. Contact your GCP project admin.
+
+**"project_id is required"**
+Set your project ID: `nlm config set enterprise.project_id YOUR_PROJECT_ID`
+
+**Server still shows personal mode after switching**
+Restart Claude Desktop (or whichever MCP host you use) to reload the config.
+
+**`configure_mode` returns auth_required error**
+Ensure you've run `gcloud auth login` (for enterprise) or `nlm login` (for personal)
+before calling `configure_mode` — it validates auth before switching.

@@ -268,11 +268,14 @@ class ConversationMixin(BaseClient):
             "_reqid": str(self._reqid_counter),
             "rt": "c",
         }
+        if self._profile.extra_query_params:
+            url_params.update(self._profile.extra_query_params)
         if self._session_id:
             url_params["f.sid"] = self._session_id
 
         query_string = urllib.parse.urlencode(url_params)
-        url = f"{self.BASE_URL}{self.QUERY_ENDPOINT}?{query_string}"
+        query_ep = self._profile.query_endpoint
+        url = f"{self._get_base_url()}{query_ep}?{query_string}"
 
         response = client.post(url, content=body, timeout=timeout)
         response.raise_for_status()
