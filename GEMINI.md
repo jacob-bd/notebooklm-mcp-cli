@@ -27,70 +27,99 @@ uv tool install notebooklm-mcp-server
 
 **From Source (Development):**
 ```bash
-git clone https://github.com/YOUR_USERNAME/notebooklm-mcp.git
+git clone https://github.com/jeremybrad/notebooklm-mcp.git
 cd notebooklm-mcp
 uv tool install .
 ```
 
-## Authentication (Simplified!)
+**Reinstalling after code changes:**
+```bash
+uv cache clean && uv tool install --force .
+```
 
-**You only need to extract cookies** - the CSRF token and session ID are now auto-extracted when the MCP starts.
+## Authentication
 
-**Option 1: Chrome DevTools MCP (Recommended)**
-If your AI assistant has Chrome DevTools MCP:
+**You only need to extract cookies** - the CSRF token and session ID are auto-extracted when the MCP starts.
+
+**Option 1: CLI Auth (Recommended)**
+```bash
+notebooklm-mcp-auth
+```
+Launches a dedicated Chrome profile, you log in to Google, and cookies are extracted automatically.
+
+**Option 2: Chrome DevTools MCP**
+If your AI assistant has Chrome DevTools MCP access:
 1. Navigate to `notebooklm.google.com`
 2. Get cookies from any network request
 3. Call `save_auth_tokens(cookies=<cookie_header>)`
 
-**Option 2: Manual (Environment Variables)**
-Extract the `Cookie` header from Chrome DevTools Network tab:
+**Option 3: Environment Variables (Manual)**
 ```bash
 export NOTEBOOKLM_COOKIES="SID=xxx; HSID=xxx; SSID=xxx; ..."
 ```
 
-> **Note:** CSRF token and session ID are no longer needed - they are auto-extracted from the page HTML when the MCP initializes.
+Cookies last for weeks. When they expire, re-run `notebooklm-mcp-auth`.
 
-Cookies last for weeks. When they expire, re-extract fresh cookies.
+**Auth rotation:** Heavy API usage (~25+ calls) can trigger cookie rotation on free tier.
 
 ## Development Workflow
 
-### Building and Running
-
-**Reinstalling after changes:**
-Because `uv tool install` installs into an isolated environment, you must reinstall to see changes during development.
+### Running
 ```bash
-uv cache clean
-uv tool install --force .
-```
-
-**Running the Server:**
-```bash
+# MCP server
 notebooklm-mcp
+
+# Auth CLI
+notebooklm-mcp-auth
+
+# Doc sync CLI
+notebooklm-sync --list
+notebooklm-sync --repo C012_round-table --tier3
+notebooklm-sync --all --apply --changed-only
 ```
 
 ### Testing
-
-Run the test suite using `pytest` via `uv`:
 ```bash
 # Run all tests
 uv run pytest
 
 # Run a specific test file
-uv run pytest tests/test_api_client.py
+uv run pytest tests/test_file.py::test_function -v
+
+# With coverage
+uv run pytest --cov=notebooklm_mcp --cov-report=term-missing
 ```
 
 ## Project Structure
 
 - `src/notebooklm_mcp/`
-    - `server.py`: Main entry point. Defines the MCP server and tools.
-    - `api_client.py`: The core logic. Contains the reverse-engineered API calls.
-    - `auth.py`: Handles token validation, storage, and loading.
-    - `auth_cli.py`: Implementation of the `notebooklm-mcp-auth` CLI.
-- `CLAUDE.md`: Contains detailed documentation on the reverse-engineered RPC IDs and protocol specifics. **Refer to this file for API deep dives.**
-- `pyproject.toml`: Project configuration and dependencies.
+    - `server.py`: FastMCP server with 31 tool definitions
+    - `api_client.py`: Reverse-engineered internal API client
+    - `auth.py`: Token caching, validation, and loading
+    - `auth_cli.py`: CLI for Chrome-based auth token extraction (`notebooklm-mcp-auth`)
+    - `sync_cli.py`: CLI for deterministic doc syncing (`notebooklm-sync`)
+- `docs/API_REFERENCE.md`: Detailed RPC IDs, parameter structures, response formats
+- `docs/CLI.md`: CLI usage reference and smoke ladder
+- `docs/AUTHENTICATION.md`: Full auth lifecycle documentation
+- `docs/TROUBLESHOOTING.md`: Common issues and recovery steps
+- `pyproject.toml`: Project configuration and dependencies
+
+## MCP Tools (31 total)
+
+| Category | Tools |
+|----------|-------|
+| Notebook management | `notebook_list`, `notebook_create`, `notebook_get`, `notebook_describe`, `notebook_rename`, `notebook_delete` |
+| Source management | `notebook_add_url`, `notebook_add_text`, `notebook_add_drive`, `source_describe`, `source_list_drive`, `source_sync_drive`, `source_delete` |
+| Chat | `notebook_query`, `chat_configure` |
+| Research | `research_start`, `research_status`, `research_import` |
+| Studio | `audio_overview_create`, `video_overview_create`, `infographic_create`, `slide_deck_create`, `report_create`, `flashcards_create`, `quiz_create`, `data_table_create`, `mind_map_create`, `mind_map_list`, `studio_status`, `studio_delete` |
+| Auth | `save_auth_tokens` |
+
+**Confirmation required** for destructive/expensive operations: `notebook_delete`, `source_delete`, `source_sync_drive`, all studio creation tools, `studio_delete`.
 
 ## Key Conventions
 
 - **Reverse Engineering:** This project relies on undocumented APIs. Changes to Google's internal API will break functionality.
 - **RPC Protocol:** The API uses Google's `batchexecute` protocol. Responses often contain "anti-XSSI" prefixes (`)]}'`) that must be stripped.
-- **Tools:** New features should be exposed as MCP tools in `server.py`.
+- **Tools:** New features should be exposed as MCP tools in `server.py` and documented in `docs/API_REFERENCE.md`.
+- **Auth:** Prefer `notebooklm-mcp-auth` CLI for token extraction. Chrome DevTools MCP is the fallback for in-session workflows.

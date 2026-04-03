@@ -18,6 +18,10 @@ Version numbers in pyproject.toml (no git tags).
 - Regression tests for sync safety, artifact completion polling, major-version detection, and cookie parsing.
 - `notebooklm-sync --all --apply --changed-only` mode for automated nightly updates (runs only changed repos by default).
 
+### Infrastructure
+- Tracked `.stignore` from canonical C010 template for Syncthing exclusion hygiene.
+- Deployed cross-platform LF normalization via `.gitattributes` from C010 template.
+
 ### Changed
 - `PROJECT_PRIMER.md` operator auth and scheduled doc-sync guidance were refreshed.
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
@@ -28,7 +32,6 @@ Version numbers in pyproject.toml (no git tags).
 - Doc sync replacement flow now uses a safer add-before-delete order to avoid source loss if replacement fails.
 - Artifact completion polling now validates completion against the artifact IDs created in the same run.
 - Cookie parsing now handles headers with optional whitespace after `;`.
-- Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
 - Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
 - `save_auth_tokens` now parses cookie headers with or without spaces after semicolons.
 
