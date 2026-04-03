@@ -1,5 +1,7 @@
 """Sources service — shared validation and logic for source management."""
 
+import ipaddress
+import socket
 import urllib.error
 import urllib.request
 from typing import TypedDict
@@ -131,6 +133,32 @@ KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset({
 })
 
 
+def _is_private_url(url: str) -> bool:
+    """Return True if the URL resolves to a private/internal IP address.
+
+    Blocks SSRF by preventing HTTP requests to loopback, RFC-1918 private
+    ranges, link-local (cloud metadata), and other non-routable addresses.
+    If DNS resolution fails or the URL is malformed, returns False (safe default
+    — don't block, let the network call fail naturally).
+    """
+    try:
+        hostname = urlparse(url).hostname or ""
+        if not hostname:
+            return False
+        ip_str = socket.gethostbyname(hostname)
+        addr = ipaddress.ip_address(ip_str)
+        return (
+            addr.is_loopback
+            or addr.is_private
+            or addr.is_link_local
+            or addr.is_reserved
+            or addr.is_multicast
+            or addr.is_unspecified
+        )
+    except Exception:
+        return False
+
+
 def _extract_domain(url: str) -> str:
     """Extract bare domain (no www. prefix) from a URL."""
     try:
@@ -174,7 +202,17 @@ def check_url_accessibility(url: str) -> PaywallCheckResult:
                 domain=domain,
             )
 
-    # 2. HTTP HEAD check
+    # 2. Block SSRF — skip HTTP check for private/internal IPs
+    if _is_private_url(url):
+        return PaywallCheckResult(
+            accessible=True,
+            likely_paywall=False,
+            status_code=None,
+            reason="Internal/private URL — skipping check",
+            domain=domain,
+        )
+
+    # 3. HTTP HEAD check
     try:
         req = urllib.request.Request(
             url,
