@@ -1,6 +1,9 @@
 """Sources service — shared validation and logic for source management."""
 
+import urllib.error
+import urllib.request
 from typing import TypedDict
+from urllib.parse import urlparse
 
 from ..core.client import NotebookLMClient
 from .errors import ServiceError, ValidationError
@@ -75,11 +78,152 @@ class DriveListResult(TypedDict):
     stale_count: int
 
 
+class PaywallCheckResult(TypedDict):
+    """Result of a URL paywall/accessibility check."""
+
+    accessible: bool
+    likely_paywall: bool
+    status_code: int | None
+    reason: str
+    domain: str
+
+
+class UrlAddResult(TypedDict, total=False):
+    """Per-URL result in a bulk add operation."""
+
+    url: str
+    status: str  # "success" or "error"
+    source_id: str
+    title: str
+    error: str
+
+
 class BulkAddResult(TypedDict):
     """Result of bulk adding sources."""
 
     results: list[AddSourceResult]
+    failures: list[UrlAddResult]
     added_count: int
+    failed_count: int
+
+
+# Domains known to require a paid subscription or account login.
+# Users with accounts can add their domain to config sources.approved_domains.
+KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset({
+    "wsj.com",
+    "ft.com",
+    "nytimes.com",
+    "economist.com",
+    "bloomberg.com",
+    "washingtonpost.com",
+    "thetimes.co.uk",
+    "telegraph.co.uk",
+    "theatlantic.com",
+    "newyorker.com",
+    "hbr.org",
+    "foreignaffairs.com",
+    "foreignpolicy.com",
+    "wired.com",
+    "businessinsider.com",
+    "barrons.com",
+    "seekingalpha.com",
+    "medium.com",
+})
+
+
+def _extract_domain(url: str) -> str:
+    """Extract bare domain (no www. prefix) from a URL."""
+    try:
+        netloc = urlparse(url).netloc.lower()
+        return netloc[4:] if netloc.startswith("www.") else netloc
+    except Exception:
+        return ""
+
+
+def _domain_matches(domain: str, pattern: str) -> bool:
+    """Return True if domain equals pattern or is a subdomain of it."""
+    return domain == pattern or domain.endswith("." + pattern)
+
+
+def check_url_accessibility(url: str) -> PaywallCheckResult:
+    """Check if a URL is likely accessible without a paywall or login.
+
+    Performs two checks:
+    1. Domain list: known paywall domains flagged immediately (no network call)
+    2. HTTP HEAD request: 401/403/407 responses flagged as likely paywall
+
+    Network errors or non-auth HTTP errors do NOT block the add — NotebookLM
+    handles those itself and can surface better error messages.
+
+    Args:
+        url: The URL to check
+
+    Returns:
+        PaywallCheckResult with accessible, likely_paywall, status_code, reason, domain
+    """
+    domain = _extract_domain(url)
+
+    # 1. Known paywall domain list
+    for paywall_domain in KNOWN_PAYWALL_DOMAINS:
+        if _domain_matches(domain, paywall_domain):
+            return PaywallCheckResult(
+                accessible=False,
+                likely_paywall=True,
+                status_code=None,
+                reason=f"Known paywall/subscription site: {domain}",
+                domain=domain,
+            )
+
+    # 2. HTTP HEAD check
+    try:
+        req = urllib.request.Request(
+            url,
+            method="HEAD",
+            headers={"User-Agent": "Mozilla/5.0 (compatible; NotebookLM-MCP/1.0)"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            code: int = response.status
+            if code in (401, 403, 407):
+                return PaywallCheckResult(
+                    accessible=False,
+                    likely_paywall=True,
+                    status_code=code,
+                    reason=f"HTTP {code} — login or payment required",
+                    domain=domain,
+                )
+            return PaywallCheckResult(
+                accessible=True,
+                likely_paywall=False,
+                status_code=code,
+                reason="OK",
+                domain=domain,
+            )
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403, 407):
+            return PaywallCheckResult(
+                accessible=False,
+                likely_paywall=True,
+                status_code=exc.code,
+                reason=f"HTTP {exc.code} — login or payment required",
+                domain=domain,
+            )
+        # 404, 500, etc. — let NotebookLM handle it
+        return PaywallCheckResult(
+            accessible=True,
+            likely_paywall=False,
+            status_code=exc.code,
+            reason=f"HTTP {exc.code}",
+            domain=domain,
+        )
+    except Exception:
+        # Timeout, DNS failure, etc. — don't block the add
+        return PaywallCheckResult(
+            accessible=True,
+            likely_paywall=False,
+            status_code=None,
+            reason="Could not check — proceeding anyway",
+            domain=domain,
+        )
 
 
 def validate_source_type(source_type: str) -> None:
@@ -224,10 +368,10 @@ def add_sources(
     wait: bool = False,
     wait_timeout: float = 120.0,
 ) -> BulkAddResult:
-    """Add multiple sources to a notebook.
+    """Add multiple sources to a notebook, one at a time.
 
-    URL sources are batched into a single API call for efficiency.
-    Non-URL sources (text, drive, file) fall back to individual calls.
+    Each source is processed individually so per-source success/failure results
+    are returned. Failed sources do not block successful ones.
 
     Args:
         client: Authenticated NotebookLM client
@@ -244,84 +388,61 @@ def add_sources(
         wait_timeout: Max seconds to wait per source
 
     Returns:
-        BulkAddResult with results list and added_count
+        BulkAddResult with results, failures, added_count, failed_count
 
     Raises:
-        ValidationError: If sources list is empty or has invalid entries
-        ServiceError: If the add operation fails
+        ValidationError: If sources list is empty or has invalid types
     """
     if not sources:
         raise ValidationError("No sources provided for bulk add.")
 
-    # Validate all source types upfront
+    # Validate all source types upfront before doing any work
     for src in sources:
-        st = src.get("source_type", "")
-        validate_source_type(st)
-
-    # Separate URL sources for batching vs others for individual adds
-    url_sources = [s for s in sources if s.get("source_type") == "url"]
-    other_sources = [s for s in sources if s.get("source_type") != "url"]
+        validate_source_type(src.get("source_type", ""))
 
     results: list[AddSourceResult] = []
+    failures: list[UrlAddResult] = []
 
-    # Batch URL sources in a single API call
-    if url_sources:
-        urls = []
-        for src in url_sources:
-            url = src.get("url")
-            if not url:
-                raise ValidationError("url is required for source_type='url'")
-            urls.append(url)
-
+    for src in sources:
+        source_type = src["source_type"]
+        identifier = src.get("url") or src.get("title") or src.get("document_id") or source_type
         try:
-            raw_results = client.add_url_sources(
+            result = add_source(
+                client,
                 notebook_id,
-                urls,
+                source_type,
+                url=src.get("url"),
+                text=src.get("text"),
+                title=src.get("title"),
+                file_path=src.get("file_path"),
+                document_id=src.get("document_id"),
+                doc_type=src.get("doc_type", "doc"),
                 wait=wait,
                 wait_timeout=wait_timeout,
             )
-            for i, raw in enumerate(raw_results):
-                if raw and raw.get("id"):
-                    results.append(
-                        {
-                            "source_type": "url",
-                            "source_id": raw["id"],
-                            "title": raw.get("title", urls[i]),
-                        }
-                    )
-                else:
-                    raise ServiceError(
-                        f"Failed to add URL source '{urls[i]}' — no ID returned",
-                        user_message=f"Failed to add URL source: {urls[i]}",
-                    )
-        except (ValidationError, ServiceError):
-            raise
+            results.append(result)
+        except (ServiceError, ValidationError) as e:
+            failures.append(
+                UrlAddResult(
+                    url=str(identifier),
+                    status="error",
+                    error=getattr(e, "user_message", str(e)),
+                )
+            )
         except Exception as e:
-            raise ServiceError(
-                f"Failed to batch-add URL sources: {e}",
-                user_message="Could not add URL sources.",
-                hint="Check the URLs are accessible. For YouTube, ensure the videos are public.",
-            ) from e
-
-    # Add non-URL sources individually
-    for src in other_sources:
-        result = add_source(
-            client,
-            notebook_id,
-            src["source_type"],
-            text=src.get("text"),
-            title=src.get("title"),
-            file_path=src.get("file_path"),
-            document_id=src.get("document_id"),
-            doc_type=src.get("doc_type", "doc"),
-            wait=wait,
-            wait_timeout=wait_timeout,
-        )
-        results.append(result)
+            failures.append(
+                UrlAddResult(
+                    url=str(identifier),
+                    status="error",
+                    error=str(e),
+                )
+            )
 
     return {
         "results": results,
+        "failures": failures,
         "added_count": len(results),
+        "failed_count": len(failures),
     }
 
 
