@@ -23,6 +23,8 @@ Version numbers in pyproject.toml (no git tags).
 - Deployed cross-platform LF normalization via `.gitattributes` from C010 template.
 
 ### Changed
+- **CLAUDE.md** — Trimmed from 323 to 202 lines (~936 token savings) by extracting auth section to `docs/AUTHENTICATION.md` pointer, compressing redundant blocks, and consolidating doc references.
+
 - `PROJECT_PRIMER.md` operator auth and scheduled doc-sync guidance were refreshed.
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
 - Added a packaged `notebook_map.template.yaml` bootstrap file instead of bundling mutable runtime state.

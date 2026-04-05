@@ -1,44 +1,29 @@
-# SESSION_CONTINUITY
+# Session Continuity -- C021_notebooklm-mcp
 
-- Date: 2026-03-21
-- Branch: main
-- Last work commit: `2ed528a` (`fix(ci): publish test artifacts and expand helper coverage`)
-- Repo status: CI now emits machine-readable test artifacts and local verification is green, but fresh nightly GitHub Actions data remains blocked because this fork is archived.
+<!-- Overwritten by /close-session. Do not edit manually. -->
+
+## Last Session
+
+- **Date**: 2026-04-04
+- **Machine**: Mac-mini-2
+- **Agent**: Atlas (Claude Code)
+- **Branch**: main
+- **Receipt**: 20_receipts/2026-04-04_doc_freshness_audit_and_claudit.md
+- **Commit**: e057ab4
 
 ## Summary
 
-Closed the CI follow-up by adding `workflow_dispatch` plus a nightly schedule to GitHub Actions, uploading `pytest.xml` and `coverage.xml`, expanding helper-level regression coverage in the CLI/server helpers, and carrying the existing `PROJECT_PRIMER.md` refresh through commit.
-
-## What Was Verified
-
-- `uv run pytest tests/test_server_tools.py tests/test_cli_helpers.py -q` -> `14 passed`
-- `uv run pytest -q` -> `53 passed`
-- `uv run pytest --cov=notebooklm_mcp --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=pytest.xml -q` -> `53 passed`; XML artifacts emitted
-- `uv build` -> built sdist and wheel successfully
-- `git diff --check` passed before closeout
-
-## What Remains Unverified
-
-- A live GitHub Actions run of the updated workflow in this archived repo
-- Whether nightly CI/reporting should resume here or move to another active repo
-- Whether `PROJECT_PRIMER.md` should be regenerated again after archive/ownership decisions settle
+Unarchived the GitHub repo, ran doc freshness audit (fixed META.yaml, GEMINI.md, CHANGELOG.md), then ran a full Claudit configuration audit scoring 86/100. Applied two high-impact fixes: trimmed CLAUDE.md from 323→202 lines (~936 token savings) and pruned settings.local.json from 102→46 rules. Regenerated PROJECT_PRIMER.md from updated sources.
 
 ## Open Threads
 
-- Unarchive `jeremybrad/notebooklm-mcp` or retarget the nightly automation/workflow to an active repo
-- After Actions resume, inspect the first uploaded `pytest.xml` and `coverage.xml` as the new nightly-report baseline
-- Decide whether this CI surface should stay minimal or grow into a broader Python/version matrix
+- [ ] Extract global CLAUDE.md sections to `~/.claude/rules/` for additional token savings (~1,800 tokens)
+- [ ] Remove 2 disabled global plugins (code-simplifier, agent-sdk-dev user scope)
+- [ ] Clean up `generate-project-primer` dead entry in pyproject.toml (moved to C010)
+- [ ] Decide whether PRD-NR01 soak validation is complete or needs a second evidence window
 
 ## Known Hazards
 
-- Archived repos do not provide fresh CI windows for nightly reporting
-- Reverse-engineered NotebookLM APIs still require fragile local auth; the new tests intentionally avoid proving live end-to-end NotebookLM access
-- `PROJECT_PRIMER.md` is a derived artifact and can drift if regenerated from a different source state
-
-## Suggested Next Action
-
-Unarchive or retarget the repo, then let one scheduled CI run complete and use the uploaded artifacts as the new baseline for nightly reports.
-
-## Suggested Next Prompt
-
-Unarchive or retarget C021's CI surface, wait for the first scheduled run, and summarize the uploaded pytest and coverage artifacts for me.
+- Reverse-engineered NotebookLM APIs require fragile local auth (~25 calls before cookie rotation on free tier)
+- `generate-project-primer` entry still in pyproject.toml despite being deprecated (moved to C010_standards)
+- macOS-only hooks (afplay, osascript) in global settings.json will fail silently on Windows sync target
