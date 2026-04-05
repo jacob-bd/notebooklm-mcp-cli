@@ -1,10 +1,14 @@
 """Auth tools - Authentication management."""
 
+import re
 import time
 import urllib.parse
 from typing import Any
 
 from ._utils import ESSENTIAL_COOKIES, get_client, logged_tool, reset_client
+
+# Cookie value must be printable ASCII only (no control chars, no newlines)
+_COOKIE_VALUE_RE = re.compile(r"^[\x20-\x7E]*$")
 
 
 @logged_tool()
@@ -83,6 +87,19 @@ def save_auth_tokens(
             if "=" in part:
                 key, value = part.split("=", 1)
                 all_cookies[key] = value
+
+        # Validate cookie format — reject HTTP header injection characters
+        for key, value in all_cookies.items():
+            if "\n" in key or "\r" in key or ";" in key:
+                return {
+                    "status": "error",
+                    "error": f"Invalid cookie name (injection characters): {key!r}",
+                }
+            if not _COOKIE_VALUE_RE.match(value):
+                return {
+                    "status": "error",
+                    "error": f"Invalid characters in cookie value for '{key}'",
+                }
 
         # Validate required cookies
         required = ["SID", "HSID", "SSID", "APISID", "SAPISID"]

@@ -115,8 +115,20 @@ def load_cached_tokens() -> AuthTokens | None:
         return None
 
     try:
-        with open(cache_path, encoding="utf-8") as f:
-            data = json.load(f)
+        from notebooklm_tools.core.crypto import decrypt_data, get_encryption_key, is_encrypted
+
+        raw = cache_path.read_bytes()
+        key = get_encryption_key()
+
+        if is_encrypted(raw) and key:
+            text = decrypt_data(raw, key)
+        elif is_encrypted(raw):
+            logger.warning("Encrypted auth cache found but no decryption key available")
+            return None
+        else:
+            text = raw.decode("utf-8")
+
+        data = json.loads(text)
         tokens = AuthTokens.from_dict(data)
 
         # Just warn if tokens are old, but still return them
@@ -131,15 +143,24 @@ def load_cached_tokens() -> AuthTokens | None:
 
 
 def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
-    """Save tokens to cache.
+    """Save tokens to cache, encrypting if possible.
 
     Args:
         tokens: AuthTokens to save
         silent: If True, don't print confirmation message (for auto-updates)
     """
+    from notebooklm_tools.core.crypto import encrypt_data, get_encryption_key
+
     cache_path = get_cache_path()
-    with open(cache_path, "w", encoding="utf-8") as f:
-        json.dump(tokens.to_dict(), f, indent=2)
+    plaintext = json.dumps(tokens.to_dict(), indent=2)
+
+    key = get_encryption_key()
+    if key:
+        cache_path.write_bytes(encrypt_data(plaintext, key))
+    else:
+        logger.warning("No encryption key available — saving auth tokens as plaintext")
+        cache_path.write_text(plaintext, encoding="utf-8")
+
     # Restrict permissions so only the owner can read/write auth tokens
     with contextlib.suppress(OSError):
         os.chmod(cache_path, 0o600)
@@ -353,7 +374,20 @@ class AuthManager:
             raise ProfileNotFoundError(self.profile_name)
 
         try:
-            cookies = json.loads(self.cookies_file.read_text(encoding="utf-8"))
+            from notebooklm_tools.core.crypto import decrypt_data, get_encryption_key, is_encrypted
+
+            raw = self.cookies_file.read_bytes()
+            key = get_encryption_key()
+            if is_encrypted(raw) and key:
+                cookies_text = decrypt_data(raw, key)
+            elif is_encrypted(raw):
+                raise AuthenticationError(
+                    message="Encrypted cookies found but no decryption key available",
+                    hint="Ensure machine-id is readable or install keyring.",
+                )
+            else:
+                cookies_text = raw.decode("utf-8")
+            cookies = json.loads(cookies_text)
             metadata = {}
             if self.metadata_file.exists():
                 metadata = json.loads(self.metadata_file.read_text(encoding="utf-8"))
@@ -409,18 +443,24 @@ class AuthManager:
             except (json.JSONDecodeError, KeyError):
                 pass  # Corrupted metadata, allow overwrite
 
+        from notebooklm_tools.core.crypto import encrypt_data, get_encryption_key
+
         self.profile_dir.mkdir(parents=True, exist_ok=True)
 
         # Set restrictive permissions on the directory
         self.profile_dir.chmod(0o700)
 
-        # Save cookies
-        self.cookies_file.write_text(
-            json.dumps(cookies, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        # Save cookies (encrypted if possible)
+        cookies_json = json.dumps(cookies, indent=2, ensure_ascii=False)
+        key = get_encryption_key()
+        if key:
+            self.cookies_file.write_bytes(encrypt_data(cookies_json, key))
+        else:
+            logger.warning("No encryption key — saving cookies as plaintext")
+            self.cookies_file.write_text(cookies_json, encoding="utf-8")
         self.cookies_file.chmod(0o600)
 
-        # Save metadata
+        # Save metadata (not encrypted — no sensitive tokens stored here)
         metadata = {
             "csrf_token": csrf_token,
             "session_id": session_id,

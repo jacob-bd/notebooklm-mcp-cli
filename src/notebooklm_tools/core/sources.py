@@ -15,6 +15,7 @@ This mixin provides source-related operations:
 HTTP resumable upload implementation adapted from notebooklm-py.
 """
 
+import os
 import time
 from pathlib import Path
 from typing import Any
@@ -747,6 +748,39 @@ class SourceMixin(BaseClient):
 
             execute_with_retry(_do_upload)
 
+    # Sensitive directories that should never be uploaded
+    _BLOCKED_PATH_SEGMENTS = frozenset({".env", ".ssh", ".gnupg", ".aws", ".config/gcloud"})
+
+    def _validate_file_path(self, file_path: Path) -> Path:
+        """Validate file path for security: resolve, reject symlinks, block sensitive paths."""
+        resolved = file_path.resolve()
+
+        # Reject symlinks to prevent path traversal
+        if file_path.is_symlink():
+            raise FileValidationError(f"Symlinks not allowed: {file_path}")
+
+        # Block sensitive directories/files
+        path_str = str(resolved)
+        for pattern in self._BLOCKED_PATH_SEGMENTS:
+            if f"/{pattern}/" in path_str or f"/{pattern}" == path_str[-len(pattern) - 1:]:
+                raise FileValidationError(
+                    f"Access to sensitive path blocked: {pattern}"
+                )
+        if resolved.name.startswith(".env"):
+            raise FileValidationError("Access to .env files is blocked")
+
+        # Enforce allowlist if configured (colon-separated directory list)
+        allowed_paths = os.environ.get("NOTEBOOKLM_ALLOWED_PATHS", "")
+        if allowed_paths:
+            allowed_dirs = [Path(p.strip()).resolve() for p in allowed_paths.split(":") if p.strip()]
+            if not any(resolved.is_relative_to(d) for d in allowed_dirs):
+                raise FileValidationError(
+                    f"Path {resolved} is not within allowed paths. "
+                    f"Set NOTEBOOKLM_ALLOWED_PATHS to configure."
+                )
+
+        return resolved
+
     def add_file(
         self,
         notebook_id: str,
@@ -777,6 +811,9 @@ class SourceMixin(BaseClient):
             FileUploadError: If upload fails
         """
         file_path = Path(file_path)
+
+        # Security validation: resolve, reject symlinks, block sensitive paths
+        file_path = self._validate_file_path(file_path)
 
         # Validate file
         if not file_path.exists():

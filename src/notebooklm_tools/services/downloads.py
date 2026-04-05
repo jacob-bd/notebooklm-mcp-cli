@@ -1,6 +1,8 @@
 """Downloads service — shared validation and routing for artifact downloads."""
 
+import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
@@ -45,6 +47,36 @@ FORMAT_EXTENSIONS = {
     "markdown": "md",
     "html": "html",
 }
+
+
+def _get_download_sandbox() -> Path:
+    """Get the sandboxed download directory.
+
+    Defaults to ~/Downloads/notebooklm/. Override with NOTEBOOKLM_DOWNLOAD_DIR.
+    """
+    custom = os.environ.get("NOTEBOOKLM_DOWNLOAD_DIR", "")
+    if custom:
+        return Path(custom).resolve()
+    return Path.home() / "Downloads" / "notebooklm"
+
+
+def _validate_output_path(output_path: str) -> str:
+    """Ensure output_path is within the download sandbox directory.
+
+    If the path is outside the sandbox, the filename is extracted and placed
+    inside the sandbox. This prevents writing to arbitrary filesystem locations.
+    """
+    sandbox = _get_download_sandbox()
+    target = Path(output_path).resolve()
+
+    if not target.is_relative_to(sandbox):
+        # Redirect to sandbox, keeping only the filename
+        target = sandbox / Path(output_path).name
+
+    # Create sandbox directory if needed
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    return str(target)
 
 
 class DownloadResult(TypedDict):
@@ -110,6 +142,7 @@ def download_sync(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    output_path = _validate_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)
@@ -172,6 +205,7 @@ async def download_async(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    output_path = _validate_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)

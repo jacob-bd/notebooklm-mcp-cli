@@ -861,6 +861,7 @@ name = "notebooklm-mcp-cli"
 version = "0.5.16"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "platformdirs" },
@@ -881,6 +882,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=42.0.0" },
     { name = "fastmcp", specifier = ">=0.1.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "platformdirs", specifier = ">=4.0.0" },
