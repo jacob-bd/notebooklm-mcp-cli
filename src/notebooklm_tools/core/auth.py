@@ -137,7 +137,7 @@ def load_cached_tokens() -> AuthTokens | None:
             logger.warning("Cached tokens are older than 1 week. They may still work.")
 
         return tokens
-    except (json.JSONDecodeError, KeyError, TypeError) as e:
+    except Exception as e:
         logger.warning(f"Failed to load cached tokens: {e}")
         return None
 
@@ -156,7 +156,11 @@ def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
 
     key = get_encryption_key()
     if key:
-        cache_path.write_bytes(encrypt_data(plaintext, key))
+        try:
+            cache_path.write_bytes(encrypt_data(plaintext, key))
+        except Exception as e:
+            logger.warning(f"Encryption failed ({e}) — saving as plaintext")
+            cache_path.write_text(plaintext, encoding="utf-8")
     else:
         logger.warning("No encryption key available — saving auth tokens as plaintext")
         cache_path.write_text(plaintext, encoding="utf-8")
@@ -454,7 +458,11 @@ class AuthManager:
         cookies_json = json.dumps(cookies, indent=2, ensure_ascii=False)
         key = get_encryption_key()
         if key:
-            self.cookies_file.write_bytes(encrypt_data(cookies_json, key))
+            try:
+                self.cookies_file.write_bytes(encrypt_data(cookies_json, key))
+            except Exception as e:
+                logger.warning(f"Encryption failed ({e}) — saving cookies as plaintext")
+                self.cookies_file.write_text(cookies_json, encoding="utf-8")
         else:
             logger.warning("No encryption key — saving cookies as plaintext")
             self.cookies_file.write_text(cookies_json, encoding="utf-8")
