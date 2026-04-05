@@ -16,6 +16,12 @@ from notebooklm_tools.services.downloads import (
 from notebooklm_tools.services.errors import ServiceError, ValidationError
 
 
+@pytest.fixture(autouse=True)
+def _sandbox_to_tmp(monkeypatch):
+    """Set download sandbox to /tmp so test paths pass through unchanged."""
+    monkeypatch.setenv("NOTEBOOKLM_DOWNLOAD_DIR", "/tmp")
+
+
 @pytest.fixture
 def mock_client():
     client = MagicMock()
