@@ -28,6 +28,8 @@
 
 📺 **Watch the Demos**
 
+> **Note:** The demos below are from the upstream project ([jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli)) and show personal mode features. All commands and MCP tools work identically in this fork — enterprise mode adds on top of everything shown here.
+
 ### Latest
 
 | **Codex Setup + Cinematic Video & Slides** |
@@ -181,64 +183,41 @@ After upgrading, restart your AI tool to reconnect to the updated MCP server:
 - **Cursor:** Restart the application
 - **Gemini CLI:** Restart the CLI session
 
-## Upgrading from Legacy Versions
+## Switching from Upstream (jacob-bd/notebooklm-mcp-cli)
 
-If you previously installed the **separate** CLI and MCP packages, you need to migrate to the unified package.
+If you were using the upstream package and want to switch to this fork for enterprise support:
 
-### Step 1: Check What You Have Installed
+### Step 1: Uninstall the upstream package
+
+```bash
+uv tool uninstall notebooklm-mcp-cli
+# or: pip uninstall notebooklm-mcp-cli
+```
+
+### Step 2: Install this fork's package
+
+```bash
+uv tool install notebooklm-enterprise-mcp
+```
+
+### Step 3: Verify
 
 ```bash
 uv tool list | grep notebooklm
+# Should show: notebooklm-enterprise-mcp v1.0.0
+#                - nlm
+#                - notebooklm-mcp
 ```
 
-**Legacy packages to remove:**
-| Package | What it was |
-|---------|-------------|
-| `notebooklm-cli` | Old CLI-only package |
-| `notebooklm-mcp-server` | Old MCP-only package |
+### Step 4: Re-authenticate (if needed)
 
-### Step 2: Uninstall Legacy Packages
-
-```bash
-# Remove old CLI package (if installed)
-uv tool uninstall notebooklm-cli
-
-# Remove old MCP package (if installed)
-uv tool uninstall notebooklm-mcp-server
-```
-
-### Step 3: Reinstall the Unified Package
-
-After removing legacy packages, reinstall to fix symlinks:
-
-```bash
-uv tool install --force notebooklm-enterprise-mcp
-```
-
-> **Why `--force`?** When multiple packages provide the same executable, `uv` can leave broken symlinks after uninstalling. The `--force` flag ensures clean symlinks.
-
-### Step 4: Verify Installation
-
-```bash
-uv tool list | grep notebooklm
-```
-
-You should see only:
-```
-notebooklm-enterprise-mcp v1.0.0
-- nlm
-- notebooklm-mcp
-```
-
-### Step 5: Re-authenticate
-
-Your existing cookies should still work, but if you encounter auth issues:
+Your existing cookies from the upstream package should still work. If you hit auth errors:
 
 ```bash
 nlm login
 ```
 
-> **Note:** MCP server configuration (in Claude Code, Cursor, etc.) does not need to change — the executable name `notebooklm-mcp` is the same.
+> **MCP configuration doesn't change** — the executable is still called `notebooklm-mcp`, so your Claude Code, Cursor, or other tool configs need no edits.
 
 ## Uninstalling
 
@@ -597,6 +576,19 @@ uv tool list | grep notebooklm
 - **No official support**: API may change without notice
 - **Cookie expiration**: Need to re-extract cookies every few weeks
 
+## Reporting Issues
+
+Use the **[GitHub Issues](https://github.com/Robiton/notebooklm-mcp-cli/issues/new/choose)** tab — you'll be prompted to pick the right template:
+
+| Template | Use when |
+|---|---|
+| **Bug — Enterprise** | Something broken in enterprise mode (GCP, Discovery Engine API) |
+| **Bug — Personal** | Something broken in personal mode that's specific to this fork |
+| **Feature Request** | New capability you'd like to see |
+| **Question** | Setup help, usage questions, config issues |
+
+> **Personal mode bugs** that also exist in the upstream project should be filed at [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli/issues) first — fixes accepted there get cherry-picked here automatically.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, PR process, and how to add new features.
@@ -621,10 +613,6 @@ Special thanks to:
 - **Tony Hansmann** ([@997unix](https://github.com/997unix)) for contributing the `nlm setup` and `nlm doctor` commands and CLI Guide documentation.
 - **Fabiana Furtado** ([@fabianafurtadoff](https://github.com/fabianafurtadoff)) for batch operations, cross-notebook query, pipelines, and smart select/tagging (PR #90).
 
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Robiton/notebooklm-mcp-cli&type=Date)](https://star-history.com/#Robiton/notebooklm-mcp-cli&Date)
 
 ## License
 

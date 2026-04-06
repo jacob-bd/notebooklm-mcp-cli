@@ -1,46 +1,77 @@
-name: Enterprise Mode Bug
-description: Report a bug in enterprise (Google Workspace) mode
+name: Bug Report — Enterprise Mode
+description: Report a bug that occurs when using enterprise mode (notebooklm.cloud.google.com)
 labels: ["bug", "enterprise"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Enterprise bugs are handled by this fork only** — do not file at jacob-bd/notebooklm-mcp-cli.
+        Thanks for reporting an enterprise bug. Please fill out as much as you can — enterprise issues are harder to reproduce without GCP context.
+
   - type: input
     id: version
     attributes:
       label: Package version
-      description: Output of `nlm --version`
+      placeholder: "e.g. 1.0.0 — run: nlm --version"
     validations:
       required: true
-  - type: dropdown
-    id: gcp-api
-    attributes:
-      label: Discovery Engine API enabled?
-      options:
-        - "Yes"
-        - "No / Not sure"
-    validations:
-      required: true
+
   - type: input
-    id: gcloud-version
+    id: python
     attributes:
-      label: gcloud CLI version
-      description: Output of `gcloud --version | head -1`
+      label: Python version
+      placeholder: "e.g. 3.11.9 — run: python --version"
+    validations:
+      required: true
+
+  - type: input
+    id: gcp_project
+    attributes:
+      label: GCP project number (not ID)
+      description: The numeric project number, not the string project ID. Found in Google Cloud Console → Project settings.
+      placeholder: "e.g. 204404889700"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Enterprise location
+      options:
+        - global
+        - us
+        - eu
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `nlm config set enterprise.mode enterprise`
+        2. Run `nlm notebook list`
+        3. See error...
+    validations:
+      required: true
+
   - type: textarea
     id: error
     attributes:
-      label: Error message or unexpected behavior
-    validations:
-      required: true
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-    validations:
-      required: true
+      label: Error output
+      description: Paste the full error message or traceback.
+      render: shell
+
   - type: textarea
     id: context
     attributes:
-      label: Additional context (GCP project type, region, etc.)
-      description: Do NOT include your project ID, credentials, or tokens.
+      label: Additional context
+      description: OS, shell, how you authenticated (gcloud / service account), anything else relevant.

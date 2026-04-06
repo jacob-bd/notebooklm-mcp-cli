@@ -1,18 +1,40 @@
-name: Question
-description: Ask a question about setup, usage, or behavior
+name: Question / Help
+description: Ask a question about setup, usage, or configuration
 labels: ["question"]
 body:
   - type: markdown
     attributes:
       value: |
-        For general questions, consider using [GitHub Discussions](../../discussions) instead — answers there help future users too.
+        For general usage questions, the [docs](https://github.com/Robiton/notebooklm-mcp-cli/tree/main/docs) folder is a good first stop:
+        - [Authentication guide](docs/AUTHENTICATION.md)
+        - [CLI Guide](docs/CLI_GUIDE.md)
+        - [MCP Guide](docs/MCP_GUIDE.md)
+
+        Also try `nlm --help`, `nlm doctor`, or `nlm --ai` for built-in guidance.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Authentication / login
+        - Enterprise setup / GCP
+        - MCP configuration
+        - CLI usage
+        - Installation
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: question
     attributes:
       label: Your question
     validations:
       required: true
+
   - type: textarea
-    id: context
+    id: tried
     attributes:
       label: What have you tried?
+      description: Docs read, commands run, errors seen.

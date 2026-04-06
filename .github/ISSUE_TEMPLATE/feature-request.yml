@@ -2,36 +2,48 @@ name: Feature Request
 description: Suggest a new feature or enhancement
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing:** Is this a general personal-mode feature (not enterprise-specific)? If so, consider filing at [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli/issues) — features accepted upstream will be cherry-picked into this fork automatically.
+
   - type: dropdown
     id: scope
     attributes:
       label: Feature scope
       options:
-        - Enterprise mode only
-        - Personal mode only
-        - Both modes
-        - General / CLI / UX
+        - Enterprise-specific (only relevant for notebooklm.cloud.google.com)
+        - Personal mode (would benefit all users)
+        - Both / not sure
     validations:
       required: true
-  - type: checkboxes
-    id: upstream
-    attributes:
-      label: For general features
-      options:
-        - label: I have checked whether this feature belongs in upstream (jacob-bd/notebooklm-mcp-cli)
+
   - type: textarea
     id: problem
     attributes:
       label: What problem does this solve?
+      description: Describe the use case or limitation you're hitting.
     validations:
       required: true
+
   - type: textarea
     id: solution
     attributes:
-      label: Proposed solution or behavior
+      label: Proposed solution
+      description: What would you like to see added or changed?
     validations:
       required: true
+
   - type: textarea
     id: alternatives
     attributes:
       label: Alternatives considered
+      description: Any workarounds you've tried or other approaches you considered.
+
+  - type: checkboxes
+    id: upstream_filed
+    attributes:
+      label: Upstream
+      options:
+        - label: I already filed this at jacob-bd/notebooklm-mcp-cli (link in description above)
+        - label: This is enterprise-specific and does not apply to the upstream project

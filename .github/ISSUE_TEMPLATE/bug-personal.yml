@@ -1,40 +1,68 @@
-name: Personal Mode Bug
-description: Report a bug in personal (notebooklm.google.com) mode
+name: Bug Report — Personal Mode
+description: Report a bug that occurs when using personal mode (notebooklm.google.com)
 labels: ["bug", "personal"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Personal mode is inherited from [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli).**
-        Please check if the bug reproduces on the upstream repo first — if it does, file it there.
-  - type: checkboxes
-    id: upstream-check
-    attributes:
-      label: Upstream check
-      options:
-        - label: I checked jacob-bd/notebooklm-mcp-cli and this bug is fork-specific
-          required: false
+        **Before filing here:** Personal mode bugs that also exist in the upstream project should be reported at [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli/issues) first. File here if the bug is specific to this fork, or if you're not sure.
+
   - type: input
     id: version
     attributes:
       label: Package version
-      description: Output of `nlm --version`
+      placeholder: "e.g. 1.0.0 — run: nlm --version"
     validations:
       required: true
+
   - type: input
     id: python
     attributes:
       label: Python version
-      description: Output of `python --version`
+      placeholder: "e.g. 3.11.9 — run: python --version"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `nlm login`
+        2. Run `nlm notebook list`
+        3. See error...
+    validations:
+      required: true
+
   - type: textarea
     id: error
     attributes:
-      label: Error message or unexpected behavior
-    validations:
-      required: true
-  - type: textarea
-    id: steps
+      label: Error output
+      description: Paste the full error message or traceback.
+      render: shell
+
+  - type: checkboxes
+    id: upstream_check
     attributes:
-      label: Steps to reproduce
-    validations:
-      required: true
+      label: Upstream check
+      options:
+        - label: I checked whether this bug exists in jacob-bd/notebooklm-mcp-cli and it does not (or I am unsure)
