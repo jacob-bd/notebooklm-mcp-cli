@@ -33,9 +33,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Build MCPB extension
+        if: github.event_name == 'release'
         run: python3 scripts/build_mcpb.py
 
       - name: Upload MCPB to release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: notebooklm-mcp-*.mcpb
