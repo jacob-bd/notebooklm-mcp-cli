@@ -1,12 +1,13 @@
 # Project Backlog
 
 _This file is the project to-do list. Updated by all tools and team members._
-_Last updated: 2026-04-06 by Claude Code_
+_Last updated: 2026-04-06 (session 2) by Claude Code_
 
 ---
 
 ## In progress
 
+- [ ] Scaffold PR review: Robiton/notebooklm-mcp-cli#2 (chore/add-scaffold → enterprise-url-support) | Priority: High | Owner: Brian | Due: —
 - [ ] Upstream PR review: jacob-bd/notebooklm-mcp-cli#129 (standalone podcast) | Priority: Med | Owner: jacob-bd (reviewer) | Due: —
 
 ---
@@ -49,3 +50,5 @@ _Last updated: 2026-04-06 by Claude Code_
 - [x] Rebrand fork README as enterprise-first | Completed: 2026-04-03
 - [x] Fix podcast PR lint failures (ruff format + import sort) | Completed: 2026-04-06
 - [x] Add AI project scaffold (api-integration overlay) | Completed: 2026-04-06
+- [x] Commit + push scaffold branch, open Robiton/notebooklm-mcp-cli#2 | Completed: 2026-04-06
+- [x] Update ai/ context files (SESSION, BACKLOG, MEMORY) post-session | Completed: 2026-04-06

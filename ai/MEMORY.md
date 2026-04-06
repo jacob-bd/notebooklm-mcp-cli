@@ -76,11 +76,14 @@ Current state: v1.0.0, in active use. Enterprise mode tested against GCP project
 
 - **Upstream**: `jacob-bd/notebooklm-mcp-cli` — personal NotebookLM only
 - **This fork**: `Robiton/notebooklm-mcp-cli` — enterprise + personal
+- **Open PRs on fork**:
+  - Robiton/notebooklm-mcp-cli#2 — scaffold adoption (chore/add-scaffold → enterprise-url-support) — open
 - **Open upstream PRs**:
   - `#129` — standalone podcast tool (podcast-standalone branch) — pending review
   - `#126` — full enterprise support — declined (v1alpha instability concern)
 - **Sync strategy**: Periodically merge upstream/main into enterprise-url-support branch
 - **Re-submit enterprise PR trigger**: When Discovery Engine API promotes from v1alpha to v1
+- **`gh pr create` in fork**: Always use `--repo Robiton/notebooklm-mcp-cli --head <branch>` or it defaults to the upstream parent (jacob-bd)
 
 ---
 

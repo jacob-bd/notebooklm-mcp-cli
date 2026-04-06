@@ -5,7 +5,37 @@ _Most recent session at the top._
 
 ---
 
-## 2026-04-06 — Brian Worrell — Claude Code
+## 2026-04-06 — Brian Worrell — Claude Code (session 2)
+
+**Who worked on this:** Brian Worrell + Claude Code (claude-sonnet-4-6)
+
+**What we worked on:**
+- Resumed from context limit with all scaffold files already staged
+- Committed scaffold adoption (21 files, 960 insertions) as commit `6c494d0` on `chore/add-scaffold`
+- Pushed `chore/add-scaffold` to `Robiton/notebooklm-mcp-cli`
+- Opened Robiton/notebooklm-mcp-cli#2 (scaffold PR targeting enterprise-url-support)
+- Accidentally opened jacob-bd/notebooklm-mcp-cli#130 (immediately closed with note)
+- Updated all ai/ context files per scaffold end-of-session requirements
+
+**Decisions made:**
+- Scaffold PR targets `enterprise-url-support` (fork's active base), not `main`
+- `main` on Robiton fork tracks upstream; enterprise-url-support is where real work happens
+
+**Problems encountered:**
+- `gh pr create` defaults to upstream parent repo (jacob-bd) when run inside a fork
+  — solution: always use `--repo Robiton/notebooklm-mcp-cli --head <branch>` flags
+
+**Next steps:**
+- Merge scaffold PR (Robiton/notebooklm-mcp-cli#2)
+- Discuss project next steps with Brian
+- Wait for upstream podcast PR #129 review from jacob-bd
+
+**Backlog changes:**
+- Completed: scaffold commit + push + PR (Robiton/notebooklm-mcp-cli#2)
+
+---
+
+## 2026-04-06 — Brian Worrell — Claude Code (session 1)
 
 **Who worked on this:** Brian Worrell + Claude Code (claude-sonnet-4-6)
 
@@ -30,9 +60,7 @@ _Most recent session at the top._
   __init__.py, server.py — fixed and pushed
 
 **Next steps:**
-- Wait for upstream podcast PR #129 review from jacob-bd
-- Watch for Discovery Engine v1alpha → v1 promotion (re-submit enterprise PR when stable)
-- Run `./sync-check.sh` before starting next session
+- Commit scaffold and open PR (carried into session 2)
 
 **Backlog changes:**
 - Added: scaffold adoption task (completed same session)
