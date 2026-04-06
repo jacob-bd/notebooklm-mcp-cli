@@ -8,6 +8,7 @@ jobs:
   publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write  # Required for trusted publishing (OIDC)
       contents: write  # Required to upload release assets
