@@ -2,8 +2,8 @@
 
 ![NotebookLM MCP Header](docs/media/header.jpg)
 
-[![Python](https://img.shields.io/pypi/pyversions/notebooklm-mcp-cli)](https://pypi.org/project/notebooklm-mcp-cli/)
-[![License](https://img.shields.io/pypi/l/notebooklm-mcp-cli)](https://github.com/jacob-bd/notebooklm-mcp-cli/blob/main/LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/notebooklm-enterprise-mcp)](https://pypi.org/project/notebooklm-enterprise-mcp/)
+[![License](https://img.shields.io/pypi/l/notebooklm-enterprise-mcp)](https://github.com/Robiton/notebooklm-mcp-cli/blob/main/LICENSE)
 [![Fork of](https://img.shields.io/badge/fork%20of-jacob--bd%2Fnotebooklm--mcp--cli-blue)](https://github.com/jacob-bd/notebooklm-mcp-cli)
 
 > **This is an enterprise-focused fork of [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli).**
@@ -106,29 +106,29 @@ Use at your own risk for personal/experimental purposes.
 
 ## Installation
 
-> 🆕 **Claude Desktop users:** [Download the extension](https://github.com/jacob-bd/notebooklm-mcp-cli/releases/latest) (`.mcpb` file) → double-click → done! One-click install, no config needed.
+> 🆕 **Claude Desktop users:** [Download the extension](https://github.com/Robiton/notebooklm-mcp-cli/releases/latest) (`.mcpb` file) → double-click → done! One-click install, no config needed.
 
 Install from PyPI. This single package includes **both the CLI and MCP server**:
 
 ### Using uv (Recommended)
 ```bash
-uv tool install notebooklm-mcp-cli
+uv tool install notebooklm-enterprise-mcp
 ```
 
 ### Using uvx (Run Without Install)
 ```bash
-uvx --from notebooklm-mcp-cli nlm --help
-uvx --from notebooklm-mcp-cli notebooklm-mcp
+uvx --from notebooklm-enterprise-mcp nlm --help
+uvx --from notebooklm-enterprise-mcp notebooklm-mcp
 ```
 
 ### Using pip
 ```bash
-pip install notebooklm-mcp-cli
+pip install notebooklm-enterprise-mcp
 ```
 
 ### Using pipx
 ```bash
-pipx install notebooklm-mcp-cli
+pipx install notebooklm-enterprise-mcp
 ```
 
 **After installation, you get:**
@@ -140,7 +140,7 @@ pipx install notebooklm-mcp-cli
 
 ```bash
 # Clone the repository
-git clone https://github.com/jacob-bd/notebooklm-mcp-cli.git
+git clone https://github.com/Robiton/notebooklm-mcp-cli.git
 cd notebooklm-mcp
 
 # Install with uv
@@ -152,13 +152,13 @@ uv tool install .
 
 ```bash
 # Using uv
-uv tool upgrade notebooklm-mcp-cli
+uv tool upgrade notebooklm-enterprise-mcp
 
 # Using pip
-pip install --upgrade notebooklm-mcp-cli
+pip install --upgrade notebooklm-enterprise-mcp
 
 # Using pipx
-pipx upgrade notebooklm-mcp-cli
+pipx upgrade notebooklm-enterprise-mcp
 ```
 
 After upgrading, restart your AI tool to reconnect to the updated MCP server:
@@ -198,7 +198,7 @@ uv tool uninstall notebooklm-mcp-server
 After removing legacy packages, reinstall to fix symlinks:
 
 ```bash
-uv tool install --force notebooklm-mcp-cli
+uv tool install --force notebooklm-enterprise-mcp
 ```
 
 > **Why `--force`?** When multiple packages provide the same executable, `uv` can leave broken symlinks after uninstalling. The `--force` flag ensures clean symlinks.
@@ -211,7 +211,7 @@ uv tool list | grep notebooklm
 
 You should see only:
 ```
-notebooklm-mcp-cli v0.2.0
+notebooklm-enterprise-mcp v1.0.0
 - nlm
 - notebooklm-mcp
 ```
@@ -232,13 +232,13 @@ To completely remove the MCP:
 
 ```bash
 # Using uv
-uv tool uninstall notebooklm-mcp-cli
+uv tool uninstall notebooklm-enterprise-mcp
 
 # Using pip
-pip uninstall notebooklm-mcp-cli
+pip uninstall notebooklm-enterprise-mcp
 
 # Using pipx
-pipx uninstall notebooklm-mcp-cli
+pipx uninstall notebooklm-enterprise-mcp
 
 # Remove cached auth tokens and data (optional)
 rm -rf ~/.notebooklm-mcp-cli
@@ -415,8 +415,8 @@ If you don't want to install the package, you can use `uvx` to run on-the-fly:
 
 ```bash
 # Run CLI commands directly
-uvx --from notebooklm-mcp-cli nlm setup add cursor
-uvx --from notebooklm-mcp-cli nlm login
+uvx --from notebooklm-enterprise-mcp nlm setup add cursor
+uvx --from notebooklm-enterprise-mcp nlm login
 ```
 
 For tools that use JSON config, point them to uvx:
@@ -425,7 +425,7 @@ For tools that use JSON config, point them to uvx:
   "mcpServers": {
     "notebooklm-mcp": {
       "command": "uvx",
-      "args": ["--from", "notebooklm-mcp-cli", "notebooklm-mcp"]
+      "args": ["--from", "notebooklm-enterprise-mcp", "notebooklm-mcp"]
     }
   }
 }
@@ -544,7 +544,7 @@ Simply chat with your AI tool (Claude Code, Cursor, Gemini CLI) using natural la
 | CSRF Token | ~minutes | Auto-refreshed on every request failure |
 | Session ID | Per MCP session | Auto-extracted on MCP start |
 
-**v0.1.9+**: The server now automatically handles token expiration:
+**v1.0.0+**: The server now automatically handles token expiration:
 1. Refreshes CSRF tokens immediately when expired
 2. Reloads cookies from disk if updated externally
 3. Runs headless browser auth if profile has saved login
@@ -558,14 +558,14 @@ If automatic refresh fails (Google login fully expired), run `nlm login` again.
 ### `uv tool upgrade` Not Installing Latest Version
 
 **Symptoms:**
-- Running `uv tool upgrade notebooklm-mcp-cli` installs an older version (e.g., 0.1.5 instead of 0.1.9)
+- Running `uv tool upgrade notebooklm-enterprise-mcp` installs an older version than expected
 - `uv cache clean` doesn't fix the issue
 
 **Why this happens:** `uv tool upgrade` respects version constraints from your original installation. If you initially installed an older version or with a constraint, `upgrade` stays within those bounds by design.
 
 **Fix — Force reinstall:**
 ```bash
-uv tool install --force notebooklm-mcp-cli
+uv tool install --force notebooklm-enterprise-mcp
 ```
 
 This bypasses any cached constraints and installs the absolute latest version from PyPI.
@@ -573,7 +573,7 @@ This bypasses any cached constraints and installs the absolute latest version fr
 **Verify:**
 ```bash
 uv tool list | grep notebooklm
-# Should show: notebooklm-mcp-cli v0.1.9 (or latest)
+# Should show: notebooklm-enterprise-mcp v1.0.0 (or latest)
 ```
 
 
@@ -585,7 +585,7 @@ uv tool list | grep notebooklm
 
 ## Contributing
 
-See [CLAUDE.md](CLAUDE.md) for detailed API documentation and how to add new features.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, PR process, and how to add new features.
 
 ## Vibe Coding Alert
 
@@ -612,7 +612,7 @@ Special thanks to:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=jacob-bd/notebooklm-mcp-cli&type=Date)](https://star-history.com/#jacob-bd/notebooklm-mcp-cli&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Robiton/notebooklm-mcp-cli&type=Date)](https://star-history.com/#Robiton/notebooklm-mcp-cli&Date)
 
 ## License
 
