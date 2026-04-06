@@ -15,6 +15,7 @@ Tool Modules:
 - chat.py: Query and conversation management
 - exports.py: Export artifacts to Google Docs/Sheets
 - notes.py: Note management (create, list, update, delete)
+- podcast.py: Standalone podcast generation via GCP Discovery Engine v1
 """
 
 import argparse
@@ -42,7 +43,8 @@ Consolidated tools:
 - studio_create(artifact_type=audio|video|...): Create any artifact type
 - studio_revise: Revise individual slides in an existing slide deck
 - download_artifact(artifact_type=audio|video|...): Download any artifact type
-- note_create/note_list/note_update/note_delete: Manage notes in notebooks""",
+- note_create/note_list/note_update/note_delete: Manage notes in notebooks
+- podcast_create(text, project_id): Generate standalone podcast via GCP Discovery Engine (v1). Requires gcloud auth + NOTEBOOKLM_PROJECT_ID. Poll with podcast_status, download with podcast_download.""",
 )
 
 # MCP request/response logger
@@ -81,6 +83,7 @@ def _register_tools():
         sources,
         studio,
         studio_advanced,
+        podcast,
     )
     from .tools._utils import register_all_tools
 

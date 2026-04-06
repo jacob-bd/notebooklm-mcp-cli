@@ -27,6 +27,7 @@ from .research import (
     research_start,
     research_status,
 )
+from .podcast import podcast_create, podcast_download, podcast_status
 from .server import server_info
 from .sharing import (
     notebook_share_batch,
@@ -93,6 +94,10 @@ __all__ = [
     "export_artifact",
     # Notes (1 consolidated)
     "note",
+    # Podcast (3) — standalone podcast via GCP Discovery Engine v1
+    "podcast_create",
+    "podcast_status",
+    "podcast_download",
     # Server (1)
     "server_info",
     # Batch (1 consolidated — action: query|add_source|create|delete|studio)
