@@ -34,8 +34,8 @@ jobs:
           # Extract version from SKILL.md (YAML frontmatter)
           SKILL_VERSION=$(grep '^version:' src/notebooklm_tools/data/SKILL.md | head -1 | sed 's/version: "\(.*\)"/\1/')
 
-          # Extract version from root version file
-          FILE_VERSION=$(cat version | tr -d '[:space:]')
+          # Extract version from root version file (strip optional timestamp suffix YYYYMMDD.HHMM)
+          FILE_VERSION=$(cat version | tr -d '[:space:]' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
 
           echo "📦 pyproject.toml:  $TOML_VERSION"
           echo "🐍 __init__.py:     $INIT_VERSION"
