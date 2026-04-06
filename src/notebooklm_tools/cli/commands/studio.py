@@ -575,7 +575,12 @@ def create_video(
         "auto_select",
         "--style",
         "-s",
-        help="Visual style: auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",
+        help="Visual style: auto_select, custom, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",
+    ),
+    style_prompt: str = typer.Option(
+        "",
+        "--style-prompt",
+        help="Custom visual style description (implies --style custom unless another style is explicitly set)",
     ),
     language: str = typer.Option(
         "", "--language", help="BCP-47 language code (default: NOTEBOOKLM_HL or en)"
@@ -597,6 +602,7 @@ def create_video(
         source_ids=parse_source_ids(source_ids),
         video_format=format,
         visual_style=style,
+        video_style_prompt=style_prompt,
         language=language,
         focus_prompt=focus,
     )

@@ -19,6 +19,7 @@ def studio_create(
     audio_length: str = "default",
     video_format: str = "explainer",
     visual_style: str = "auto_select",
+    video_style_prompt: str = "",
     # Infographic options
     orientation: str = "landscape",
     detail_level: str = "standard",
@@ -61,7 +62,7 @@ def studio_create(
 
         Type-specific options:
         - audio: audio_format (deep_dive|brief|critique|debate), audio_length (short|default|long)
-        - video: video_format (explainer|brief|cinematic), visual_style (auto_select|classic|whiteboard|kawaii|anime|watercolor|retro_print|heritage|paper_craft)
+        - video: video_format (explainer|brief|cinematic), visual_style (auto_select|custom|classic|whiteboard|kawaii|anime|watercolor|retro_print|heritage|paper_craft), video_style_prompt
         - infographic: orientation (landscape|portrait|square), detail_level (concise|standard|detailed), infographic_style (auto_select|sketch_note|professional|bento_grid|editorial|instructional|bricks|clay|anime|kawaii|scientific)
         - slide_deck: slide_format (detailed_deck|presenter_slides), slide_length (short|default)
         - report: report_format (Briefing Doc|Study Guide|Blog Post|Create Your Own), custom_prompt
@@ -103,6 +104,8 @@ def studio_create(
             settings.update(
                 {"format": video_format, "visual_style": visual_style, "language": language}
             )
+            if video_style_prompt:
+                settings["video_style_prompt"] = video_style_prompt
         elif artifact_type == "infographic":
             settings.update(
                 {
@@ -145,6 +148,7 @@ def studio_create(
             audio_length=audio_length,
             video_format=video_format,
             visual_style=visual_style,
+            video_style_prompt=video_style_prompt,
             orientation=orientation,
             detail_level=detail_level,
             infographic_style=infographic_style,

@@ -185,6 +185,37 @@ def _validate_result(result: dict | None, artifact_type: str) -> str:
     return result["artifact_id"]
 
 
+def _normalize_video_style(
+    *,
+    video_format: str,
+    visual_style: str,
+    video_style_prompt: str,
+) -> tuple[str, str]:
+    """Validate and normalize video style options before code resolution."""
+    prompt = video_style_prompt.strip()
+    style = visual_style
+
+    if video_format == "cinematic":
+        if style != "auto_select":
+            raise ValidationError("video format 'cinematic' does not support --style")
+        if prompt:
+            raise ValidationError("video format 'cinematic' does not support --style-prompt")
+        return style, ""
+
+    if prompt:
+        if style == "auto_select":
+            style = "custom"
+        elif style != "custom":
+            raise ValidationError(
+                "--style-prompt can only be used with --style custom "
+                "(or omit --style to auto-select custom)",
+            )
+    elif style == "custom":
+        raise ValidationError("--style custom requires --style-prompt")
+
+    return style, prompt
+
+
 # ---------- Creation ----------
 
 
@@ -200,6 +231,7 @@ def create_artifact(
     # Video
     video_format: str = "explainer",
     visual_style: str = "auto_select",
+    video_style_prompt: str = "",
     # Infographic
     orientation: str = "landscape",
     detail_level: str = "standard",
@@ -249,6 +281,7 @@ def create_artifact(
             audio_length=audio_length,
             video_format=video_format,
             visual_style=visual_style,
+            video_style_prompt=video_style_prompt,
             orientation=orientation,
             detail_level=detail_level,
             infographic_style=infographic_style,
@@ -302,13 +335,23 @@ def _dispatch_create(
         )
 
     elif artifact_type == "video":
+        visual_style, style_prompt = _normalize_video_style(
+            video_format=kwargs["video_format"],
+            visual_style=kwargs["visual_style"],
+            video_style_prompt=kwargs.get("video_style_prompt", ""),
+        )
         format_code = resolve_code(constants.VIDEO_FORMATS, kwargs["video_format"], "video format")
-        style_code = resolve_code(constants.VIDEO_STYLES, kwargs["visual_style"], "visual style")
+        style_code = (
+            resolve_code(constants.VIDEO_STYLES, visual_style, "visual style")
+            if visual_style != "custom"
+            else None
+        )
         return client.create_video_overview(
             notebook_id,
             source_ids=source_ids,
             format_code=format_code,
             visual_style_code=style_code,
+            visual_style_prompt=style_prompt,
             language=kwargs["language"],
             focus_prompt=kwargs["focus_prompt"],
         )

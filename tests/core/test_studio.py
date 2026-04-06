@@ -90,3 +90,10 @@ class TestCinematicVideoConstant:
 
         assert constants.VIDEO_FORMATS.get_code("cinematic") == 3
         assert constants.VIDEO_FORMATS.get_name(3) == "cinematic"
+
+    def test_custom_style_code_mapper_lookup(self):
+        """CodeMapper should resolve 'custom' to 2 and back."""
+        from notebooklm_tools.core import constants
+
+        assert constants.VIDEO_STYLES.get_code("custom") == 2
+        assert constants.VIDEO_STYLES.get_name(2) == "custom"

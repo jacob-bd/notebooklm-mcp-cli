@@ -8,6 +8,7 @@ import pytest
 from notebooklm_tools.services.errors import ServiceError, ValidationError
 from notebooklm_tools.services.studio import (
     VALID_ARTIFACT_TYPES,
+    _normalize_video_style,
     create_artifact,
     delete_artifact,
     get_studio_status,
@@ -108,10 +109,81 @@ class TestCreateArtifact:
         call_kwargs = mock_client.create_video_overview.call_args
         assert call_kwargs[1]["format_code"] == 3
 
+    def test_create_video_custom_style_prompt_implies_custom_style(self, mock_client):
+        result = create_artifact(
+            mock_client,
+            "nb-1",
+            "video",
+            video_style_prompt="children's storybook illustration",
+        )
+        assert result["artifact_type"] == "video"
+        call_kwargs = mock_client.create_video_overview.call_args
+        assert call_kwargs[1]["visual_style_code"] is None
+        assert call_kwargs[1]["visual_style_prompt"] == "children's storybook illustration"
+
+    def test_create_video_style_and_focus_are_sent_separately(self, mock_client):
+        create_artifact(
+            mock_client,
+            "nb-1",
+            "video",
+            video_style_prompt="storybook",
+            focus_prompt="explain slowly",
+        )
+        call_kwargs = mock_client.create_video_overview.call_args
+        assert call_kwargs[1]["focus_prompt"] == "explain slowly"
+        assert call_kwargs[1]["visual_style_prompt"] == "storybook"
+
     def test_create_video_invalid_format(self, mock_client):
         """Invalid video format raises ValidationError."""
         with pytest.raises(ValidationError, match="Unknown video format"):
             create_artifact(mock_client, "nb-1", "video", video_format="invalid_format")
+
+    def test_create_video_custom_style_requires_prompt(self, mock_client):
+        with pytest.raises(ValidationError, match="requires --style-prompt"):
+            create_artifact(mock_client, "nb-1", "video", visual_style="custom")
+
+    def test_create_video_style_prompt_rejects_fixed_style(self, mock_client):
+        with pytest.raises(ValidationError, match="only be used with --style custom"):
+            create_artifact(
+                mock_client,
+                "nb-1",
+                "video",
+                visual_style="classic",
+                video_style_prompt="storybook",
+            )
+
+    def test_create_video_cinematic_rejects_style_prompt(self, mock_client):
+        with pytest.raises(ValidationError, match="does not support --style-prompt"):
+            create_artifact(
+                mock_client,
+                "nb-1",
+                "video",
+                video_format="cinematic",
+                video_style_prompt="storybook",
+            )
+
+
+class TestNormalizeVideoStyle:
+    """Test video style normalization rules."""
+
+    def test_auto_select_with_style_prompt_becomes_custom(self):
+        style, prompt = _normalize_video_style(
+            video_format="explainer",
+            visual_style="auto_select",
+            video_style_prompt="storybook",
+        )
+        assert style == "custom"
+        assert prompt == "storybook"
+
+    def test_custom_without_prompt_raises(self):
+        with pytest.raises(ValidationError, match="requires --style-prompt"):
+            _normalize_video_style(
+                video_format="explainer",
+                visual_style="custom",
+                video_style_prompt="",
+            )
+
+
 
     def test_create_infographic(self, mock_client):
         result = create_artifact(mock_client, "nb-1", "infographic")

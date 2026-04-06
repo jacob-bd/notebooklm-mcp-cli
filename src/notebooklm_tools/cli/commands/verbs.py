@@ -143,12 +143,19 @@ def create_audio_verb(
 @create_app.command("video")
 def create_video_verb(
     notebook: str = typer.Argument(..., help="Notebook ID or alias"),
-    format_opt: str | None = typer.Option(None, "--format", "-f", help="Format: explainer, brief"),
+    format_opt: str | None = typer.Option(
+        None, "--format", "-f", help="Format: explainer, brief, cinematic"
+    ),
     style: str | None = typer.Option(
         None,
         "--style",
         "-s",
-        help="Visual style: auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",
+        help="Visual style: auto_select, custom, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft",
+    ),
+    style_prompt: str | None = typer.Option(
+        None,
+        "--style-prompt",
+        help="Custom visual style description (implies --style custom unless another style is explicitly set)",
     ),
     language: str | None = typer.Option(None, "--language", help="BCP-47 language code"),
     focus: str | None = typer.Option(None, "--focus", help="Optional focus topic"),
@@ -161,6 +168,7 @@ def create_video_verb(
         notebook_id=notebook,
         format=format_opt or "explainer",
         style=style or "auto_select",
+        style_prompt=style_prompt or "",
         language=language or "",
         focus=focus or "",
         source_ids=source_ids,

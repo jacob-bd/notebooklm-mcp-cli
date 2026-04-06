@@ -130,7 +130,8 @@ class StudioMixin(BaseClient):
         notebook_id: str,
         source_ids: list[str] | None = None,
         format_code: int = 1,  # VIDEO_FORMAT_EXPLAINER
-        visual_style_code: int = 1,  # VIDEO_STYLE_AUTO_SELECT
+        visual_style_code: int | None = 1,  # VIDEO_STYLE_AUTO_SELECT
+        visual_style_prompt: str = "",
         language: str = "en",
         focus_prompt: str = "",
     ) -> dict | None:
@@ -162,6 +163,8 @@ class StudioMixin(BaseClient):
         ]
         if format_code != constants.VIDEO_FORMAT_CINEMATIC:
             inner_options.append(visual_style_code)
+            if visual_style_prompt:
+                inner_options.append(visual_style_prompt)
 
         video_options = [None, None, inner_options]
 
@@ -214,8 +217,9 @@ class StudioMixin(BaseClient):
                 else "unknown",
                 "format": constants.VIDEO_FORMATS.get_name(format_code),
                 "visual_style": constants.VIDEO_STYLES.get_name(visual_style_code)
-                if format_code != constants.VIDEO_FORMAT_CINEMATIC
+                if format_code != constants.VIDEO_FORMAT_CINEMATIC and visual_style_code is not None
                 else None,
+                "visual_style_prompt": visual_style_prompt or None,
                 "language": language,
             }
 

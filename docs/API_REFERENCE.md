@@ -182,8 +182,10 @@ result = audio_overview_create(
 # Create a video overview
 result = video_overview_create(
     notebook_id=notebook_id,
-    format="explainer",      # explainer, brief
-    visual_style="classic",  # auto_select, classic, whiteboard, kawaii, anime, etc.
+    format="explainer",      # explainer, brief, cinematic
+    visual_style="classic",  # auto_select, custom, classic, whiteboard, kawaii, anime, etc.
+    focus_prompt="",         # Optional host/content focus text
+    visual_style_prompt="",  # Optional custom style text when visual_style="custom"
     language="en",
     confirm=True
 )
@@ -207,8 +209,8 @@ studio_delete(
 
 **Audio Formats:** deep_dive (conversation), brief, critique, debate
 **Audio Lengths:** short, default, long
-**Video Formats:** explainer, brief
-**Video Styles:** auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft
+**Video Formats:** explainer, brief, cinematic
+**Video Styles:** auto_select, custom, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft
 
 ---
 
@@ -641,10 +643,11 @@ params = [
             [
                 [[source_id1], [source_id2], ...],  # Source IDs
                 language_code,     # "en", "es", etc.
-                focus_prompt,      # Focus text
+                focus_prompt,      # Host/content focus text
                 None,
-                format_code,       # 1=Explainer, 2=Brief
-                visual_style_code  # 1=Auto, 2=Custom, 3=Classic, etc.
+                format_code,       # 1=Explainer, 2=Brief, 3=Cinematic
+                visual_style_code,  # 1=Auto, 3=Classic, etc. (null when using custom style text)
+                visual_style_prompt  # Present when visual_style="custom"
             ]
         ]
     ]

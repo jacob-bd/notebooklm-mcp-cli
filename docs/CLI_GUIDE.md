@@ -89,8 +89,9 @@ nlm audio create <notebook> --format deep_dive --length long --confirm
 # Video
 nlm video create <notebook> --confirm
 nlm video create <notebook> --format explainer --style classic --confirm
-# Formats: explainer, brief
-# Styles: auto_select, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft
+nlm video create <notebook> --style custom --style-prompt "A children's storybook illustration" --confirm
+# Formats: explainer, brief, cinematic
+# Styles: auto_select, custom, classic, whiteboard, kawaii, anime, watercolor, retro_print, heritage, paper_craft
 
 # Reports
 nlm report create <notebook> --format "Briefing Doc" --confirm
