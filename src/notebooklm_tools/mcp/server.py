@@ -77,13 +77,13 @@ def _register_tools():
         notebooks,
         notes,
         pipeline,
+        podcast,
         research,
         sharing,
         smart_select,
         sources,
         studio,
         studio_advanced,
-        podcast,
     )
     from .tools._utils import register_all_tools
 

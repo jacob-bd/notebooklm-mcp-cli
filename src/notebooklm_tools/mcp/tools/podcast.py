@@ -25,7 +25,9 @@ def _gcp_token() -> str | None:
     try:
         result = subprocess.run(
             ["gcloud", "auth", "print-access-token"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         token = result.stdout.strip()
         return token if result.returncode == 0 and token else None
