@@ -306,9 +306,7 @@ class SourceMixin(BaseClient):
 
         return source_result
 
-    def _add_url_source_v1(
-        self, notebook_id: str, url: str, source_path: str
-    ) -> Any:
+    def _add_url_source_v1(self, notebook_id: str, url: str, source_path: str) -> Any:
         """Legacy izAoDd RPC for adding a URL source.
 
         YouTube and regular URLs use different positions in the params array.
@@ -331,9 +329,7 @@ class SourceMixin(BaseClient):
             self.RPC_ADD_SOURCE, params, path=source_path, timeout=SOURCE_ADD_TIMEOUT
         )
 
-    def _add_url_source_v2(
-        self, notebook_id: str, url: str, source_path: str
-    ) -> Any:
+    def _add_url_source_v2(self, notebook_id: str, url: str, source_path: str) -> Any:
         """New ozz5Z RPC for adding a URL source (issue #121).
 
         Google is rolling out this new endpoint which uses a simplified,
@@ -431,9 +427,7 @@ class SourceMixin(BaseClient):
 
         return source_results
 
-    def _add_url_sources_v1(
-        self, notebook_id: str, urls: list[str], source_path: str
-    ) -> Any:
+    def _add_url_sources_v1(self, notebook_id: str, urls: list[str], source_path: str) -> Any:
         """Legacy izAoDd RPC for adding multiple URL sources."""
         source_data_list = []
         for url in urls:
@@ -455,9 +449,7 @@ class SourceMixin(BaseClient):
             self.RPC_ADD_SOURCE, params, path=source_path, timeout=SOURCE_ADD_TIMEOUT
         )
 
-    def _add_url_sources_v2(
-        self, notebook_id: str, urls: list[str], source_path: str
-    ) -> Any:
+    def _add_url_sources_v2(self, notebook_id: str, urls: list[str], source_path: str) -> Any:
         """New ozz5Z RPC for adding multiple URL sources (issue #121)."""
         source_data_list = []
         for url in urls:
