@@ -26,7 +26,9 @@ class APIProfile:
     project_id: str = ""  # Enterprise only: GCP project number
 
     # Streaming query endpoint path (after /{location}/_/{service_name}/data/)
-    query_service: str = "google.internal.labs.tailwind.orchestration.v1.LabsTailwindOrchestrationService"
+    query_service: str = (
+        "google.internal.labs.tailwind.orchestration.v1.LabsTailwindOrchestrationService"
+    )
 
     # Build label fallback prefix
     bl_fallback: str = "boq_labs-tailwind-frontend_20260108.06_p0"
@@ -67,7 +69,9 @@ class APIProfile:
     def web_url(self, notebook_id: str) -> str:
         """Full web URL for a notebook."""
         if self.is_enterprise:
-            return f"{self.base_url}/{self.location}/notebook/{notebook_id}?project={self.project_id}"
+            return (
+                f"{self.base_url}/{self.location}/notebook/{notebook_id}?project={self.project_id}"
+            )
         return f"{self.base_url}/notebook/{notebook_id}"
 
     @property

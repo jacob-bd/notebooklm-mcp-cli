@@ -57,9 +57,35 @@ This project is a fork of `jacob-bd/notebooklm-mcp-cli`. Before opening a PR ups
 
 ## Release checklist
 
-- [ ] Version updated in `version` file and `src/notebooklm_tools/__init__.py`
-- [ ] `uv run pytest` passes
-- [ ] `uvx ruff check . && uvx ruff format --check .` clean
-- [ ] `ai/SESSION.md` updated with release notes entry
-- [ ] `ai/BACKLOG.md` updated — completed tasks marked done
-- [ ] GitHub release tagged with full version string
+Pre-flight:
+- [ ] `uv run pytest -m "not e2e"` — no unexpected failures
+- [ ] `.venv/bin/ruff check . && .venv/bin/ruff format --check .` — clean (use pinned ruff, not `uvx ruff`)
+- [ ] `uvx pip-audit` — no unresolved CRITICAL/HIGH CVEs
+
+Version bump (all 4 locations must match):
+- [ ] `pyproject.toml` → `version = "X.Y.Z"`
+- [ ] `src/notebooklm_tools/__init__.py` → `__version__ = "X.Y.Z"`
+- [ ] `src/notebooklm_tools/data/SKILL.md` → `version: "X.Y.Z"`
+- [ ] `version` file at repo root → `X.Y.Z`
+
+Documentation:
+- [ ] `CHANGELOG.md` — new version entry under the fork header (Keep a Changelog format)
+- [ ] `ai/SESSION.md` — end-of-session entry with release notes
+- [ ] `ai/BACKLOG.md` — completed tasks marked done
+
+Release:
+- [ ] PyPI OIDC trusted publisher configured on pypi.org (one-time setup, then automatic)
+  - Publisher: `Robiton/notebooklm-mcp-cli`, workflow: `publish.yml`, environment: `pypi`
+- [ ] Create GitHub release with tag `vX.Y.Z` — triggers `publish.yml` automatically
+- [ ] Verify PyPI page shows correct version: `pip install notebooklm-enterprise-mcp==X.Y.Z`
+
+## Release trigger rules
+
+| Version bump | When to use |
+|---|---|
+| **PATCH** (X.Y.Z+1) | Any user-visible bug fix, security fix. Security: release immediately. |
+| **MINOR** (X.Y+1.0) | New MCP tool, new CLI command, new enterprise feature, new config option |
+| **MAJOR** (X+1.0.0) | Breaking change to auth, config schema, or MCP tool API |
+| **No release** | Doc-only changes, CI-only, `ai/` context updates |
+
+PyPI version: `MAJOR.MINOR.PATCH` only. The timestamp in the `version` file is for internal tracking.

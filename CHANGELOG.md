@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [1.0.0] - 2026-04 — Fork Release (Robiton/notebooklm-mcp-cli)
+
+This release marks the fork divergence from jacob-bd/notebooklm-mcp-cli (which stops
+at v0.5.10). The fork is published as `notebooklm-enterprise-mcp` on PyPI.
+
+### Added
+- **Enterprise NotebookLM support** — Official Discovery Engine REST API (`discoveryengine.googleapis.com/v1alpha`) for Google Workspace accounts. Includes `EnterpriseClient`, `EnterpriseAdapter`, and seamless mode switching via `configure_mode` MCP tool.
+- **Persistent enterprise config** — `[enterprise]` section in `~/.notebooklm-mcp-cli/config.toml`. Survives restarts; no env var editing required.
+- **`configure_mode` MCP tool** — Switches between personal and enterprise mode with auth pre-validation, preventing confusing 400/401 errors.
+- **Standalone Podcast API** — Enterprise podcast generation using the stable `discoveryengine.googleapis.com/v1` endpoint. Self-contained with its own GCP auth.
+- **Paywall detection** — HTTP HEAD pre-check with approved domain list for URL sources; individual per-URL processing so one failure doesn't block the batch.
+- **SSRF protection** — Private IP range blocking in the paywall URL checker.
+- **Bulk source results** — Per-URL success/failure reporting for `source_add` with multiple URLs.
+- **`server_info` auth status** — Displays authentication state for both personal and enterprise modes.
+- **AI project scaffold** — `ai/` context folder (MEMORY, BACKLOG, SESSION, CODING, STANDARDS, SECURITY, PLANNING, TEAM) for portable cross-tool institutional memory.
+- **Community infrastructure** — CONTRIBUTING.md, CODE_OF_CONDUCT.md (Contributor Covenant 2.1), SECURITY.md (vulnerability disclosure), and 4 GitHub issue templates.
+
+### Fixed
+- **Audio overview API** — Enterprise audio API rejects all documented request fields; fixed by sending an empty `{}` body.
+- **Security hardening** — Token leakage prevention, notebook/source ID validation, path traversal protection.
+- **Duplicate MCP server** — Removed stale `local.mcpb.jacob-ben-david.notebooklm-mcp` extension entry.
+- **Package identity** — Renamed to `notebooklm-enterprise-mcp` (jacob-bd owns `notebooklm-mcp-cli` on PyPI at v0.5.16).
+- **CI workflow** — `actions/checkout@v6` → `@v4` (v6 doesn't exist); SKILL.md version 0.5.10 → 1.0.0.
+
+### Changed
+- Version bumped from 0.5.10 → 1.0.0 to reflect fork identity and enterprise additions.
+- Package name: `notebooklm-enterprise-mcp` (install with `uv tool install notebooklm-enterprise-mcp`).
+- PyPI URLs, README, and all install references updated to point to `Robiton/notebooklm-mcp-cli`.
+
+---
+
+## Upstream history (jacob-bd/notebooklm-mcp-cli through v0.5.10)
+
+---
+
 ## [0.5.10] - 2026-03-27
 
 ### Fixed

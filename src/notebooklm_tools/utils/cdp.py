@@ -64,6 +64,7 @@ CDP_PORT_RANGE = range(9222, 9232)  # Ports to scan for existing/available
 def _get_notebooklm_url() -> str:
     """Get the NotebookLM URL for CDP navigation, including enterprise path if needed."""
     import os
+
     mode = os.environ.get("NOTEBOOKLM_MODE", "personal").lower()
     if mode == "enterprise":
         project_id = os.environ.get("NOTEBOOKLM_PROJECT_ID", "")

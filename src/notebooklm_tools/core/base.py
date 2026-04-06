@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 
 from . import constants
+from .api_profile import APIProfile, get_api_profile
 from .data_types import ConversationTurn
 from .errors import ClientAuthenticationError as AuthenticationError
 from .errors import RPCError
@@ -29,8 +30,6 @@ from .utils import (
     _format_debug_json,
     _parse_url_params,
 )
-from notebooklm_tools.utils.config import get_base_url
-from .api_profile import APIProfile, get_api_profile
 
 # Configure logger (API internals only logged at DEBUG level, usually disabled)
 logger = logging.getLogger("notebooklm_mcp.api")

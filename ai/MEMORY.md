@@ -55,7 +55,7 @@ Current state: v1.0.0, in active use. Enterprise mode tested against GCP project
 - **Personal batchexecute**: Reverse-engineered internal API. RPC IDs are obfuscated codes like `rG2vCb`, `tHcQ6c`. These can change with Google deployments. Build label (`bl`) is auto-extracted from the page on each session.
 - **Duplicate MCP server issue**: If Claude Desktop shows two notebooklm servers or old version numbers, check Claude extensions (`~/.config/Claude/extensions-installations.json`) for a stale `local.mcpb.jacob-ben-david.notebooklm-mcp` entry.
 - **Token expiry**: GCP tokens expire ~1 hour. gcloud handles refresh automatically on `gcloud auth print-access-token`. Personal cookies stable for weeks but some rotate per-request.
-- **Pre-existing test failures**: `tests/services/test_downloads.py` and `tests/test_file_upload.py` have ~19 pre-existing failures unrelated to this fork's changes. These were present in upstream before forking.
+- **Pre-existing test failures resolved**: `TestFileUploadProtocol` tests (5 failures) were fixed by adding `client._profile = APIProfile()` when constructing `SourceMixin` via `__new__`. Root cause: `_profile` was added to `BaseClient.__init__` after these tests were written. The `TestFileUploadE2E::test_upload_text_file` error is expected when live credentials are expired — it's gated by `@pytest.mark.e2e`.
 
 ---
 
@@ -76,14 +76,30 @@ Current state: v1.0.0, in active use. Enterprise mode tested against GCP project
 
 - **Upstream**: `jacob-bd/notebooklm-mcp-cli` — personal NotebookLM only
 - **This fork**: `Robiton/notebooklm-mcp-cli` — enterprise + personal
-- **Open PRs on fork**:
-  - Robiton/notebooklm-mcp-cli#2 — scaffold adoption (chore/add-scaffold → enterprise-url-support) — open
+- **PyPI package name**: `notebooklm-enterprise-mcp` — jacob-bd owns `notebooklm-mcp-cli` on PyPI at v0.5.16
+- **Merged PRs on fork** (all into `enterprise-url-support`):
+  - Robiton/notebooklm-mcp-cli#2 — AI scaffold adoption — merged
+  - Robiton/notebooklm-mcp-cli#3 — package rename, CI fix, README identity — merged
+  - Robiton/notebooklm-mcp-cli#4 — CONTRIBUTING, CoC, SECURITY, issue templates — merged
 - **Open upstream PRs**:
-  - `#129` — standalone podcast tool (podcast-standalone branch) — pending review
+  - `#129` — standalone podcast tool (podcast-standalone branch) — CI green, pending review
   - `#126` — full enterprise support — declined (v1alpha instability concern)
-- **Sync strategy**: Periodically merge upstream/main into enterprise-url-support branch
+- **Sync strategy**: Periodically merge upstream/main into enterprise-url-support; weekly upstream-check.yml alerts on drift
 - **Re-submit enterprise PR trigger**: When Discovery Engine API promotes from v1alpha to v1
 - **`gh pr create` in fork**: Always use `--repo Robiton/notebooklm-mcp-cli --head <branch>` or it defaults to the upstream parent (jacob-bd)
+- **ruff version**: Lock file pins ruff 0.14.14. Use `.venv/bin/ruff` (after `uv sync --all-extras`) for CI-consistent checks — `uvx ruff` uses latest and may differ
+
+### Upstream sync conflict hotspots
+
+These files conflict on every upstream merge. Resolve manually:
+
+| File | Conflict type |
+|------|---------------|
+| `mcp/server.py` | Enterprise tools registered alongside personal tools |
+| `core/__init__.py` | Exports for both clients |
+| `utils/config.py` | Enterprise config section |
+| `pyproject.toml` | Version, package name, and deps |
+| `CHANGELOG.md` | Upstream adds entries at top; our fork header must stay at top |
 
 ---
 

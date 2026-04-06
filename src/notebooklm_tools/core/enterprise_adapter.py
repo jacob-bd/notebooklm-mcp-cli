@@ -6,6 +6,8 @@ wraps EnterpriseClient to provide the same interface, translating
 responses into the data structures the service layer expects.
 """
 
+import contextlib
+
 from .data_types import Notebook
 from .enterprise_client import EnterpriseClient
 
@@ -38,12 +40,14 @@ class EnterpriseAdapter:
         results = self._ec.list_notebooks()
         notebooks = []
         for nb in results:
-            notebooks.append(Notebook(
-                id=nb["notebook_id"],
-                title=nb["title"],
-                source_count=0,  # REST API doesn't return source count in list
-                sources=[],
-            ))
+            notebooks.append(
+                Notebook(
+                    id=nb["notebook_id"],
+                    title=nb["title"],
+                    source_count=0,  # REST API doesn't return source count in list
+                    sources=[],
+                )
+            )
         return notebooks
 
     def get_notebook(self, notebook_id: str) -> dict | None:
@@ -94,7 +98,9 @@ class EnterpriseAdapter:
         """Add a URL source."""
         return self._ec.add_source_url(notebook_id, url)
 
-    def add_text_source(self, notebook_id: str, text: str, title: str = "", **kwargs) -> dict | None:
+    def add_text_source(
+        self, notebook_id: str, text: str, title: str = "", **kwargs
+    ) -> dict | None:
         """Add a text source."""
         return self._ec.add_source_text(notebook_id, text, title or "Pasted Text")
 
@@ -137,10 +143,8 @@ class EnterpriseAdapter:
         (enterprise allows only one per notebook).
         """
         # Enterprise only allows one audio overview per notebook — delete first
-        try:
+        with contextlib.suppress(Exception):
             self._ec.delete_audio_overview(notebook_id)
-        except Exception:
-            pass  # No existing overview to delete, that's fine
 
         result = self._ec.generate_audio_overview(
             notebook_id,
@@ -219,7 +223,9 @@ class EnterpriseAdapter:
             "Use notebook_share_invite to share with specific users."
         )
 
-    def add_collaborator(self, notebook_id: str, email: str, role: str = "viewer", **kwargs) -> bool:
+    def add_collaborator(
+        self, notebook_id: str, email: str, role: str = "viewer", **kwargs
+    ) -> bool:
         """Share notebook with a user."""
         role_map = {
             "viewer": "PROJECT_ROLE_READER",

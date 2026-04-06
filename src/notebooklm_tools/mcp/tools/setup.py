@@ -34,26 +34,28 @@ def configure_mode(
     if mode == "enterprise" and not project_id:
         # Check if we already have a project_id in config
         from notebooklm_tools.utils.config import get_config
+
         existing = get_config().enterprise.project_id
         if not existing:
             return {
                 "status": "error",
                 "error": "project_id is required for enterprise mode. "
-                         "Find it in your NotebookLM URL: ...?project=YOUR_PROJECT_ID",
+                "Find it in your NotebookLM URL: ...?project=YOUR_PROJECT_ID",
             }
         project_id = existing
 
     # Pre-check auth for the target mode
     if mode == "personal":
         from notebooklm_tools.core.auth import load_cached_tokens
+
         cached = load_cached_tokens()
         if not cached or not cached.cookies:
             return {
                 "status": "error",
                 "mode": mode,
                 "message": "Cannot switch to personal mode — no personal auth tokens found. "
-                           "Run 'nlm login' in your terminal first to authenticate "
-                           "with your personal Google account.",
+                "Run 'nlm login' in your terminal first to authenticate "
+                "with your personal Google account.",
                 "auth_required": True,
             }
 
@@ -61,21 +63,23 @@ def configure_mode(
         try:
             result = subprocess.run(
                 ["gcloud", "auth", "print-access-token"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode != 0 or not result.stdout.strip():
                 return {
                     "status": "error",
                     "mode": mode,
                     "message": "Cannot switch to enterprise mode — no GCP auth token found. "
-                               "Run 'gcloud auth login' in your terminal first.",
+                    "Run 'gcloud auth login' in your terminal first.",
                     "auth_required": True,
                 }
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return {
                 "status": "error",
                 "message": "gcloud CLI not found or timed out. "
-                           "Install it with 'brew install google-cloud-sdk' and run 'gcloud auth login'.",
+                "Install it with 'brew install google-cloud-sdk' and run 'gcloud auth login'.",
             }
 
     from notebooklm_tools.utils.config import get_config, reset_config, save_config

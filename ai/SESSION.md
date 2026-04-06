@@ -5,6 +5,46 @@ _Most recent session at the top._
 
 ---
 
+## 2026-04-06 — Brian Worrell — Claude Code (session 4)
+
+**Who worked on this:** Brian Worrell + Claude Code (claude-sonnet-4-6)
+
+**What we worked on:**
+- Resumed from context limit (session 3 ended mid-execution after merging PRs #2, #3, #4)
+- Created `chore/p3-debt` branch from enterprise-url-support
+- P3-A: Fixed `test_mcp_download_report` — was importing removed `download_report`; updated to use `download_artifact` (async), removed `@pytest.mark.skip`
+- P3-B: Fixed 5 `TestFileUploadProtocol` failures — added `client._profile = APIProfile()` when constructing `SourceMixin.__new__`; `_profile` was added to `BaseClient.__init__` after tests were written
+- P3-C: Added v1.0.0 fork header to CHANGELOG.md above upstream history
+- P3 cleanup: Fixed pre-existing ruff errors across 13 files (F401, I001 import sort, SIM105 → contextlib.suppress) — all were blocking CI
+- P4-A: Updated `ai/MEMORY.md` — upstream sync conflict hotspots table, updated PR status
+- P4-B: Created `.github/workflows/upstream-check.yml` — weekly check for upstream drift; opens/updates GitHub issue if behind
+- P5: Populated `.codex` with architecture layers, test commands, version locations, upstream sync guidance, and hard rules
+- P6: Expanded `ai/PLANNING.md` with full release checklist (version locations, PyPI OIDC) and release trigger rules
+- Opened Robiton/notebooklm-mcp-cli#5 (chore/p3-debt → enterprise-url-support)
+
+**Decisions made:**
+- SIM105 (try/except/pass) → `contextlib.suppress(Exception)` is safe for both enterprise_adapter.py and enterprise_client.py cases
+- ruff format auto-reformatted 13 pre-existing files — these are all cosmetic and CI-safe
+- BACKLOG "~19 pre-existing failures" item removed — the downloads.py failures were already fixed upstream; the file_upload.py failures were fixed in P3-B
+
+**Problems encountered:**
+- ruff check found 9 pre-existing errors on the branch; fixed 8 with `--fix`, 2 SIM105 needed manual `contextlib.suppress`
+- `test_file_upload.py TestFileUploadE2E::test_upload_text_file` still errors with 400 when live credentials are expired — this is expected behavior for e2e tests and was pre-existing
+
+**Next steps:**
+- Merge PR #5 into enterprise-url-support
+- GitHub About section (manual UI): description + topics
+- Enable GitHub Discussions (manual UI toggle)
+- PyPI OIDC trusted publisher setup (manual on pypi.org — one-time before first release)
+- Monitor upstream podcast PR #129 for review from jacob-bd
+
+**Backlog changes:**
+- Completed: All of Phases 3-6 (PRs #3 and #4 were merged in session 3, PR #5 opened this session)
+- Removed: "Pre-existing test failures ~19" — resolved
+- Added to up-next: merge PR #5, GitHub About, Discussions, PyPI OIDC
+
+---
+
 ## 2026-04-06 — Brian Worrell — Claude Code (session 2)
 
 **Who worked on this:** Brian Worrell + Claude Code (claude-sonnet-4-6)

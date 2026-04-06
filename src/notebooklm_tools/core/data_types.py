@@ -65,6 +65,7 @@ class Notebook:
     def url(self) -> str:
         """Get the NotebookLM web URL for this notebook."""
         from notebooklm_tools.core.api_profile import get_api_profile
+
         return get_api_profile().web_url(self.id)
 
     @property

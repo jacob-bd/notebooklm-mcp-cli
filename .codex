@@ -4,8 +4,94 @@ Read `ai/STANDARDS.md` and load all files in the order it specifies
 before beginning any work. Do not start coding, planning, or responding
 until the full load order is complete.
 
-This project uses version format: MAJOR.MINOR.PATCH.YYYYMMDD.HHMM
-Example: 1.0.0.20260406.1200
+---
 
-At the end of every session, update `ai/SESSION.md` and `ai/BACKLOG.md`.
-Never store credentials, secrets, or PHI in any `ai/` file.
+## Architecture layers
+
+```
+CLI (cli/)          ← user-facing commands; thin wrappers over services
+MCP tools (mcp/tools/)  ← MCP tool wrappers; thin wrappers over services
+Services (services/)    ← business logic; orchestrates core client calls
+Core (core/)            ← low-level API clients; no business logic here
+Utils (utils/)          ← config, auth helpers, shared utilities
+```
+
+**Rule**: New features go in `services/`. MCP tools and CLI commands call services — never call `core/` directly from `mcp/` or `cli/`. Mock at the `core/client.py` level in tests, never the service layer.
+
+---
+
+## Mode switching
+
+- `get_client()` in `mcp/tools/_utils.py` returns either `NotebookLMClient` (personal) or `EnterpriseAdapter(EnterpriseClient())` (enterprise)
+- Mode is set in `~/.notebooklm-mcp-cli/config.toml` `[enterprise]` section
+- `tests/conftest.py` forces `NOTEBOOKLM_MODE=personal` — never change this
+
+---
+
+## Test commands
+
+```bash
+uv run pytest -m "not e2e"          # unit + integration, no live auth
+uv run pytest tests/services/ -v    # service layer only
+.venv/bin/ruff check .              # use pinned ruff (0.14.14), NOT uvx ruff
+.venv/bin/ruff format --check .
+```
+
+**Why pinned ruff**: CI uses lock-file-pinned ruff 0.14.14. `uvx ruff` uses latest and may reformat differently. Always run `.venv/bin/ruff` after `uv sync --all-extras`.
+
+---
+
+## Version locations — all 4 must stay in sync
+
+1. `pyproject.toml` → `version = "X.Y.Z"`
+2. `src/notebooklm_tools/__init__.py` → `__version__ = "X.Y.Z"`
+3. `src/notebooklm_tools/data/SKILL.md` → `version: "X.Y.Z"`
+4. `version` file at repo root → `X.Y.Z`
+
+---
+
+## Upstream sync
+
+This fork is `Robiton/notebooklm-mcp-cli`. Upstream is `jacob-bd/notebooklm-mcp-cli`.
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+Known conflict hotspots (resolve manually every sync):
+- `mcp/server.py` — enterprise tool registrations
+- `core/__init__.py` — both client exports
+- `utils/config.py` — enterprise config section
+- `pyproject.toml` — package name, version, deps
+- `CHANGELOG.md` — our fork header must stay at top
+
+---
+
+## Hard rules
+
+- No `shell=True` in any subprocess call — command injection risk
+- No hardcoded credentials, tokens, or project IDs in source files
+- No `if is_enterprise:` branches in `services/` — use the adapter pattern
+- No `e2e` tests in PRs — mark with `@pytest.mark.e2e` and skip in CI
+- Destructive MCP tools must require `confirm=True` parameter
+- Enterprise unsupported features → raise `NotImplementedError` in `enterprise_adapter.py`, not in services
+
+---
+
+## Codex sandbox limitations
+
+- Codex cannot perform git operations (`.git` directory not writable)
+- Claude Code handles all git commits, pushes, and PR creation
+- Codex handles file writing, test investigation, and boilerplate drafting
+- When Codex finishes file edits, tell Claude Code to commit and push
+
+---
+
+## End-of-session requirements
+
+At the end of every working session, update:
+1. `ai/SESSION.md` — what was done, decisions made, problems, next steps
+2. `ai/BACKLOG.md` — mark completed tasks, add new items
+
+Never store credentials, secrets, or PHI in any `ai/` file or `.codex`.

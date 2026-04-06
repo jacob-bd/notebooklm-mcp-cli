@@ -111,26 +111,28 @@ class BulkAddResult(TypedDict):
 
 # Domains known to require a paid subscription or account login.
 # Users with accounts can add their domain to config sources.approved_domains.
-KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset({
-    "wsj.com",
-    "ft.com",
-    "nytimes.com",
-    "economist.com",
-    "bloomberg.com",
-    "washingtonpost.com",
-    "thetimes.co.uk",
-    "telegraph.co.uk",
-    "theatlantic.com",
-    "newyorker.com",
-    "hbr.org",
-    "foreignaffairs.com",
-    "foreignpolicy.com",
-    "wired.com",
-    "businessinsider.com",
-    "barrons.com",
-    "seekingalpha.com",
-    "medium.com",
-})
+KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "wsj.com",
+        "ft.com",
+        "nytimes.com",
+        "economist.com",
+        "bloomberg.com",
+        "washingtonpost.com",
+        "thetimes.co.uk",
+        "telegraph.co.uk",
+        "theatlantic.com",
+        "newyorker.com",
+        "hbr.org",
+        "foreignaffairs.com",
+        "foreignpolicy.com",
+        "wired.com",
+        "businessinsider.com",
+        "barrons.com",
+        "seekingalpha.com",
+        "medium.com",
+    }
+)
 
 
 def _is_private_url(url: str) -> bool:

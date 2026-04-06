@@ -1,0 +1,89 @@
+name: Upstream Sync Check
+
+on:
+  schedule:
+    # Every Sunday at midnight UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/jacob-bd/notebooklm-mcp-cli.git
+          git fetch upstream main
+
+      - name: Count commits behind upstream
+        id: check
+        run: |
+          BEHIND=$(git rev-list --count HEAD..upstream/main)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+
+          if [ "$BEHIND" -gt 0 ]; then
+            COMMITS=$(git log --oneline HEAD..upstream/main)
+            echo "commits<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$COMMITS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open issue if behind
+        if: steps.check.outputs.behind != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const behind = '${{ steps.check.outputs.behind }}';
+            const commits = `${{ steps.check.outputs.commits }}`;
+            const body = [
+              `## Upstream Drift Detected`,
+              ``,
+              `This fork is **${behind} commit(s)** behind [\`jacob-bd/notebooklm-mcp-cli\`](https://github.com/jacob-bd/notebooklm-mcp-cli) main.`,
+              ``,
+              `### New upstream commits`,
+              `\`\`\``,
+              commits,
+              `\`\`\``,
+              ``,
+              `### Action required`,
+              `Review the upstream commits and merge any relevant personal-mode fixes into \`enterprise-url-support\`.`,
+              `Known conflict hotspots: \`mcp/server.py\`, \`core/__init__.py\`, \`utils/config.py\`, \`pyproject.toml\`, \`CHANGELOG.md\`.`,
+              ``,
+              `See \`ai/MEMORY.md\` → "Upstream sync conflict hotspots" for resolution guidance.`,
+            ].join('\n');
+
+            // Check if an open upstream-drift issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'upstream-drift',
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Upstream drift: ${behind} commit(s) behind jacob-bd/notebooklm-mcp-cli`,
+                body: body,
+                labels: ['upstream-drift'],
+              });
+            } else {
+              // Update existing open issue instead of creating duplicates
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                title: `Upstream drift: ${behind} commit(s) behind jacob-bd/notebooklm-mcp-cli`,
+                body: body,
+              });
+            }

@@ -1,7 +1,5 @@
 """Test configuration — ensure tests always run in personal mode."""
 
-import os
-
 import pytest
 
 
@@ -11,6 +9,7 @@ def personal_mode_for_tests(monkeypatch):
     monkeypatch.setenv("NOTEBOOKLM_MODE", "personal")
     # Reset cached config so it picks up the env var
     from notebooklm_tools.utils.config import reset_config
+
     reset_config()
     yield
     reset_config()
