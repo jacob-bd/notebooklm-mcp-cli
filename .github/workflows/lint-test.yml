@@ -2,9 +2,9 @@ name: Lint, Format, and Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, enterprise-url-support]
   pull_request:
-    branches: [main]
+    branches: [main, enterprise-url-support]
 
 jobs:
   lint-and-format:
