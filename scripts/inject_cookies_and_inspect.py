@@ -68,7 +68,7 @@ def inspect_dom():
     time.sleep(5)
 
     # 3. Create Notebook via API (faster/reliable)
-    notebook_id = "c617901c-b018-4652-a6c9-965540502691"  # Fallback from previous run
+    notebook_id = "YOUR_NOTEBOOK_ID"  # Replace with a real notebook ID for testing
 
     print("Creating test notebook for inspection...")
     try:

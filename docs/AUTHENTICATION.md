@@ -346,10 +346,10 @@ It uses GCP OAuth2 (via `gcloud`) instead of browser cookies.
 
 ### Finding Your Project ID
 
-Your GCP project ID (a numeric string like `204404889700`) appears in the NotebookLM enterprise URL:
+Your GCP project ID (a numeric string like `YOUR_PROJECT_ID`) appears in the NotebookLM enterprise URL:
 
 ```
-https://notebooklm.cloud.google.com/global/?project=204404889700
+https://notebooklm.cloud.google.com/global/?project=YOUR_PROJECT_ID
 ```
 
 ### Configuring Enterprise Mode
@@ -357,11 +357,11 @@ https://notebooklm.cloud.google.com/global/?project=204404889700
 ```bash
 # Set enterprise mode and project ID persistently
 nlm config set enterprise.mode enterprise
-nlm config set enterprise.project_id 204404889700
+nlm config set enterprise.project_id YOUR_PROJECT_ID
 nlm config set enterprise.location global   # or "us" or "eu"
 
 # Or use the MCP tool (from within Claude)
-configure_mode(mode="enterprise", project_id="204404889700")
+configure_mode(mode="enterprise", project_id="YOUR_PROJECT_ID")
 ```
 
 Configuration is saved to `~/.notebooklm-mcp-cli/config.toml` and persists across restarts.

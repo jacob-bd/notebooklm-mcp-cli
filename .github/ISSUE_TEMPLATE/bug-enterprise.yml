@@ -28,7 +28,7 @@ body:
     attributes:
       label: GCP project number (not ID)
       description: The numeric project number, not the string project ID. Found in Google Cloud Console → Project settings.
-      placeholder: "e.g. 204404889700"
+      placeholder: "e.g. 123456789012"
     validations:
       required: true
 

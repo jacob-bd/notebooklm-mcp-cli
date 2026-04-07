@@ -20,7 +20,7 @@ Cursor, Codex, or other MCP-compatible AI tools.
 
 Deployment: local machine tool, installed via `uv tool install .`. Config in `~/.notebooklm-mcp-cli/`.
 
-Current state: v1.0.0, in active use. Enterprise mode tested against GCP project 204404889700.
+Current state: v1.0.0, in active use. Enterprise mode tested against GCP project YOUR_PROJECT_ID.
 
 ---
 
