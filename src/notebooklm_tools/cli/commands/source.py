@@ -67,6 +67,11 @@ def add_source(
     title: str = typer.Option("", "--title", help="Title for the source"),
     doc_type: str = typer.Option("doc", "--type", help="Drive doc type: doc, slides, sheets, pdf"),
     wait: bool = typer.Option(False, "--wait", "-w", help="Wait for source processing to complete"),
+    wait_timeout: float = typer.Option(
+        600.0,
+        "--wait-timeout",
+        help="Max seconds to wait when --wait is set (default 600; raise for very long audio)",
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Add a source to a notebook.
@@ -119,6 +124,7 @@ def add_source(
                     notebook_id,
                     [{"source_type": "url", "url": u} for u in all_urls],
                     wait=wait,
+                    wait_timeout=wait_timeout,
                 )
                 ready_msg = " (ready)" if wait else ""
                 for r in bulk_result["results"]:
@@ -144,6 +150,7 @@ def add_source(
                     "url",
                     url=source_url,
                     wait=wait,
+                    wait_timeout=wait_timeout,
                 )
             elif text:
                 if wait:
@@ -155,6 +162,7 @@ def add_source(
                     text=text,
                     title=title or None,
                     wait=wait,
+                    wait_timeout=wait_timeout,
                 )
             elif drive:
                 if wait:
@@ -169,6 +177,7 @@ def add_source(
                     title=title or None,
                     doc_type=doc_type,
                     wait=wait,
+                    wait_timeout=wait_timeout,
                 )
             elif file:
                 from pathlib import Path
@@ -186,6 +195,7 @@ def add_source(
                     "file",
                     file_path=str(file_path),
                     wait=wait,
+                    wait_timeout=wait_timeout,
                 )
             else:
                 raise typer.Exit(1)
