@@ -20,6 +20,12 @@ from pydantic import BaseModel, Field
 STORAGE_DIR_NAME = ".notebooklm-mcp-cli"
 
 
+_ALLOWED_BASE_HOSTS = {
+    "notebooklm.google.com",
+    "notebooklm.cloud.google.com",
+}
+
+
 def get_base_url() -> str:
     """Get the NotebookLM base URL.
 
@@ -27,7 +33,16 @@ def get_base_url() -> str:
     Set NOTEBOOKLM_BASE_URL to override, e.g. for enterprise:
         export NOTEBOOKLM_BASE_URL=https://notebooklm.cloud.google.com
     """
-    return os.environ.get("NOTEBOOKLM_BASE_URL", "https://notebooklm.google.com").rstrip("/")
+    url = os.environ.get("NOTEBOOKLM_BASE_URL", "https://notebooklm.google.com").rstrip("/")
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in _ALLOWED_BASE_HOSTS:
+        raise ValueError(
+            f"NOTEBOOKLM_BASE_URL must use https and one of: {_ALLOWED_BASE_HOSTS}. "
+            f"Got: {url}"
+        )
+    return url
 
 
 def get_default_language() -> str:
@@ -50,7 +65,7 @@ def get_storage_dir() -> Path:
     else:
         storage_dir = Path.home() / STORAGE_DIR_NAME
 
-    storage_dir.mkdir(exist_ok=True)
+    storage_dir.mkdir(exist_ok=True, mode=0o700)
     return storage_dir
 
 

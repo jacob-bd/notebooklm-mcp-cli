@@ -287,6 +287,7 @@ class Profile:
             "csrf_token": self.csrf_token,
             "session_id": self.session_id,
             "email": self.email,
+            "build_label": self.build_label,
             "last_validated": self.last_validated.isoformat() if self.last_validated else None,
         }
 

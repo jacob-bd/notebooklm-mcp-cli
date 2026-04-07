@@ -1,6 +1,7 @@
 """Downloads service — shared validation and routing for artifact downloads."""
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
@@ -52,6 +53,51 @@ class DownloadResult(TypedDict):
 
     artifact_type: str
     path: str
+
+
+# Directories that are always blocked as download targets, regardless of platform.
+_BLOCKED_DIRS = {
+    ".ssh",
+    ".gnupg",
+    ".claude",
+    ".config",
+    ".aws",
+    ".kube",
+}
+
+
+def validate_output_path(output_path: str) -> None:
+    """Validate that output_path is safe and does not escape to sensitive locations.
+
+    Raises ValidationError if the path resolves to a dangerous location.
+    """
+    resolved = Path(output_path).expanduser().resolve()
+
+    # Block writes into sensitive dotfile directories
+    for part in resolved.parts:
+        if part in _BLOCKED_DIRS:
+            raise ValidationError(
+                f"Refusing to write to sensitive directory: {resolved}. "
+                f"Choose a different output path."
+            )
+
+    # Block overwriting common sensitive files
+    _sensitive_files = {
+        ".bashrc",
+        ".zshrc",
+        ".profile",
+        ".bash_profile",
+        ".gitconfig",
+        "authorized_keys",
+        "known_hosts",
+        "id_rsa",
+        "id_ed25519",
+    }
+    if resolved.name in _sensitive_files:
+        raise ValidationError(
+            f"Refusing to overwrite sensitive file: {resolved.name}. "
+            f"Choose a different output path."
+        )
 
 
 def validate_artifact_type(artifact_type: str) -> None:
@@ -110,6 +156,7 @@ def download_sync(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    validate_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)
@@ -172,6 +219,7 @@ async def download_async(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    validate_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)

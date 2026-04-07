@@ -727,6 +727,10 @@ class BaseClient:
                 debug_dir.mkdir(parents=True, exist_ok=True)
                 debug_path = debug_dir / "debug_page.html"
                 debug_path.write_text(html, encoding="utf-8")
+                import contextlib as _ctxlib
+
+                with _ctxlib.suppress(OSError):
+                    debug_path.chmod(0o600)
                 raise ValueError(
                     f"Could not extract CSRF token from page. "
                     f"Page saved to {debug_path} for debugging. "
