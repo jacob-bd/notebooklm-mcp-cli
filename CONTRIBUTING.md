@@ -13,8 +13,8 @@
 git clone https://github.com/Robiton/notebooklm-mcp-cli.git
 cd notebooklm-mcp-cli
 uv sync --all-extras
-uv run pytest -m "not e2e"   # should pass
-uvx ruff check .              # should be clean
+uv run pytest -m "not e2e"        # should pass
+.venv/bin/ruff check .            # use pinned ruff, not uvx ruff
 ```
 
 ## Issue routing
@@ -42,7 +42,7 @@ Enterprise testing requires:
 
 - A GCP project with the Discovery Engine API enabled
 - `gcloud auth application-default login`
-- `NOTEBOOKLM_PROJECT_ID` set in the environment
+- Enterprise mode configured: `nlm config set enterprise.project_id YOUR_PROJECT_ID`
 
 ## Architecture
 
