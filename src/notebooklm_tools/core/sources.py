@@ -42,6 +42,21 @@ class SourceMixin(BaseClient):
     SOURCE_STATUS_ERROR = 3
     SOURCE_STATUS_PREPARING = 5
 
+    # Source types that NotebookLM consistently surfaces as "ready" via
+    # status 2. For these, status 3 is a hard processing failure.
+    # Audio (10) and unknown/transient (None, 0) types may pass through
+    # status 3 on their way to status 2, so we do not raise on 3 for them.
+    _NON_AUDIO_TERMINAL_TYPES = frozenset({
+        constants.SOURCE_TYPE_PDF,
+        constants.SOURCE_TYPE_PASTED_TEXT,
+        constants.SOURCE_TYPE_WEB_PAGE,
+        constants.SOURCE_TYPE_GENERATED_TEXT,
+        constants.SOURCE_TYPE_YOUTUBE,
+        constants.SOURCE_TYPE_UPLOADED_FILE,
+        constants.SOURCE_TYPE_IMAGE,
+        constants.SOURCE_TYPE_WORD_DOC,
+    })
+
     def wait_for_source_ready(
         self,
         notebook_id: str,
@@ -53,10 +68,24 @@ class SourceMixin(BaseClient):
 
         Polls the source status until it becomes READY or times out.
 
+        Note on AUDIO sources (source_type 10): NotebookLM transcribes
+        audio in the cloud, and the source moves through several
+        intermediate states (5 PREPARING → 1 PROCESSING → 2 READY).
+        Empirically, source_type for an uploaded file is also reported
+        as 0 ("unknown / not yet classified") for the first few polls
+        before settling at 10 (audio) or another type. During those
+        early polls the status can briefly read 3 even on a successful
+        path. We therefore only raise on status 3 when source_type is
+        already a *known terminal* non-audio type (PDF, text, url, etc.)
+        — for audio and as-yet-unclassified sources we keep polling and
+        let the timeout surface genuine hangs.
+
         Args:
             notebook_id: Notebook containing the source
             source_id: Source to wait for
-            timeout: Max seconds to wait (default 120)
+            timeout: Max seconds to wait (default 120; for audio
+                sources callers typically need to pass a larger value
+                — the CLI's `--wait-timeout` flag defaults to 600s)
             poll_interval: Seconds between status checks (default 3)
 
         Returns:
@@ -73,9 +102,17 @@ class SourceMixin(BaseClient):
             for src in sources:
                 if src.get("id") == source_id:
                     status = src.get("status")
+                    source_type = src.get("source_type")
                     if status == self.SOURCE_STATUS_READY:
                         return src
-                    if status == self.SOURCE_STATUS_ERROR:
+                    # Only treat status 3 as a hard failure when the
+                    # source has already settled into a known terminal
+                    # non-audio type. Audio (10) and not-yet-classified
+                    # sources (None / 0) may pass through 3 transiently.
+                    if (
+                        status == self.SOURCE_STATUS_ERROR
+                        and source_type in self._NON_AUDIO_TERMINAL_TYPES
+                    ):
                         raise RuntimeError(f"Source {source_id} failed to process")
                     break
             time.sleep(poll_interval)
@@ -231,7 +268,10 @@ class SourceMixin(BaseClient):
                                 url = url_info[0]
 
                         # Extract processing status from src[3][1]
-                        # 1=processing, 2=ready, 3=error, 5=preparing
+                        # 1=processing, 2=ready, 3=error/done(audio),
+                        # 5=preparing. For audio sources (source_type 10)
+                        # status 3 is not a hard failure — see
+                        # wait_for_source_ready for details.
                         status = self.SOURCE_STATUS_READY  # Default
                         if len(src) > 3 and isinstance(src[3], list) and len(src[3]) > 1:
                             status = src[3][1] if isinstance(src[3][1], int) else status
@@ -759,7 +799,9 @@ class SourceMixin(BaseClient):
             notebook_id: The notebook ID to add the source to
             file_path: Path to the local file to upload
             wait: If True, poll until source is processed (default: False)
-            wait_timeout: Max seconds to wait if wait=True (default: 120)
+            wait_timeout: Max seconds to wait if wait=True (default 120;
+                audio file uploads typically need a larger value — the
+                CLI's `--wait-timeout` flag defaults to 600s)
 
         Returns:
             dict with 'id' and 'title' of the created source
