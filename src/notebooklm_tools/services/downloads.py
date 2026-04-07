@@ -56,15 +56,41 @@ class DownloadResult(TypedDict):
     path: str
 
 
-def _safe_output_path(path: str | Path) -> Path:
-    """Resolve path and assert it stays within HOME or cwd.
+# Directories that are always blocked as download targets regardless of platform.
+_BLOCKED_DIRS = {
+    ".ssh",
+    ".gnupg",
+    ".claude",
+    ".config",
+    ".aws",
+    ".kube",
+}
 
-    Prevents path traversal attacks (e.g. ../../etc/passwd) by ensuring the
-    resolved destination is inside the user's home directory or current working
-    directory before any file is written.
+# Sensitive filenames that must never be overwritten.
+_BLOCKED_FILES = {
+    ".bashrc",
+    ".zshrc",
+    ".profile",
+    ".bash_profile",
+    ".gitconfig",
+    "authorized_keys",
+    "known_hosts",
+    "id_rsa",
+    "id_ed25519",
+}
+
+
+def _safe_output_path(path: str | Path) -> Path:
+    """Resolve path and assert it is safe to write.
+
+    Two-layer protection:
+    1. Whitelist: path must be inside HOME, cwd, or system temp dir.
+    2. Blocklist: path must not be inside a sensitive dotdir or have a
+       sensitive filename, even if it falls within the whitelist roots
+       (e.g. ~/.ssh/known_hosts is inside HOME but still blocked).
 
     Raises:
-        ValueError: If the resolved path escapes both HOME and cwd.
+        ValueError: If the resolved path fails either check.
     """
     resolved = Path(path).expanduser().resolve()
     home = Path.home().resolve()
@@ -78,6 +104,19 @@ def _safe_output_path(path: str | Path) -> Path:
             f"Output path '{resolved}' is outside your home directory, "
             "current working directory, and system temp directory. "
             "Refusing to write."
+        )
+    # Block sensitive directory names anywhere in the resolved path.
+    for part in resolved.parts:
+        if part in _BLOCKED_DIRS:
+            raise ValueError(
+                f"Output path '{resolved}' is inside a sensitive directory ('{part}'). "
+                "Refusing to write."
+            )
+    # Block sensitive filenames.
+    if resolved.name in _BLOCKED_FILES:
+        raise ValueError(
+            f"Refusing to overwrite sensitive file '{resolved.name}'. "
+            "Choose a different output path."
         )
     return resolved
 

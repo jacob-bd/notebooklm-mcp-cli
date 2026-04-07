@@ -144,6 +144,7 @@ def _save_port_map(data: dict[str, dict]) -> None:
     map_file = _get_port_map_file()
     try:  # noqa: SIM105
         map_file.write_text(json.dumps(data, indent=2))
+        map_file.chmod(0o600)
     except OSError:
         pass  # Best-effort
 
@@ -470,7 +471,7 @@ def launch_chrome_process(
         "--no-default-browser-check",
         "--disable-extensions",
         f"--user-data-dir={profile_dir}",
-        "--remote-allow-origins=*",
+        "--remote-allow-origins=http://localhost,http://127.0.0.1",
     ]
 
     if headless:
