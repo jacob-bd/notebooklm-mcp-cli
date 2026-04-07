@@ -142,6 +142,11 @@ KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset(
         "barrons.com",
         "seekingalpha.com",
         "medium.com",
+        # Sites that consistently block NotebookLM's crawler (not paywalls per se,
+        # but bot-blocking produces the same red-icon failure in NotebookLM).
+        "thehackernews.com",
+        "orca.security",
+        "securityonline.info",
     }
 )
 

@@ -231,6 +231,6 @@ _Most recent session at the top._
 - Security hardening: token leakage prevention, ID validation, path traversal fix
 - Removed duplicate MCP server / 0.5.10 nag
 - Bumped version to 1.0.0
-- Tested against enterprise GCP project 204404889700
+- Tested against enterprise GCP project YOUR_PROJECT_ID
 - Added paywall detection with SSRF protection
 - Updated docs (README enterprise section, AUTHENTICATION.md enterprise section)

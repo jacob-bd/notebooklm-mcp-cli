@@ -345,6 +345,14 @@ class EnterpriseConfig(BaseModel):
     mode: str = Field(default="personal", description="Mode: personal or enterprise")
     project_id: str = Field(default="", description="GCP project number for enterprise")
     location: str = Field(default="global", description="GCP location: global, us, or eu")
+    endpoint_location: str = Field(
+        default="",
+        description=(
+            "API endpoint location prefix (e.g. 'eu', 'us', 'global'). "
+            "Defaults to the value of 'location'. Set this only when the API hostname prefix "
+            "differs from the resource path location — for example, EU data residency."
+        ),
+    )
 
 
 class SourcesConfig(BaseModel):
@@ -404,6 +412,8 @@ def load_config() -> Config:
         config_data.setdefault("enterprise", {})["project_id"] = project_id
     if location := os.environ.get("NOTEBOOKLM_LOCATION"):
         config_data.setdefault("enterprise", {})["location"] = location
+    if endpoint_location := os.environ.get("NOTEBOOKLM_ENDPOINT_LOCATION"):
+        config_data.setdefault("enterprise", {})["endpoint_location"] = endpoint_location
 
     return Config(**config_data)
 
@@ -437,6 +447,7 @@ def _config_to_toml(config: Config) -> str:
     lines.append(f'mode = "{config.enterprise.mode}"')
     lines.append(f'project_id = "{config.enterprise.project_id}"')
     lines.append(f'location = "{config.enterprise.location}"')
+    lines.append(f'endpoint_location = "{config.enterprise.endpoint_location}"')
     lines.append("")
 
     lines.append("[sources]")

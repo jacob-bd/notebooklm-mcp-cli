@@ -20,7 +20,7 @@ Cursor, Codex, or other MCP-compatible AI tools.
 
 Deployment: local machine tool, installed via `uv tool install .`. Config in `~/.notebooklm-mcp-cli/`.
 
-Current state: v1.0.0, in active use. Enterprise mode tested against GCP project 204404889700.
+Current state: v1.0.0, in active use. Enterprise mode tested against GCP project YOUR_PROJECT_ID.
 
 ---
 
@@ -84,12 +84,9 @@ Current state: v1.0.0, in active use. Enterprise mode tested against GCP project
   - Robiton#4 — CONTRIBUTING, CoC, SECURITY, issue templates — merged
   - Robiton#5 — debt cleanup, upstream sync workflow, .codex, release process — merged
   - Robiton#6 — upstream sync v0.5.11–v0.5.16 cherry-picks — merged
-- **Open upstream PRs**:
-  - `#129` — standalone podcast tool — CI green, pending jacob-bd review
-  - `#126` — full enterprise support — declined (v1alpha instability concern)
+- **Upstream PR strategy**: **No further PRs to jacob-bd.** Both #126 (enterprise) and #129 (podcast) were closed by jacob-bd — his project is intentionally personal-only. We are a dual-use fork; that scope divergence is permanent. We will cherry-pick useful upstream fixes/features into our fork, but we no longer submit PRs back.
 - **Skipped upstream commit**: `b31ab7e` (dual RPC fallback) — permanently skip; incompatible with our enterprise adapter design
-- **Sync strategy**: Periodically cherry-pick from upstream/main; weekly upstream-check.yml opens a GitHub issue if we fall behind
-- **Re-submit enterprise PR trigger**: When Discovery Engine API promotes from v1alpha to v1
+- **Sync strategy**: Periodically cherry-pick from upstream/main; weekly upstream-check.yml opens a GitHub issue if we fall behind. One-way only — upstream → us.
 - **`gh pr create` in fork**: Always use `--repo Robiton/notebooklm-mcp-cli --base <target> --head <branch>` explicitly — default detects upstream parent (jacob-bd) and creates PR there instead
 - **ruff version**: Lock file pins ruff 0.14.14. Use `uv run --extra dev ruff` (NOT `uvx ruff`) for CI-consistent checks
 

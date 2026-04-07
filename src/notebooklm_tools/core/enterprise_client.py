@@ -6,14 +6,21 @@ the web UI's batchexecute endpoint. It uses GCP OAuth2 bearer tokens for auth.
 Environment variables:
     NOTEBOOKLM_PROJECT_ID: GCP project number (required)
     NOTEBOOKLM_LOCATION: GCP location - "global", "us", or "eu" (default: "global")
+    NOTEBOOKLM_ENDPOINT_LOCATION: API hostname prefix — defaults to NOTEBOOKLM_LOCATION.
+        Set this when the endpoint region differs from the resource region (EU data residency).
+    NBLM_ACCESS_TOKEN: GCP access token. When set, gcloud CLI is not required.
+        Useful for CI/CD pipelines and Docker containers.
 
-Auth: Requires `gcloud auth login`.
+Auth: Requires `gcloud auth login` (unless NBLM_ACCESS_TOKEN is set).
 """
 
 import contextlib
 import logging
+import os
+import random
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +61,10 @@ class EnterpriseClient:
                 "Or: export NOTEBOOKLM_PROJECT_ID=YOUR_PROJECT_ID"
             )
 
-        self._endpoint_location = self.location
+        # endpoint_location controls the API hostname prefix (e.g. "eu-discoveryengine.googleapis.com").
+        # It defaults to `location` but can be overridden independently for EU data-residency
+        # deployments where the hostname region differs from the resource path region.
+        self._endpoint_location = config.enterprise.endpoint_location or self.location
         self._base_url = (
             f"https://{self._endpoint_location}-discoveryengine.googleapis.com/v1alpha"
             f"/projects/{self.project_id}/locations/{self.location}"
@@ -82,8 +92,19 @@ class EnterpriseClient:
     # =========================================================================
 
     def _get_token(self) -> str:
-        """Get a valid access token via gcloud CLI."""
+        """Get a valid access token.
+
+        Priority:
+        1. Previously cached token (set by constructor or prior call)
+        2. NBLM_ACCESS_TOKEN environment variable (for CI/CD, Docker)
+        3. gcloud auth print-access-token
+        4. gcloud auth application-default print-access-token
+        """
         if self._access_token:
+            return self._access_token
+
+        if env_token := os.environ.get("NBLM_ACCESS_TOKEN", "").strip():
+            self._access_token = env_token
             return self._access_token
 
         for cmd in [
@@ -107,27 +128,66 @@ class EnterpriseClient:
         }
 
     def _request(self, method: str, path: str, base_url: str | None = None, **kwargs) -> Any:
-        """Make an authenticated API request."""
-        url = f"{base_url or self._base_url}/{path.lstrip('/')}"
-        response = self._client.request(method, url, headers=self._headers(), **kwargs)
+        """Make an authenticated API request with retry/backoff.
 
-        if response.status_code == 401:
-            self._access_token = None
+        Retry strategy (mirrors nblm-rs):
+        - Up to 3 retries on transient server errors (429, 500, 502, 503, 504)
+        - Exponential backoff: 500ms–5s with ±25% jitter
+        - Respects Retry-After header on 429 responses
+        - 401 triggers a single token refresh then immediate retry (not counted)
+        """
+        _RETRYABLE = {429, 500, 502, 503, 504}
+        _MAX_RETRIES = 3
+        _BASE_DELAY = 0.5  # seconds
+
+        url = f"{base_url or self._base_url}/{path.lstrip('/')}"
+        attempt = 0
+
+        while True:
             response = self._client.request(method, url, headers=self._headers(), **kwargs)
 
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            # Include response body for debugging but strip auth headers
-            detail = ""
-            with contextlib.suppress(Exception):
-                detail = e.response.text[:500]
-            raise httpx.HTTPStatusError(
-                f"API error: {e.response.status_code} for {method} {path}. {detail}",
-                request=e.request,
-                response=e.response,
-            ) from None
-        return response.json() if response.content else None
+            # Token refresh on 401 (one shot, not counted as a retry)
+            if response.status_code == 401:
+                self._access_token = None
+                response = self._client.request(method, url, headers=self._headers(), **kwargs)
+
+            if response.is_success:
+                return response.json() if response.content else None
+
+            if response.status_code not in _RETRYABLE or attempt >= _MAX_RETRIES:
+                # Non-retryable or exhausted — raise with body for debugging
+                detail = ""
+                with contextlib.suppress(Exception):
+                    detail = response.text[:500]
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    raise httpx.HTTPStatusError(
+                        f"API error: {e.response.status_code} for {method} {path}. {detail}",
+                        request=e.request,
+                        response=e.response,
+                    ) from None
+
+            # Honour Retry-After on 429; otherwise exponential backoff with jitter
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                delay = float(retry_after) if retry_after else min(_BASE_DELAY * (2**attempt), 5.0)
+            else:
+                delay = min(_BASE_DELAY * (2**attempt), 5.0)
+
+            # ±25% jitter
+            delay *= 1.0 + random.uniform(-0.25, 0.25)
+            logger.debug(
+                "Retrying %s %s (attempt %d/%d) after %.1fs — status %d",
+                method,
+                path,
+                attempt + 1,
+                _MAX_RETRIES,
+                delay,
+                response.status_code,
+            )
+            time.sleep(delay)
+            attempt += 1
 
     # =========================================================================
     # Helpers

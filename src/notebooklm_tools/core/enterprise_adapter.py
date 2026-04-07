@@ -95,7 +95,9 @@ class EnterpriseAdapter:
         return []
 
     def add_url_source(self, notebook_id: str, url: str, **kwargs) -> dict | None:
-        """Add a URL source."""
+        """Add a URL source, routing YouTube URLs to the dedicated video endpoint."""
+        if "youtube.com/watch" in url or "youtu.be/" in url:
+            return self._ec.add_source_youtube(notebook_id, url)
         return self._ec.add_source_url(notebook_id, url)
 
     def add_text_source(
@@ -201,12 +203,18 @@ class EnterpriseAdapter:
         )
 
     def poll_studio_status(self, notebook_id: str) -> list:
-        """Not available via REST API."""
-        return []
+        """Not available via Enterprise REST API."""
+        raise NotImplementedError(
+            "Artifact status polling is not available in enterprise mode. "
+            "Check the NotebookLM UI directly to see your audio overview status."
+        )
 
     def get_studio_status(self, notebook_id: str) -> dict:
-        """Not available via REST API — stub."""
-        return {"total": 0, "completed": 0, "in_progress": 0, "artifacts": []}
+        """Not available via Enterprise REST API."""
+        raise NotImplementedError(
+            "Artifact status polling is not available in enterprise mode. "
+            "Check the NotebookLM UI directly to see your audio overview status."
+        )
 
     # =========================================================================
     # Sharing

@@ -474,6 +474,9 @@ def get_studio_status(
     """
     try:
         artifacts = client.poll_studio_status(notebook_id)
+    except NotImplementedError as e:
+        # Enterprise adapter raises NotImplementedError with a user-facing message.
+        raise ServiceError(str(e), user_message=str(e)) from e
     except Exception as e:
         raise ServiceError(
             f"Failed to poll studio status: {e}",
