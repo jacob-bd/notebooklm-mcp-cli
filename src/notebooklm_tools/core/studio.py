@@ -379,10 +379,11 @@ class StudioMixin(BaseClient):
                 # Extract custom_instructions (focus prompt) if present
                 # Different artifact types store prompts at different indices:
                 # - Audio: artifact_data[6][1][0]
-                # - Video: artifact_data[8][2][2]
+                # - Video: artifact_data[8][2][2] (focus), artifact_data[8][2][6] (style prompt)
                 # - Slides: artifact_data[16][0][0]
                 # - Quiz/Flashcards: artifact_data[9][1][1]
                 custom_instructions = None
+                visual_style_prompt = None
 
                 if type_code == self.STUDIO_TYPE_AUDIO and len(artifact_data) > 6:
                     options_data = artifact_data[6]
@@ -396,9 +397,11 @@ class StudioMixin(BaseClient):
                     options_data = artifact_data[8]
                     if isinstance(options_data, list) and len(options_data) > 2:
                         inner = options_data[2]
-                        if isinstance(inner, list) and len(inner) > 2:  # noqa: SIM102
-                            if isinstance(inner[2], str) and inner[2]:
+                        if isinstance(inner, list):
+                            if len(inner) > 2 and isinstance(inner[2], str) and inner[2]:
                                 custom_instructions = inner[2]
+                            if len(inner) > 6 and isinstance(inner[6], str) and inner[6]:
+                                visual_style_prompt = inner[6]
 
                 elif type_code == self.STUDIO_TYPE_SLIDE_DECK and len(artifact_data) > 16:
                     options_data = artifact_data[16]
@@ -426,6 +429,7 @@ class StudioMixin(BaseClient):
                         "status": status,
                         "created_at": created_at,
                         "custom_instructions": custom_instructions,
+                        "visual_style_prompt": visual_style_prompt,
                         "audio_url": audio_url,
                         "video_url": video_url,
                         "infographic_url": infographic_url,

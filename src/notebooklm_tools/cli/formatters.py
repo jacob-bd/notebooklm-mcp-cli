@@ -351,6 +351,7 @@ class JsonFormatter(Formatter):
                     "type": art.get("type", ""),
                     "status": art.get("status", ""),
                     "custom_instructions": art.get("custom_instructions", None),  # Always include
+                    "visual_style_prompt": art.get("visual_style_prompt", None),
                 }
                 if full:
                     item["title"] = art.get("title", "")
@@ -363,6 +364,7 @@ class JsonFormatter(Formatter):
                     "custom_instructions": getattr(
                         art, "custom_instructions", None
                     ),  # Always include
+                    "visual_style_prompt": getattr(art, "visual_style_prompt", None),
                 }
                 if full:
                     item["title"] = getattr(art, "title", "")
