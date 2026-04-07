@@ -1,20 +1,34 @@
-# NotebookLM CLI & MCP Server
+# NotebookLM CLI & MCP Server — Enterprise + Personal
 
 ![NotebookLM MCP Header](docs/media/header.jpg)
 
-[![PyPI version](https://img.shields.io/pypi/v/notebooklm-mcp-cli)](https://pypi.org/project/notebooklm-mcp-cli/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/notebooklm-mcp-cli)](https://pypistats.org/packages/notebooklm-mcp-cli)
-[![Total downloads](https://static.pepy.tech/badge/notebooklm-mcp-cli)](https://pepy.tech/projects/notebooklm-mcp-cli)
-[![Python](https://img.shields.io/pypi/pyversions/notebooklm-mcp-cli)](https://pypi.org/project/notebooklm-mcp-cli/)
-[![License](https://img.shields.io/pypi/l/notebooklm-mcp-cli)](https://github.com/jacob-bd/notebooklm-mcp-cli/blob/main/LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/notebooklm-enterprise-mcp)](https://pypi.org/project/notebooklm-enterprise-mcp/)
+[![License](https://img.shields.io/pypi/l/notebooklm-enterprise-mcp)](https://github.com/Robiton/notebooklm-mcp-cli/blob/main/LICENSE)
+[![Fork of](https://img.shields.io/badge/fork%20of-jacob--bd%2Fnotebooklm--mcp--cli-blue)](https://github.com/jacob-bd/notebooklm-mcp-cli)
 
-> 🎉 **January 2026 — Major Update!** This project has been completely refactored to unify **NotebookLM-MCP** and **NotebookLM-CLI** into a single, powerful package. One install gives you both the CLI (`nlm`) and MCP server (`notebooklm-mcp`). See the [CLI Guide](docs/CLI_GUIDE.md) and [MCP Guide](docs/MCP_GUIDE.md) for full documentation.
+> **This is an enterprise-focused fork of [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli).**
+> It adds full support for **NotebookLM Enterprise** (`notebooklm.cloud.google.com`) via the official Discovery Engine REST API, while keeping all personal-mode features intact.
+> If you only use personal NotebookLM, the upstream repo is the right choice. If you have a Google Workspace enterprise account, you're in the right place.
 
-**Programmatic access to Google NotebookLM** — via command-line interface (CLI) or Model Context Protocol (MCP) server.
+### What this fork adds over upstream
 
-> **Supports both Personal and Enterprise NotebookLM.** Personal uses browser cookie auth (all features). Enterprise uses the official Discovery Engine REST API with GCP OAuth2 (stable, documented — see [Enterprise Mode](#enterprise-mode) below).
+| Addition | Details |
+|---|---|
+| **Enterprise REST API client** | Official Discovery Engine API — not reverse-engineered batchexecute |
+| **GCP OAuth2 authentication** | `gcloud auth login` instead of browser cookies |
+| **`configure_mode` MCP tool** | Switch personal ↔ enterprise from within Claude, with auth pre-checks |
+| **Paywall detection** | URL sources checked for login/subscription walls before adding |
+| **Per-URL batch fault isolation** | One bad URL in a batch no longer fails the entire batch |
+| **Standalone Podcast API** | Generate podcasts from raw text — no notebook required |
+| **Persistent config** | `nlm config set enterprise.mode enterprise` — no env var editing each session |
+
+> All personal-mode features (chat, video, reports, flashcards, research, sharing, etc.) are fully preserved.
+
+**Programmatic access to Google NotebookLM** — via command-line interface (CLI) or Model Context Protocol (MCP) server. Supports both Personal and Enterprise accounts.
 
 📺 **Watch the Demos**
+
+> **Note:** The demos below are from the upstream project ([jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli)) and show personal mode features. All commands and MCP tools work identically in this fork — enterprise mode adds on top of everything shown here.
 
 ### Latest
 
@@ -108,29 +122,29 @@ Use at your own risk for personal/experimental purposes.
 
 ## Installation
 
-> 🆕 **Claude Desktop users:** [Download the extension](https://github.com/jacob-bd/notebooklm-mcp-cli/releases/latest) (`.mcpb` file) → double-click → done! One-click install, no config needed.
+> 🆕 **Claude Desktop users:** [Download the extension](https://github.com/Robiton/notebooklm-mcp-cli/releases/latest) (`.mcpb` file) → double-click → done! One-click install, no config needed.
 
 Install from PyPI. This single package includes **both the CLI and MCP server**:
 
 ### Using uv (Recommended)
 ```bash
-uv tool install notebooklm-mcp-cli
+uv tool install notebooklm-enterprise-mcp
 ```
 
 ### Using uvx (Run Without Install)
 ```bash
-uvx --from notebooklm-mcp-cli nlm --help
-uvx --from notebooklm-mcp-cli notebooklm-mcp
+uvx --from notebooklm-enterprise-mcp nlm --help
+uvx --from notebooklm-enterprise-mcp notebooklm-mcp
 ```
 
 ### Using pip
 ```bash
-pip install notebooklm-mcp-cli
+pip install notebooklm-enterprise-mcp
 ```
 
 ### Using pipx
 ```bash
-pipx install notebooklm-mcp-cli
+pipx install notebooklm-enterprise-mcp
 ```
 
 **After installation, you get:**
@@ -142,7 +156,7 @@ pipx install notebooklm-mcp-cli
 
 ```bash
 # Clone the repository
-git clone https://github.com/jacob-bd/notebooklm-mcp-cli.git
+git clone https://github.com/Robiton/notebooklm-mcp-cli.git
 cd notebooklm-mcp
 
 # Install with uv
@@ -154,13 +168,13 @@ uv tool install .
 
 ```bash
 # Using uv
-uv tool upgrade notebooklm-mcp-cli
+uv tool upgrade notebooklm-enterprise-mcp
 
 # Using pip
-pip install --upgrade notebooklm-mcp-cli
+pip install --upgrade notebooklm-enterprise-mcp
 
 # Using pipx
-pipx upgrade notebooklm-mcp-cli
+pipx upgrade notebooklm-enterprise-mcp
 ```
 
 After upgrading, restart your AI tool to reconnect to the updated MCP server:
@@ -169,64 +183,41 @@ After upgrading, restart your AI tool to reconnect to the updated MCP server:
 - **Cursor:** Restart the application
 - **Gemini CLI:** Restart the CLI session
 
-## Upgrading from Legacy Versions
+## Switching from Upstream (jacob-bd/notebooklm-mcp-cli)
 
-If you previously installed the **separate** CLI and MCP packages, you need to migrate to the unified package.
+If you were using the upstream package and want to switch to this fork for enterprise support:
 
-### Step 1: Check What You Have Installed
+### Step 1: Uninstall the upstream package
+
+```bash
+uv tool uninstall notebooklm-mcp-cli
+# or: pip uninstall notebooklm-mcp-cli
+```
+
+### Step 2: Install this fork's package
+
+```bash
+uv tool install notebooklm-enterprise-mcp
+```
+
+### Step 3: Verify
 
 ```bash
 uv tool list | grep notebooklm
+# Should show: notebooklm-enterprise-mcp v1.0.0
+#                - nlm
+#                - notebooklm-mcp
 ```
 
-**Legacy packages to remove:**
-| Package | What it was |
-|---------|-------------|
-| `notebooklm-cli` | Old CLI-only package |
-| `notebooklm-mcp-server` | Old MCP-only package |
+### Step 4: Re-authenticate (if needed)
 
-### Step 2: Uninstall Legacy Packages
-
-```bash
-# Remove old CLI package (if installed)
-uv tool uninstall notebooklm-cli
-
-# Remove old MCP package (if installed)
-uv tool uninstall notebooklm-mcp-server
-```
-
-### Step 3: Reinstall the Unified Package
-
-After removing legacy packages, reinstall to fix symlinks:
-
-```bash
-uv tool install --force notebooklm-mcp-cli
-```
-
-> **Why `--force`?** When multiple packages provide the same executable, `uv` can leave broken symlinks after uninstalling. The `--force` flag ensures clean symlinks.
-
-### Step 4: Verify Installation
-
-```bash
-uv tool list | grep notebooklm
-```
-
-You should see only:
-```
-notebooklm-mcp-cli v0.2.0
-- nlm
-- notebooklm-mcp
-```
-
-### Step 5: Re-authenticate
-
-Your existing cookies should still work, but if you encounter auth issues:
+Your existing cookies from the upstream package should still work. If you hit auth errors:
 
 ```bash
 nlm login
 ```
 
-> **Note:** MCP server configuration (in Claude Code, Cursor, etc.) does not need to change — the executable name `notebooklm-mcp` is the same.
+> **MCP configuration doesn't change** — the executable is still called `notebooklm-mcp`, so your Claude Code, Cursor, or other tool configs need no edits.
 
 ## Uninstalling
 
@@ -234,13 +225,13 @@ To completely remove the MCP:
 
 ```bash
 # Using uv
-uv tool uninstall notebooklm-mcp-cli
+uv tool uninstall notebooklm-enterprise-mcp
 
 # Using pip
-pip uninstall notebooklm-mcp-cli
+pip uninstall notebooklm-enterprise-mcp
 
 # Using pipx
-pipx uninstall notebooklm-mcp-cli
+pipx uninstall notebooklm-enterprise-mcp
 
 # Remove cached auth tokens and data (optional)
 rm -rf ~/.notebooklm-mcp-cli
@@ -253,6 +244,24 @@ nlm setup remove claude-code
 nlm setup remove cursor
 # ... or any configured tool
 ```
+
+## Why This Fork?
+
+The upstream project targets personal NotebookLM accounts only. Enterprise NotebookLM (`notebooklm.cloud.google.com`) uses a completely different authentication system (GCP OAuth2) and a separate official REST API — it's not just a different URL.
+
+This fork adds:
+- **Enterprise REST API client** — official Discovery Engine API, not reverse-engineered batchexecute
+- **Persistent config** — `nlm config set enterprise.mode enterprise` persists across restarts (no env var editing)
+- **`configure_mode` MCP tool** — switch modes from within Claude with auth pre-checks
+- **Paywall detection** — URL sources are checked for login/subscription walls before adding
+- **Per-URL bulk results** — one bad URL in a batch doesn't fail the whole batch
+- **Standalone Podcast API** — generate podcasts from raw text, no notebook needed
+
+The enterprise REST API (`v1alpha`) covers notebooks, sources, and audio. Chat, video, reports, and other features remain personal-only — they have no documented REST endpoints. The hope is that Google promotes the API to `v1` stable and expands coverage over time.
+
+See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for full enterprise setup instructions.
+
+---
 
 ## Enterprise Mode
 
@@ -399,8 +408,8 @@ If you don't want to install the package, you can use `uvx` to run on-the-fly:
 
 ```bash
 # Run CLI commands directly
-uvx --from notebooklm-mcp-cli nlm setup add cursor
-uvx --from notebooklm-mcp-cli nlm login
+uvx --from notebooklm-enterprise-mcp nlm setup add cursor
+uvx --from notebooklm-enterprise-mcp nlm login
 ```
 
 For tools that use JSON config, point them to uvx:
@@ -409,7 +418,7 @@ For tools that use JSON config, point them to uvx:
   "mcpServers": {
     "notebooklm-mcp": {
       "command": "uvx",
-      "args": ["--from", "notebooklm-mcp-cli", "notebooklm-mcp"]
+      "args": ["--from", "notebooklm-enterprise-mcp", "notebooklm-mcp"]
     }
   }
 }
@@ -528,7 +537,7 @@ Simply chat with your AI tool (Claude Code, Cursor, Gemini CLI) using natural la
 | CSRF Token | ~minutes | Auto-refreshed on every request failure |
 | Session ID | Per MCP session | Auto-extracted on MCP start |
 
-**v0.1.9+**: The server now automatically handles token expiration:
+**v1.0.0+**: The server now automatically handles token expiration:
 1. Refreshes CSRF tokens immediately when expired
 2. Reloads cookies from disk if updated externally
 3. Runs headless browser auth if profile has saved login
@@ -542,14 +551,14 @@ If automatic refresh fails (Google login fully expired), run `nlm login` again.
 ### `uv tool upgrade` Not Installing Latest Version
 
 **Symptoms:**
-- Running `uv tool upgrade notebooklm-mcp-cli` installs an older version (e.g., 0.1.5 instead of 0.1.9)
+- Running `uv tool upgrade notebooklm-enterprise-mcp` installs an older version than expected
 - `uv cache clean` doesn't fix the issue
 
 **Why this happens:** `uv tool upgrade` respects version constraints from your original installation. If you initially installed an older version or with a constraint, `upgrade` stays within those bounds by design.
 
 **Fix — Force reinstall:**
 ```bash
-uv tool install --force notebooklm-mcp-cli
+uv tool install --force notebooklm-enterprise-mcp
 ```
 
 This bypasses any cached constraints and installs the absolute latest version from PyPI.
@@ -557,7 +566,7 @@ This bypasses any cached constraints and installs the absolute latest version fr
 **Verify:**
 ```bash
 uv tool list | grep notebooklm
-# Should show: notebooklm-mcp-cli v0.1.9 (or latest)
+# Should show: notebooklm-enterprise-mcp v1.0.0 (or latest)
 ```
 
 
@@ -567,19 +576,30 @@ uv tool list | grep notebooklm
 - **No official support**: API may change without notice
 - **Cookie expiration**: Need to re-extract cookies every few weeks
 
+## Reporting Issues
+
+Use the **[GitHub Issues](https://github.com/Robiton/notebooklm-mcp-cli/issues/new/choose)** tab — you'll be prompted to pick the right template:
+
+| Template | Use when |
+|---|---|
+| **Bug — Enterprise** | Something broken in enterprise mode (GCP, Discovery Engine API) |
+| **Bug — Personal** | Something broken in personal mode that's specific to this fork |
+| **Feature Request** | New capability you'd like to see |
+| **Question** | Setup help, usage questions, config issues |
+
+> **Personal mode bugs** that also exist in the upstream project should be filed at [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli/issues) first — fixes accepted there get cherry-picked here automatically.
+
 ## Contributing
 
-See [CLAUDE.md](CLAUDE.md) for detailed API documentation and how to add new features.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, PR process, and how to add new features.
 
-## Vibe Coding Alert
+## A Note on This Fork
 
-Full transparency: this project was built by a non-developer using AI coding assistants. If you're an experienced Python developer, you might look at this codebase and wince. That's okay.
+This fork started as an internal tool to fill a real gap: NotebookLM Enterprise had no programmatic access, and the upstream project (which is excellent) is scoped to personal accounts only. The enterprise implementation was built with AI assistance — I'm not a professional Python developer — so if you see something that could be done better, PRs are genuinely welcome.
 
-The goal here was to scratch an itch - programmatic access to NotebookLM - and learn along the way. The code works, but it's likely missing patterns, optimizations, or elegance that only years of experience can provide.
+The upstream project's original "vibe coding" spirit applies here too: the goal was to solve a problem, not to write a textbook. The code works, passes tests, and is production-stable enough for daily use. But experienced developers will likely see room for improvement, and that input is valuable.
 
-**This is where you come in.** If you see something that makes you cringe, please consider contributing rather than just closing the tab. This is open source specifically because human expertise is irreplaceable. Whether it's refactoring, better error handling, type hints, or architectural guidance - PRs and issues are welcome.
-
-Think of it as a chance to mentor an AI-assisted developer through code review. We all benefit when experienced developers share their knowledge.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved — especially if you have enterprise NotebookLM access and can test end-to-end.
 
 ## Credits
 
@@ -593,10 +613,6 @@ Special thanks to:
 - **Tony Hansmann** ([@997unix](https://github.com/997unix)) for contributing the `nlm setup` and `nlm doctor` commands and CLI Guide documentation.
 - **Fabiana Furtado** ([@fabianafurtadoff](https://github.com/fabianafurtadoff)) for batch operations, cross-notebook query, pipelines, and smart select/tagging (PR #90).
 
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=jacob-bd/notebooklm-mcp-cli&type=Date)](https://star-history.com/#jacob-bd/notebooklm-mcp-cli&Date)
 
 ## License
 

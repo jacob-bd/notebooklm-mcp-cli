@@ -1,7 +1,5 @@
 """Tests for MCP tools coerce_list utility."""
 
-import pytest
-
 from notebooklm_tools.mcp.tools._utils import coerce_list
 
 

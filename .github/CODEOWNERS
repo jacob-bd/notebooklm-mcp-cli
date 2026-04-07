@@ -1,0 +1,19 @@
+# CODEOWNERS
+# Defines who reviews PRs touching specific paths.
+# Last updated: 2026-04-06
+
+# Default owner for everything
+*                                   @Robiton
+
+# AI scaffold context files — changes need careful review
+ai/STANDARDS.md                     @Robiton
+ai/CODING.md                        @Robiton
+ai/SECURITY.md                      @Robiton
+ai/TEAM.md                          @Robiton
+
+# Enterprise-specific core files
+src/notebooklm_tools/core/enterprise_client.py     @Robiton
+src/notebooklm_tools/core/enterprise_adapter.py    @Robiton
+
+# GitHub config and CI
+.github/                            @Robiton

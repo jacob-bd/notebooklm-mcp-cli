@@ -87,6 +87,7 @@ class TestFileUploadProtocol:
 
     def test_register_file_source_success(self):
         """Test successful file registration (step 1)."""
+        from notebooklm_tools.core.api_profile import APIProfile
         from notebooklm_tools.core.sources import SourceMixin
 
         client = SourceMixin.__new__(SourceMixin)
@@ -94,6 +95,7 @@ class TestFileUploadProtocol:
         client.csrf_token = "test-csrf"
         client._session_id = "test-session"
         client._client = None
+        client._profile = APIProfile()
 
         # Mock the HTTP client and response
         mock_response = Mock()
@@ -112,6 +114,7 @@ class TestFileUploadProtocol:
 
     def test_register_file_source_failure(self):
         """Test file registration failure."""
+        from notebooklm_tools.core.api_profile import APIProfile
         from notebooklm_tools.core.sources import SourceMixin
 
         client = SourceMixin.__new__(SourceMixin)
@@ -119,6 +122,7 @@ class TestFileUploadProtocol:
         client.csrf_token = "test-csrf"
         client._session_id = "test-session"
         client._client = None
+        client._profile = APIProfile()
 
         # Mock response with no source ID
         mock_response = Mock()
@@ -135,6 +139,7 @@ class TestFileUploadProtocol:
 
     def test_start_resumable_upload_success(self):
         """Test starting resumable upload session (step 2)."""
+        from notebooklm_tools.core.api_profile import APIProfile
         from notebooklm_tools.core.sources import SourceMixin
 
         client = SourceMixin.__new__(SourceMixin)
@@ -142,6 +147,7 @@ class TestFileUploadProtocol:
         client.csrf_token = "test-csrf"
         client._session_id = "test-session"
         client._client = None
+        client._profile = APIProfile()
         client.UPLOAD_URL = "https://notebooklm.google.com/upload/_/"
 
         # Mock response with upload URL
@@ -166,6 +172,7 @@ class TestFileUploadProtocol:
 
     def test_start_resumable_upload_no_url(self):
         """Test upload session start without upload URL in response."""
+        from notebooklm_tools.core.api_profile import APIProfile
         from notebooklm_tools.core.sources import SourceMixin
 
         client = SourceMixin.__new__(SourceMixin)
@@ -173,6 +180,7 @@ class TestFileUploadProtocol:
         client.csrf_token = "test-csrf"
         client._session_id = "test-session"
         client._client = None
+        client._profile = APIProfile()
         client.UPLOAD_URL = "https://notebooklm.google.com/upload/_/"
 
         # Mock response without upload URL
@@ -196,6 +204,7 @@ class TestFileUploadProtocol:
 
     def test_upload_file_streaming_success(self):
         """Test streaming file upload (step 3)."""
+        from notebooklm_tools.core.api_profile import APIProfile
         from notebooklm_tools.core.sources import SourceMixin
 
         client = SourceMixin.__new__(SourceMixin)
@@ -203,6 +212,7 @@ class TestFileUploadProtocol:
         client.csrf_token = "test-csrf"
         client._session_id = "test-session"
         client._client = None
+        client._profile = APIProfile()
 
         # Create a temporary test file
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:

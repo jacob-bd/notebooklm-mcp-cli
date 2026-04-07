@@ -16,6 +16,7 @@ def _paywall_check_url(url: str) -> dict[str, Any] | None:
     from urllib.parse import urlparse
 
     from ...utils.config import get_config
+
     config = get_config()
     if not config.sources.paywall_check:
         return None
@@ -45,7 +46,7 @@ def _paywall_check_url(url: str) -> dict[str, Any] | None:
         "hint": (
             f"If you have an account on {check['domain']!r}, add it to your approved domains so "
             "future checks are skipped:\n"
-            f"  nlm config set sources.approved_domains [\"{check['domain']}\"]\n"
+            f'  nlm config set sources.approved_domains ["{check["domain"]}"]\n'
             "To add this URL anyway, call source_add with skip_paywall_check=True."
         ),
     }

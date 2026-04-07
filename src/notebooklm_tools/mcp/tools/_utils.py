@@ -42,6 +42,7 @@ def get_client():
 
     # Enterprise mode: use official REST API with GCP OAuth2
     from notebooklm_tools.utils.config import get_config
+
     config = get_config()
     mode = config.enterprise.mode.lower()
     if mode == "enterprise":

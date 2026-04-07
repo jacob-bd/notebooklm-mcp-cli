@@ -38,7 +38,7 @@ def podcast_create(
         return {
             "status": "error",
             "error": "Standalone podcast creation is only available in enterprise mode. "
-                     "Set NOTEBOOKLM_MODE=enterprise.",
+            "Set NOTEBOOKLM_MODE=enterprise.",
         }
 
     client = get_client()

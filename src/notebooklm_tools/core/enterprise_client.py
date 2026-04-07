@@ -10,13 +10,12 @@ Environment variables:
 Auth: Requires `gcloud auth login`.
 """
 
+import contextlib
 import logging
-import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
-
-import re
 
 import httpx
 
@@ -43,6 +42,7 @@ class EnterpriseClient:
         access_token: str | None = None,
     ):
         from notebooklm_tools.utils.config import get_config
+
         config = get_config()
         self.project_id = project_id or config.enterprise.project_id
         self.location = location or config.enterprise.location or "global"
@@ -98,10 +98,7 @@ class EnterpriseClient:
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 continue
 
-        raise ValueError(
-            "Could not get GCP access token. Please run:\n"
-            "  gcloud auth login"
-        )
+        raise ValueError("Could not get GCP access token. Please run:\n  gcloud auth login")
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -123,10 +120,8 @@ class EnterpriseClient:
         except httpx.HTTPStatusError as e:
             # Include response body for debugging but strip auth headers
             detail = ""
-            try:
+            with contextlib.suppress(Exception):
                 detail = e.response.text[:500]
-            except Exception:
-                pass
             raise httpx.HTTPStatusError(
                 f"API error: {e.response.status_code} for {method} {path}. {detail}",
                 request=e.request,
@@ -156,13 +151,15 @@ class EnterpriseClient:
         if result and "notebooks" in result:
             for nb in result["notebooks"]:
                 nb_id = nb.get("notebookId", "")
-                notebooks.append({
-                    "notebook_id": nb_id,
-                    "title": nb.get("title", "Untitled"),
-                    "url": self.web_url(nb_id),
-                    "metadata": nb.get("metadata", {}),
-                    "name": nb.get("name", ""),
-                })
+                notebooks.append(
+                    {
+                        "notebook_id": nb_id,
+                        "title": nb.get("title", "Untitled"),
+                        "url": self.web_url(nb_id),
+                        "metadata": nb.get("metadata", {}),
+                        "name": nb.get("name", ""),
+                    }
+                )
         return notebooks
 
     def get_notebook(self, notebook_id: str) -> dict | None:
@@ -174,12 +171,14 @@ class EnterpriseClient:
             for src in result.get("sources", []):
                 sid = src.get("sourceId", {})
                 source_id = sid.get("id", "") if isinstance(sid, dict) else str(sid)
-                sources.append({
-                    "id": source_id,
-                    "title": src.get("title", "Untitled"),
-                    "status": src.get("settings", {}).get("status", ""),
-                    "name": src.get("name", ""),
-                })
+                sources.append(
+                    {
+                        "id": source_id,
+                        "title": src.get("title", "Untitled"),
+                        "status": src.get("settings", {}).get("status", ""),
+                        "name": src.get("name", ""),
+                    }
+                )
             return {
                 "notebook_id": result.get("notebookId", notebook_id),
                 "title": result.get("title", "Untitled"),
@@ -210,7 +209,9 @@ class EnterpriseClient:
         self._request("POST", "notebooks:batchDelete", json=body)
         return True
 
-    def share_notebook(self, notebook_id: str, email: str, role: str = "PROJECT_ROLE_READER") -> bool:
+    def share_notebook(
+        self, notebook_id: str, email: str, role: str = "PROJECT_ROLE_READER"
+    ) -> bool:
         """Share a notebook. Roles: PROJECT_ROLE_OWNER, PROJECT_ROLE_WRITER, PROJECT_ROLE_READER."""
         body = {"accountAndRoles": [{"email": email, "role": role}]}
         self._request("POST", f"notebooks/{notebook_id}:share", json=body)
@@ -243,7 +244,9 @@ class EnterpriseClient:
         result = self._request("POST", f"notebooks/{notebook_id}/sources:batchCreate", json=body)
         return self._parse_source_result(result)
 
-    def add_source_text(self, notebook_id: str, text: str, name: str = "Pasted Text") -> dict | None:
+    def add_source_text(
+        self, notebook_id: str, text: str, name: str = "Pasted Text"
+    ) -> dict | None:
         """Add a text source via batchCreate."""
         body = {"userContents": [{"textContent": {"sourceName": name, "content": text}}]}
         result = self._request("POST", f"notebooks/{notebook_id}/sources:batchCreate", json=body)
@@ -255,7 +258,9 @@ class EnterpriseClient:
         result = self._request("POST", f"notebooks/{notebook_id}/sources:batchCreate", json=body)
         return self._parse_source_result(result)
 
-    def add_source_drive(self, notebook_id: str, document_id: str, mime_type: str, name: str = "") -> dict | None:
+    def add_source_drive(
+        self, notebook_id: str, document_id: str, mime_type: str, name: str = ""
+    ) -> dict | None:
         """Add a Google Drive source via batchCreate."""
         content = {"googleDriveContent": {"documentId": document_id, "mimeType": mime_type}}
         if name:

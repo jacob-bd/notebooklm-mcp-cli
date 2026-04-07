@@ -1,0 +1,68 @@
+name: Bug Report — Personal Mode
+description: Report a bug that occurs when using personal mode (notebooklm.google.com)
+labels: ["bug", "personal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing here:** Personal mode bugs that also exist in the upstream project should be reported at [jacob-bd/notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli/issues) first. File here if the bug is specific to this fork, or if you're not sure.
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "e.g. 1.0.0 — run: nlm --version"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.11.9 — run: python --version"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `nlm login`
+        2. Run `nlm notebook list`
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: Paste the full error message or traceback.
+      render: shell
+
+  - type: checkboxes
+    id: upstream_check
+    attributes:
+      label: Upstream check
+      options:
+        - label: I checked whether this bug exists in jacob-bd/notebooklm-mcp-cli and it does not (or I am unsure)

@@ -1,5 +1,6 @@
 """Research service — shared business logic for research start, poll, and import."""
 
+import time
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
@@ -129,8 +130,10 @@ def poll_research(
     task_id: str | None = None,
     query: str | None = None,
     compact: bool = True,
+    poll_interval: int = 30,
+    max_wait: int = 0,
 ) -> ResearchStatusResult:
-    """Poll research progress (single check).
+    """Poll research progress, optionally blocking until complete or timeout.
 
     Args:
         client: Authenticated NotebookLM client
@@ -138,6 +141,10 @@ def poll_research(
         task_id: Specific task ID to poll
         query: Query text for fallback matching
         compact: Truncate report and limit sources
+        poll_interval: Seconds between polls (default: 30)
+        max_wait: Max seconds to wait (default: 0 = single check).
+            When > 0, polls repeatedly until status is "completed" or
+            the timeout is reached.
 
     Returns:
         ResearchStatusResult with current status
@@ -145,25 +152,40 @@ def poll_research(
     Raises:
         ServiceError: If the poll fails
     """
-    try:
-        result = client.poll_research(
-            notebook_id=notebook_id,
-            target_task_id=task_id,
-            target_query=query,
-        )
-    except Exception as e:
-        raise ServiceError(f"Failed to poll research: {e}") from e
+    deadline = time.monotonic() + max_wait if max_wait > 0 else 0
 
-    if not result:
-        return {
-            "status": "no_research",
-            "notebook_id": notebook_id,
-            "task_id": None,
-            "sources_found": 0,
-            "sources": [],
-            "report": "",
-            "message": None,
-        }
+    while True:
+        try:
+            result = client.poll_research(
+                notebook_id=notebook_id,
+                target_task_id=task_id,
+                target_query=query,
+            )
+        except Exception as e:
+            raise ServiceError(f"Failed to poll research: {e}") from e
+
+        if not result:
+            return {
+                "status": "no_research",
+                "notebook_id": notebook_id,
+                "task_id": None,
+                "sources_found": 0,
+                "sources": [],
+                "report": "",
+                "message": None,
+            }
+
+        status = result.get("status", "unknown")
+
+        # If completed or not blocking, format and return immediately
+        if status != "in_progress" or deadline == 0:
+            break
+
+        # Still in progress — sleep and retry if time remains
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(poll_interval, remaining))
 
     sources = result.get("sources", [])
     report = result.get("report", "")
@@ -176,7 +198,6 @@ def poll_research(
             sources = sources[:5]
             sources.append({"note": f"...and {total - 5} more sources"})
 
-    status = result.get("status", "unknown")
     return {
         "status": status,
         "notebook_id": notebook_id,

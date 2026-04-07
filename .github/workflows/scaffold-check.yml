@@ -1,0 +1,77 @@
+name: Scaffold Check
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  scaffold-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required ai/ files exist
+        run: |
+          MISSING=0
+          for f in ai/STANDARDS.md ai/CODING.md ai/SECURITY.md ai/PLANNING.md ai/BACKLOG.md ai/SESSION.md ai/MEMORY.md ai/TEAM.md; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing required file: $f"
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -eq 1 ]; then
+            exit 1
+          fi
+          echo "All required ai/ files present."
+
+      - name: Check version file exists
+        run: |
+          if [ ! -f "version" ]; then
+            echo "::warning::No version file found."
+          else
+            echo "Version: $(cat version)"
+          fi
+
+      - name: Check AGENTS.md exists
+        run: |
+          if [ ! -f "AGENTS.md" ]; then
+            echo "::error::Missing AGENTS.md hook file"
+            exit 1
+          fi
+          echo "AGENTS.md present."
+
+      - name: Check SESSION.md has real entries
+        run: |
+          ENTRIES=$(grep -c "^## [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}" ai/SESSION.md 2>/dev/null || echo "0")
+          if [ "$ENTRIES" -eq 0 ]; then
+            echo "::warning::ai/SESSION.md has no dated entries. Update at the end of every session."
+          else
+            echo "SESSION.md has $ENTRIES session entries."
+          fi
+
+      - name: Check BACKLOG.md has real tasks
+        run: |
+          TASKS=$(grep -c "^\- \[" ai/BACKLOG.md 2>/dev/null || echo "0")
+          PLACEHOLDERS=$(grep -c "\[Task description\]" ai/BACKLOG.md 2>/dev/null || echo "0")
+          REAL_TASKS=$((TASKS - PLACEHOLDERS))
+          if [ "$REAL_TASKS" -le 0 ]; then
+            echo "::warning::ai/BACKLOG.md has no real tasks."
+          else
+            echo "BACKLOG.md has $REAL_TASKS real tasks."
+          fi
+
+      - name: Check no secrets in ai/ files
+        run: |
+          FOUND=0
+          if grep -rliE "(password|api_key|secret_key|Bearer )[=: ][A-Za-z0-9]" ai/ 2>/dev/null \
+            | grep -v "SECURITY.md" | grep -v "PLANNING.md" | grep -v "STANDARDS.md" | grep -v "CODING.md"; then
+            echo "::error::Possible credential found in ai/ files. Review and remove."
+            FOUND=1
+          fi
+          if [ "$FOUND" -eq 0 ]; then
+            echo "No obvious secrets found in ai/ files."
+          fi

@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "notebooklm-mcp-cli"
-version = "1.0.0"
+name = "notebooklm-enterprise-mcp"
+version = "1.0.1"
 description = "Unified CLI and MCP server for Google NotebookLM (Enterprise + Personal)"
 readme = "README.md"
 license = "MIT"
@@ -13,9 +13,9 @@ authors = [
     { name = "Jacob Ben-David" },
     { name = "Brian Worrell" }
 ]
-keywords = ["notebooklm", "mcp", "cli", "google", "ai", "research", "podcast"]
+keywords = ["notebooklm", "mcp", "cli", "google", "ai", "research", "podcast", "enterprise", "google-workspace", "discovery-engine"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -24,7 +24,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-# Core dependencies (required for both CLI and MCP)
 # Core dependencies (required for both CLI and MCP)
 dependencies = [
     "httpx>=0.27.0",
@@ -55,9 +54,9 @@ nlm = "notebooklm_tools.cli.main:cli_main"
 notebooklm-mcp = "notebooklm_tools.mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/jacob-bd/notebooklm-mcp-cli"
-Repository = "https://github.com/jacob-bd/notebooklm-mcp-cli"
-Issues = "https://github.com/jacob-bd/notebooklm-mcp-cli/issues"
+Homepage = "https://github.com/Robiton/notebooklm-mcp-cli"
+Repository = "https://github.com/Robiton/notebooklm-mcp-cli"
+Issues = "https://github.com/Robiton/notebooklm-mcp-cli/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/notebooklm_tools"]
@@ -82,4 +81,9 @@ asyncio_mode = "auto"
 markers = [
     "e2e: End-to-end tests requiring live authentication",
     "integration: Integration tests for CLI functionality",
+]
+
+[dependency-groups]
+dev = [
+    "pip-audit>=2.10.0",
 ]

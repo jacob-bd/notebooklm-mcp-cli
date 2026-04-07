@@ -3,7 +3,7 @@
 import re
 import shutil
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -375,7 +375,7 @@ def install(
         help="Tool to install skill for (claude-code, cursor, agents, opencode, antigravity, other)",
         shell_complete=complete_tool_name,
     ),
-    level: Literal["user", "project"] = typer.Option(
+    level: str = typer.Option(
         "user",
         "--level",
         "-l",
@@ -390,6 +390,10 @@ def install(
         nlm skill install agents --level project
         nlm skill install other  # Export all formats
     """
+    if level not in ("user", "project"):
+        console.print(f"[red]Error:[/red] Invalid level '{level}'. Must be 'user' or 'project'.")
+        raise typer.Exit(1)
+
     if tool not in TOOL_CONFIGS:
         valid_tools = ", ".join(TOOL_CONFIGS.keys())
         console.print(f"[red]Error:[/red] Unknown tool '{tool}'")
@@ -496,7 +500,7 @@ def uninstall(
         help="Tool to uninstall skill from",
         shell_complete=complete_tool_name,
     ),
-    level: Literal["user", "project"] = typer.Option(
+    level: str = typer.Option(
         "user",
         "--level",
         "-l",
@@ -510,6 +514,10 @@ def uninstall(
         nlm skill uninstall claude-code
         nlm skill uninstall codex --level project
     """
+    if level not in ("user", "project"):
+        console.print(f"[red]Error:[/red] Invalid level '{level}'. Must be 'user' or 'project'.")
+        raise typer.Exit(1)
+
     if tool not in TOOL_CONFIGS:
         valid_tools = ", ".join(TOOL_CONFIGS.keys())
         console.print(f"[red]Error:[/red] Unknown tool '{tool}'")

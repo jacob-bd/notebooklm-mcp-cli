@@ -13,7 +13,9 @@ def _check_enterprise_auth() -> str:
     try:
         result = subprocess.run(
             ["gcloud", "auth", "print-access-token"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             return "authenticated (gcloud)"
@@ -26,6 +28,7 @@ def _check_personal_auth() -> str:
     """Check if personal cookies exist."""
     try:
         from notebooklm_tools.core.auth import load_cached_tokens
+
         cached = load_cached_tokens()
         if cached and cached.cookies:
             return "authenticated (cookies)"
@@ -65,7 +68,10 @@ def server_info() -> dict[str, Any]:
         info["location"] = location
         info["api"] = "Discovery Engine REST API (stable)"
         info["supported_operations"] = [
-            "notebook_list", "notebook_create", "notebook_get", "notebook_delete",
+            "notebook_list",
+            "notebook_create",
+            "notebook_get",
+            "notebook_delete",
             "source_add (URL, text, YouTube, Drive, file upload)",
             "source_delete",
             "audio_overview (generate, delete)",
@@ -73,8 +79,16 @@ def server_info() -> dict[str, Any]:
             "notebook_share",
         ]
         info["unsupported_in_enterprise"] = [
-            "chat/query", "video", "reports", "flashcards", "quizzes",
-            "infographics", "slides", "mind_maps", "notes", "research",
+            "chat/query",
+            "video",
+            "reports",
+            "flashcards",
+            "quizzes",
+            "infographics",
+            "slides",
+            "mind_maps",
+            "notes",
+            "research",
         ]
     else:
         info["api"] = "batchexecute (all features supported)"

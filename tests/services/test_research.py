@@ -1,6 +1,6 @@
 """Tests for services.research module."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -167,6 +167,99 @@ class TestPollResearch:
         mock_client.poll_research.side_effect = RuntimeError("fail")
         with pytest.raises(ServiceError, match="Failed to poll"):
             poll_research(mock_client, "nb-1")
+
+    def test_single_check_default(self, mock_client):
+        """Default max_wait=0 does a single check and returns immediately."""
+        mock_client.poll_research.return_value = {
+            "status": "in_progress",
+            "task_id": "task-1",
+            "sources": [],
+            "report": "",
+        }
+
+        result = poll_research(mock_client, "nb-1")
+
+        assert result["status"] == "in_progress"
+        assert mock_client.poll_research.call_count == 1
+
+    @patch("notebooklm_tools.services.research.time")
+    def test_blocking_polls_until_completed(self, mock_time, mock_client):
+        """With max_wait > 0, polls repeatedly until status is completed."""
+        # Simulate monotonic clock advancing by poll_interval each call
+        mock_time.monotonic.side_effect = [0, 0, 5, 5, 10]
+        mock_time.sleep = MagicMock()
+
+        mock_client.poll_research.side_effect = [
+            {"status": "in_progress", "task_id": "t-1", "sources": [], "report": ""},
+            {
+                "status": "completed",
+                "task_id": "t-1",
+                "sources": [{"title": "A"}],
+                "report": "Done",
+            },
+        ]
+
+        result = poll_research(mock_client, "nb-1", poll_interval=5, max_wait=30)
+
+        assert result["status"] == "completed"
+        assert mock_client.poll_research.call_count == 2
+        mock_time.sleep.assert_called_once_with(5)
+
+    @patch("notebooklm_tools.services.research.time")
+    def test_blocking_respects_timeout(self, mock_time, mock_client):
+        """Polling stops and returns in_progress when max_wait is exceeded."""
+        # monotonic calls: [deadline calc, remaining check after poll]
+        # deadline = 0 + 10 = 10; remaining = 10 - 11 = -1 → break
+        mock_time.monotonic.side_effect = [0, 11]
+        mock_time.sleep = MagicMock()
+
+        mock_client.poll_research.return_value = {
+            "status": "in_progress",
+            "task_id": "t-1",
+            "sources": [],
+            "report": "",
+        }
+
+        result = poll_research(mock_client, "nb-1", poll_interval=5, max_wait=10)
+
+        assert result["status"] == "in_progress"
+        assert mock_client.poll_research.call_count == 1
+        mock_time.sleep.assert_not_called()
+
+    @patch("notebooklm_tools.services.research.time")
+    def test_blocking_sleep_clamped_to_remaining(self, mock_time, mock_client):
+        """Sleep duration is clamped to remaining time when less than poll_interval."""
+        # monotonic calls: [deadline calc, remaining after poll 1, remaining after poll 2]
+        # deadline = 0 + 8 = 8; remaining = 8 - 5 = 3 → sleep(min(5,3)=3);
+        # remaining = 8 - 9 = -1 → break
+        mock_time.monotonic.side_effect = [0, 5, 9]
+        mock_time.sleep = MagicMock()
+
+        mock_client.poll_research.side_effect = [
+            {"status": "in_progress", "task_id": "t-1", "sources": [], "report": ""},
+            {"status": "in_progress", "task_id": "t-1", "sources": [], "report": ""},
+        ]
+
+        result = poll_research(mock_client, "nb-1", poll_interval=5, max_wait=8)
+
+        assert result["status"] == "in_progress"
+        assert mock_client.poll_research.call_count == 2
+        # Sleep should be clamped to remaining (3), not full poll_interval (5)
+        mock_time.sleep.assert_called_once_with(3)
+
+    @patch("notebooklm_tools.services.research.time")
+    def test_blocking_no_research_returns_immediately(self, mock_time, mock_client):
+        """If no research is found, returns immediately even with max_wait > 0."""
+        mock_time.monotonic.side_effect = [0]
+        mock_time.sleep = MagicMock()
+
+        mock_client.poll_research.return_value = None
+
+        result = poll_research(mock_client, "nb-1", max_wait=300)
+
+        assert result["status"] == "no_research"
+        assert mock_client.poll_research.call_count == 1
+        mock_time.sleep.assert_not_called()
 
 
 class TestImportResearch:

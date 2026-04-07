@@ -4,6 +4,7 @@ import ipaddress
 import socket
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import TypedDict
 from urllib.parse import urlparse
 
@@ -12,6 +13,16 @@ from .errors import ServiceError, ValidationError
 
 VALID_SOURCE_TYPES = ("url", "text", "drive", "file")
 VALID_DRIVE_DOC_TYPES = ("doc", "slides", "sheets", "pdf")
+
+# Directories whose contents must never be uploaded as sources.
+# Evaluated at import time so HOME is resolved correctly.
+_SENSITIVE_DIR_BLOCKLIST: tuple[Path, ...] = (
+    Path.home() / ".ssh",
+    Path.home() / ".aws",
+    Path.home() / ".gnupg",
+    Path.home() / ".config",
+    Path.home() / ".notebooklm-mcp-cli",
+)
 
 # MIME type mapping for Drive doc types
 DRIVE_MIME_TYPES = {
@@ -111,26 +122,28 @@ class BulkAddResult(TypedDict):
 
 # Domains known to require a paid subscription or account login.
 # Users with accounts can add their domain to config sources.approved_domains.
-KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset({
-    "wsj.com",
-    "ft.com",
-    "nytimes.com",
-    "economist.com",
-    "bloomberg.com",
-    "washingtonpost.com",
-    "thetimes.co.uk",
-    "telegraph.co.uk",
-    "theatlantic.com",
-    "newyorker.com",
-    "hbr.org",
-    "foreignaffairs.com",
-    "foreignpolicy.com",
-    "wired.com",
-    "businessinsider.com",
-    "barrons.com",
-    "seekingalpha.com",
-    "medium.com",
-})
+KNOWN_PAYWALL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "wsj.com",
+        "ft.com",
+        "nytimes.com",
+        "economist.com",
+        "bloomberg.com",
+        "washingtonpost.com",
+        "thetimes.co.uk",
+        "telegraph.co.uk",
+        "theatlantic.com",
+        "newyorker.com",
+        "hbr.org",
+        "foreignaffairs.com",
+        "foreignpolicy.com",
+        "wired.com",
+        "businessinsider.com",
+        "barrons.com",
+        "seekingalpha.com",
+        "medium.com",
+    }
+)
 
 
 def _is_private_url(url: str) -> bool:
@@ -264,6 +277,27 @@ def check_url_accessibility(url: str) -> PaywallCheckResult:
         )
 
 
+def _assert_file_safe(file_path: str | Path) -> Path:
+    """Resolve file path and assert it is not inside a sensitive directory.
+
+    Raises:
+        ServiceError: If the path resolves into a blocklisted directory such as
+            ~/.ssh, ~/.aws, ~/.gnupg, ~/.config, or ~/.notebooklm-mcp-cli.
+    """
+    resolved = Path(file_path).expanduser().resolve()
+    for blocked in _SENSITIVE_DIR_BLOCKLIST:
+        if resolved.is_relative_to(blocked.resolve()):
+            raise ServiceError(
+                f"Reading from '{blocked}' is not allowed. "
+                "This directory may contain credentials or secrets.",
+                user_message=(
+                    f"Cannot upload files from '{blocked}' — "
+                    "that directory may contain credentials."
+                ),
+            )
+    return resolved
+
+
 def validate_source_type(source_type: str) -> None:
     """Validate source type. Raises ValidationError if invalid."""
     if source_type not in VALID_SOURCE_TYPES:
@@ -324,6 +358,17 @@ def add_source(
         if source_type == "url":
             if not url:
                 raise ValidationError("url is required for source_type='url'")
+            # SSRF guard: block private/internal URLs unconditionally,
+            # even when skip_paywall_check=True, to prevent server-side
+            # request forgery to localhost, cloud metadata endpoints, etc.
+            if _is_private_url(url):
+                raise ServiceError(
+                    f"URL '{url}' resolves to a private/internal address.",
+                    user_message=(
+                        f"Cannot add '{url}' — it resolves to a private or internal "
+                        "address. NotebookLM sources must be publicly accessible URLs."
+                    ),
+                )
             result = client.add_url_source(notebook_id, url, wait=wait, wait_timeout=wait_timeout)
             return _extract_result(result, "url", url)
 
@@ -358,8 +403,11 @@ def add_source(
         elif source_type == "file":
             if not file_path:
                 raise ValidationError("file_path is required for source_type='file'")
-            result = client.add_file(notebook_id, file_path, wait=wait, wait_timeout=wait_timeout)
-            fallback_title = str(file_path).split("/")[-1]
+            safe_path = _assert_file_safe(file_path)
+            result = client.add_file(
+                notebook_id, str(safe_path), wait=wait, wait_timeout=wait_timeout
+            )
+            fallback_title = safe_path.name
             return _extract_result(result, "file", fallback_title)
 
     except (ValidationError, ServiceError):

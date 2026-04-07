@@ -154,31 +154,18 @@ class TestCLIDownloads:
 class TestMCPDownloads:
     """Test MCP tool functions."""
 
-    @pytest.mark.skip(reason="Needs update for FastMCP tool objects")
-    def test_mcp_download_report(self, output_dir):
-        # We need to mock get_client or ensure environment is set up
-        # Since we are in the same process, we can patch get_client
+    async def test_mcp_download_report(self, output_dir):
         from notebooklm_tools.core.auth import load_cached_tokens
-        from notebooklm_tools.mcp.server import download_report
+        from notebooklm_tools.mcp.tools.downloads import download_artifact
 
-        # Setup tokens specifically for MCP tool which uses get_client() logic
-        tokens = load_cached_tokens()
-        if not tokens:
+        if not load_cached_tokens():
             pytest.skip("No cached credentials")
 
-        # Set env vars so get_client picks them up
-        os.environ["NOTEBOOKLM_COOKIES"] = tokens.cookie_header
-        if tokens.csrf_token:
-            os.environ["NOTEBOOKLM_CSRF_TOKEN"] = tokens.csrf_token
-        if tokens.session_id:
-            os.environ["NOTEBOOKLM_SESSION_ID"] = tokens.session_id
-
         output = output_dir / "mcp_report.md"
+        result = await download_artifact(
+            notebook_id=NOTEBOOK_ID, artifact_type="report", output_path=str(output)
+        )
 
-        # Test tool execution
-        result = download_report(notebook_id=NOTEBOOK_ID, output_path=str(output))
-
-        # Check result dict
         if result.get("status") == "error":
             if "not ready" in str(result.get("error")):
                 pytest.skip("Report not ready")

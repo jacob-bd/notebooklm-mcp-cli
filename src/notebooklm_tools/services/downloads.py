@@ -1,6 +1,8 @@
 """Downloads service — shared validation and routing for artifact downloads."""
 
+import tempfile
 from collections.abc import Callable
+from pathlib import Path
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
@@ -52,6 +54,32 @@ class DownloadResult(TypedDict):
 
     artifact_type: str
     path: str
+
+
+def _safe_output_path(path: str | Path) -> Path:
+    """Resolve path and assert it stays within HOME or cwd.
+
+    Prevents path traversal attacks (e.g. ../../etc/passwd) by ensuring the
+    resolved destination is inside the user's home directory or current working
+    directory before any file is written.
+
+    Raises:
+        ValueError: If the resolved path escapes both HOME and cwd.
+    """
+    resolved = Path(path).expanduser().resolve()
+    home = Path.home().resolve()
+    cwd = Path.cwd().resolve()
+    # Collect all candidate temp roots — on macOS /tmp symlinks to /private/tmp
+    # while tempfile.gettempdir() points to a per-user folder under /private/var.
+    tmp_roots = {Path(tempfile.gettempdir()).resolve(), Path("/tmp").resolve()}
+    allowed = [home, cwd, *tmp_roots]
+    if not any(resolved.is_relative_to(root) for root in allowed):
+        raise ValueError(
+            f"Output path '{resolved}' is outside your home directory, "
+            "current working directory, and system temp directory. "
+            "Refusing to write."
+        )
+    return resolved
 
 
 def validate_artifact_type(artifact_type: str) -> None:
@@ -110,6 +138,7 @@ def download_sync(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    _safe_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)
@@ -172,6 +201,7 @@ async def download_async(
         ServiceError: If the download fails
     """
     validate_artifact_type(artifact_type)
+    _safe_output_path(output_path)
 
     if artifact_type in INTERACTIVE_TYPES:
         validate_output_format(output_format)

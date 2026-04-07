@@ -3,11 +3,13 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       id-token: write  # Required for trusted publishing (OIDC)
       contents: write  # Required to upload release assets
@@ -31,9 +33,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Build MCPB extension
+        if: github.event_name == 'release'
         run: python3 scripts/build_mcpb.py
 
       - name: Upload MCPB to release
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: notebooklm-mcp-*.mcpb

@@ -6,6 +6,7 @@ Supports automatic migration from old locations:
 - ~/.nlm/ (old CLI location)
 """
 
+import contextlib
 import os
 import shutil
 from pathlib import Path
@@ -51,6 +52,8 @@ def get_storage_dir() -> Path:
         storage_dir = Path.home() / STORAGE_DIR_NAME
 
     storage_dir.mkdir(exist_ok=True)
+    with contextlib.suppress(OSError):
+        storage_dir.chmod(0o700)
     return storage_dir
 
 
@@ -68,6 +71,8 @@ def get_profiles_dir() -> Path:
     """Get the profiles directory path."""
     profiles_dir = get_storage_dir() / "profiles"
     profiles_dir.mkdir(exist_ok=True)
+    with contextlib.suppress(OSError):
+        profiles_dir.chmod(0o700)
     return profiles_dir
 
 
@@ -75,6 +80,8 @@ def get_profile_dir(profile_name: str = "default") -> Path:
     """Get directory for a specific profile."""
     profile_dir = get_profiles_dir() / profile_name
     profile_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        profile_dir.chmod(0o700)
     return profile_dir
 
 
@@ -99,6 +106,8 @@ def get_chrome_profile_dir(profile_name: str = "default") -> Path:
     # New multi-profile structure
     chrome_dir = storage / "chrome-profiles" / profile_name
     chrome_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        chrome_dir.chmod(0o700)
     return chrome_dir
 
 

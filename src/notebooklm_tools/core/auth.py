@@ -9,6 +9,7 @@ Storage location: ~/.notebooklm-mcp-cli/ (unified for CLI and MCP)
 import contextlib
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -139,6 +140,9 @@ def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
     cache_path = get_cache_path()
     with open(cache_path, "w", encoding="utf-8") as f:
         json.dump(tokens.to_dict(), f, indent=2)
+    # Restrict permissions so only the owner can read/write auth tokens
+    with contextlib.suppress(OSError):
+        os.chmod(cache_path, 0o600)
     if not silent:
         logger.info(f"Auth tokens cached to {cache_path}")
 

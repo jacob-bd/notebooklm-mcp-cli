@@ -36,9 +36,14 @@ class TestMCPSourceAddFile:
                     notebook_id="test-notebook-123", source_type="file", file_path=temp_path
                 )
 
-            # Verify client.add_file was called with correct args
+            # Verify client.add_file was called with correct args.
+            # _assert_file_safe() resolves symlinks so we compare against the
+            # resolved path, not the raw NamedTemporaryFile path.
             mock_client.add_file.assert_called_once_with(
-                "test-notebook-123", temp_path, wait=False, wait_timeout=120.0
+                "test-notebook-123",
+                str(Path(temp_path).resolve()),
+                wait=False,
+                wait_timeout=120.0,
             )
 
             # Verify return value

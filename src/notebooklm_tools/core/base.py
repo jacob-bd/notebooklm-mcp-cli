@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 
 from . import constants
+from .api_profile import APIProfile, get_api_profile
 from .data_types import ConversationTurn
 from .errors import ClientAuthenticationError as AuthenticationError
 from .errors import RPCError
@@ -29,8 +30,6 @@ from .utils import (
     _format_debug_json,
     _parse_url_params,
 )
-from notebooklm_tools.utils.config import get_base_url
-from .api_profile import APIProfile, get_api_profile
 
 # Configure logger (API internals only logged at DEBUG level, usually disabled)
 logger = logging.getLogger("notebooklm_mcp.api")
@@ -789,20 +788,22 @@ class BaseClient:
 
         Returns True if new valid tokens were obtained, False otherwise.
         """
-        from .auth import get_cache_path, load_cached_tokens
+        from .auth import load_cached_tokens
 
-        # Check if auth.json has tokens - always try them since current tokens failed
-        cache_path = get_cache_path()
-        if cache_path.exists():
-            cached = load_cached_tokens()
-            if cached and cached.cookies:
-                # Always reload from disk when auth fails - current tokens are known-bad
-                # The cached tokens may be fresher (user ran nlm login)
-                # or the same, but worth retrying with a fresh CSRF token extraction
-                self.cookies = cached.cookies
-                self.csrf_token = ""  # Force re-extraction of CSRF token
-                self._session_id = ""  # Force re-extraction of session ID
-                return True
+        # Layer 2: Reload cookies from disk (profile or legacy auth.json).
+        # load_cached_tokens() checks the default profile first, then falls
+        # back to the legacy auth.json file.  We no longer gate on
+        # auth.json existence so that users who only have profile-based
+        # credentials (from `nlm login`) are not skipped.
+        cached = load_cached_tokens()
+        if cached and cached.cookies:
+            # Always reload from disk when auth fails - current tokens are known-bad
+            # The cached tokens may be fresher (user ran nlm login)
+            # or the same, but worth retrying with a fresh CSRF token extraction
+            self.cookies = cached.cookies
+            self.csrf_token = ""  # Force re-extraction of CSRF token
+            self._session_id = ""  # Force re-extraction of session ID
+            return True
 
         # Try headless auth if Chrome profile exists
         try:
