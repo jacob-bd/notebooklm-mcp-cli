@@ -236,6 +236,15 @@ def _setup_gemini() -> bool:
         console.print("[green]✓[/green] Already configured in Gemini CLI")
         return True
 
+    console.print(
+        "[yellow]Note:[/yellow] Gemini CLI requires [bold]trust: true[/bold] for this MCP "
+        "server to function. This grants the server permission to run shell commands and "
+        "access files without per-action prompts."
+    )
+    if not Confirm.ask("Grant elevated trust to notebooklm-mcp in Gemini CLI?", default=True):
+        console.print("[yellow]Skipped.[/yellow] Re-run setup to add trust later.")
+        return False
+
     _add_mcp_server(config, key="notebooklm", extra={"trust": True})
     _write_json_config(config_path, config)
     console.print("[green]✓[/green] Added to Gemini CLI")

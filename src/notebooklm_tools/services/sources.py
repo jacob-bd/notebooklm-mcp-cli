@@ -1,5 +1,6 @@
 """Sources service — shared validation and logic for source management."""
 
+import urllib.parse
 from typing import TypedDict
 
 from ..core.client import NotebookLMClient
@@ -7,6 +8,9 @@ from .errors import ServiceError, ValidationError
 
 VALID_SOURCE_TYPES = ("url", "text", "drive", "file")
 VALID_DRIVE_DOC_TYPES = ("doc", "slides", "sheets", "pdf")
+
+# Only allow safe, public URL schemes for URL sources
+ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
 
 # MIME type mapping for Drive doc types
 DRIVE_MIME_TYPES = {
@@ -142,6 +146,12 @@ def add_source(
         if source_type == "url":
             if not url:
                 raise ValidationError("url is required for source_type='url'")
+            parsed = urllib.parse.urlparse(url)
+            if not parsed.scheme or parsed.scheme.lower() not in ALLOWED_URL_SCHEMES:
+                raise ValidationError(
+                    f"URL scheme '{parsed.scheme}' is not allowed. "
+                    f"Only http:// and https:// URLs are supported."
+                )
             result = client.add_url_source(notebook_id, url, wait=wait, wait_timeout=wait_timeout)
             return _extract_result(result, "url", url)
 

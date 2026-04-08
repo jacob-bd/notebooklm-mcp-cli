@@ -188,6 +188,16 @@ Examples:
     if args.transport == "stdio":
         mcp.run(show_banner=False)
     elif args.transport == "http":
+        _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+        if args.host not in _LOOPBACK_HOSTS:
+            import warnings
+
+            warnings.warn(
+                "SECURITY WARNING: HTTP transport is bound to a non-loopback address "
+                f"('{args.host}'). There is no built-in authentication. "
+                "Do not expose this port to untrusted networks.",
+                stacklevel=2,
+            )
         mcp.run(
             transport="streamable-http",
             host=args.host,

@@ -14,6 +14,15 @@ from notebooklm_tools.core.utils import extract_cookies_from_chrome_export
 # MCP request/response logger
 mcp_logger = logging.getLogger("notebooklm_tools.mcp")
 
+# Parameters that must never appear in log output
+_SENSITIVE_PARAMS = frozenset({"cookies", "csrf_token", "session_id", "request_body"})
+
+
+def _sanitize_params(params: dict) -> dict:
+    """Replace sensitive parameter values with [REDACTED] before logging."""
+    return {k: "[REDACTED]" if k in _SENSITIVE_PARAMS else v for k, v in params.items()}
+
+
 # Global state
 _client: NotebookLMClient | None = None
 _client_lock = threading.Lock()
@@ -38,28 +47,27 @@ def get_client() -> NotebookLMClient:
     """
     global _client
 
-    # Check if we need to reload due to profile switch
-    cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
-    if not cookie_header and _client is not None:
-        try:
-            from notebooklm_tools.utils.config import reset_config
-
-            # Reset config so we read the latest default_profile from disk
-            # in case `nlm login switch` was run in another terminal
-            reset_config()
-            cached = load_cached_tokens()
-
-            # If tokens changed on disk (e.g., profile switch), force re-init
-            if cached and getattr(_client, "cookies", None) != cached.cookies:
-                mcp_logger.info("Authentication profile change detected, reloading client.")
-                reset_client()
-        except Exception as e:
-            mcp_logger.debug(f"Failed to check auth status: {e}")
-
-    if _client is not None:
-        return _client
     with _client_lock:
-        # Double-checked locking: re-check inside lock to avoid race condition
+        # Profile-change detection (only when env-var auth is not in use).
+        # Runs inside the lock so that _client reads and writes are always
+        # serialised — fixing the double-checked locking race condition (M-2).
+        cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
+        if not cookie_header and _client is not None:
+            try:
+                from notebooklm_tools.utils.config import reset_config
+
+                # Reset config so we read the latest default_profile from disk
+                # in case `nlm login switch` was run in another terminal
+                reset_config()
+                cached = load_cached_tokens()
+
+                # If tokens changed on disk (e.g., profile switch), force re-init
+                if cached and getattr(_client, "cookies", None) != cached.cookies:
+                    mcp_logger.info("Authentication profile change detected, reloading client.")
+                    _client = None  # Reset directly; lock already held
+            except Exception as e:
+                mcp_logger.debug(f"Failed to check auth status: {e}")
+
         if _client is not None:
             return _client
 
@@ -130,7 +138,7 @@ def logged_tool():
             async def wrapper(*args, **kwargs):
                 tool_name = func.__name__
                 if mcp_logger.isEnabledFor(logging.DEBUG):
-                    params = {k: v for k, v in kwargs.items() if v is not None}
+                    params = _sanitize_params({k: v for k, v in kwargs.items() if v is not None})
                     mcp_logger.debug(f"MCP Request: {tool_name}({json.dumps(params, default=str)})")
 
                 result = await func(*args, **kwargs)
@@ -148,7 +156,7 @@ def logged_tool():
             def wrapper(*args, **kwargs):
                 tool_name = func.__name__
                 if mcp_logger.isEnabledFor(logging.DEBUG):
-                    params = {k: v for k, v in kwargs.items() if v is not None}
+                    params = _sanitize_params({k: v for k, v in kwargs.items() if v is not None})
                     mcp_logger.debug(f"MCP Request: {tool_name}({json.dumps(params, default=str)})")
 
                 result = func(*args, **kwargs)
