@@ -1,7 +1,7 @@
 # Project Backlog
 
 _This file is the project to-do list. Updated by all tools and team members._
-_Last updated: 2026-04-07 (session 7, enterprise improvements) by Claude Code_
+_Last updated: 2026-04-07 (session 7, v1.0.2 prep) by Claude Code_
 
 ---
 
@@ -45,8 +45,9 @@ _(nothing active)_
 
 ### Maintenance
 
-- [ ] Branch protection on `main` (manual: GitHub Settings → Branches → Add ruleset; require PR + CI status checks, block force push) | Priority: Med | Owner: Brian | Due: —
+- [x] Branch protection on `main` — Completed 2026-04-07. Ruleset configured in GitHub Settings. | Priority: Med | Owner: Brian | Due: —
 - [ ] Test configure_mode + full enterprise workflow end-to-end | Priority: Med | Owner: Brian | Due: —
+- [ ] **Upstream sync v0.5.17** — jacob-bd released v0.5.17 (21 commits, 47 files). Key additions: URL source fallback (240-line test file), new chat service tests, studio/research service improvements, cdp.py refactor, config.py changes. Cherry-pick onto our main after reviewing for conflicts with our enterprise changes. | Priority: High | Owner: Claude Code | Due: —
 
 ---
 

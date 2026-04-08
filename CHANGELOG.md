@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-04-07 — Enterprise Improvements
+
+### Added
+
+- **`endpoint_location` config field** — Separates the API hostname prefix from the resource path location. EU data-residency deployments can now set `nlm config set enterprise.endpoint_location eu` (or `NOTEBOOKLM_ENDPOINT_LOCATION=eu`) independently of `location`. Previously both were hardcoded to the same value, blocking EU regional endpoints.
+- **`NBLM_ACCESS_TOKEN` env var** — Enterprise auth now checks `NBLM_ACCESS_TOKEN` before falling back to `gcloud` CLI. Enables token injection in CI/CD pipelines and Docker containers without gcloud installed.
+- **Retry with exponential backoff** — Enterprise `_request()` now retries up to 3× on transient server errors (429, 500, 502, 503, 504). Backoff: 500ms–5s with ±25% jitter; respects `Retry-After` header on 429 responses.
+- **YouTube URL routing in enterprise** — `add_url_source()` in the enterprise adapter now detects `youtube.com` and `youtu.be` URLs and routes them through `add_source_youtube()`, which uses the correct `videoContent: { youtubeUrl }` body format. Previously YouTube URLs were sent as web URLs and likely failed silently.
+- **Bot-blocked domain list** — Added `thehackernews.com`, `orca.security`, and `securityonline.info` to `KNOWN_PAYWALL_DOMAINS`. These consistently block NotebookLM's crawler; users now get an upfront warning instead of a silent red-icon failure.
+
+### Fixed
+
+- **`studio_status` enterprise clear message** — In enterprise mode, `studio_status` previously returned empty results silently. It now surfaces a clear message: "Artifact status polling is not available in enterprise mode. Check the NotebookLM UI directly."
+
+---
+
 ## [1.0.1] - 2026-04-07 — Security Patch
 
 ### Security
