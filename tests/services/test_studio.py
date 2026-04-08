@@ -183,8 +183,6 @@ class TestNormalizeVideoStyle:
                 video_style_prompt="",
             )
 
-
-
     def test_create_infographic(self, mock_client):
         result = create_artifact(mock_client, "nb-1", "infographic")
         assert result["artifact_type"] == "infographic"

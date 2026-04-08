@@ -45,16 +45,18 @@ class SourceMixin(BaseClient):
     # status 2. For these, status 3 is a hard processing failure.
     # Audio (10) and unknown/transient (None, 0) types may pass through
     # status 3 on their way to status 2, so we do not raise on 3 for them.
-    _NON_AUDIO_TERMINAL_TYPES = frozenset({
-        constants.SOURCE_TYPE_PDF,
-        constants.SOURCE_TYPE_PASTED_TEXT,
-        constants.SOURCE_TYPE_WEB_PAGE,
-        constants.SOURCE_TYPE_GENERATED_TEXT,
-        constants.SOURCE_TYPE_YOUTUBE,
-        constants.SOURCE_TYPE_UPLOADED_FILE,
-        constants.SOURCE_TYPE_IMAGE,
-        constants.SOURCE_TYPE_WORD_DOC,
-    })
+    _NON_AUDIO_TERMINAL_TYPES = frozenset(
+        {
+            constants.SOURCE_TYPE_PDF,
+            constants.SOURCE_TYPE_PASTED_TEXT,
+            constants.SOURCE_TYPE_WEB_PAGE,
+            constants.SOURCE_TYPE_GENERATED_TEXT,
+            constants.SOURCE_TYPE_YOUTUBE,
+            constants.SOURCE_TYPE_UPLOADED_FILE,
+            constants.SOURCE_TYPE_IMAGE,
+            constants.SOURCE_TYPE_WORD_DOC,
+        }
+    )
 
     def wait_for_source_ready(
         self,

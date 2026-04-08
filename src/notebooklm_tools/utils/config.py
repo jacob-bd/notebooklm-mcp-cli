@@ -40,8 +40,7 @@ def get_base_url() -> str:
     parsed = urlparse(url)
     if parsed.scheme != "https" or parsed.hostname not in _ALLOWED_BASE_HOSTS:
         raise ValueError(
-            f"NOTEBOOKLM_BASE_URL must use https and one of: {_ALLOWED_BASE_HOSTS}. "
-            f"Got: {url}"
+            f"NOTEBOOKLM_BASE_URL must use https and one of: {_ALLOWED_BASE_HOSTS}. Got: {url}"
         )
     return url
 
