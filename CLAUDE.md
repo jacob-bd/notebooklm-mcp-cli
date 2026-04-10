@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## SESSION RECOVERY (Read First After Compaction)
 
 **Auth dead?** Run `notebooklm-mcp-auth`, restart Claude Code, verify with `notebook_list()`. See [Troubleshooting](./docs/TROUBLESHOOTING.md) for full recovery steps.
