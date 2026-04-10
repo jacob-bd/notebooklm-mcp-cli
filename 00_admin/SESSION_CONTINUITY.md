@@ -4,26 +4,25 @@
 
 ## Last Session
 
-- **Date**: 2026-04-04
+- **Date**: 2026-04-10
 - **Machine**: Mac-mini-2
 - **Agent**: Atlas (Claude Code)
 - **Branch**: main
-- **Receipt**: 20_receipts/2026-04-04_doc_freshness_audit_and_claudit.md
-- **Commit**: e057ab4
+- **Receipt**: 20_receipts/2026-04-10_claude_md_optimization_and_claudit_audit.md
+- **Commit**: 08cef0d
 
 ## Summary
 
-Unarchived the GitHub repo, ran doc freshness audit (fixed META.yaml, GEMINI.md, CHANGELOG.md), then ran a full Claudit configuration audit scoring 86/100. Applied two high-impact fixes: trimmed CLAUDE.md from 323→202 lines (~936 token savings) and pruned settings.local.json from 102→46 rules. Regenerated PROJECT_PRIMER.md from updated sources.
+Three-pass CLAUDE.md optimization (improver → claudit → claudit re-audit) reduced the file from 202 → 101 lines (50% reduction, ~1,200 token savings per session). Claudit score improved 84 → 91 (B → A). Documentation freshness audit confirmed all surfaces current; archived WEEKEND_ROADMAP.md, deleted orphaned rules_now.md. Settings.local.json pruned to 35 clean rules (31 MCP + 4 Bash).
 
 ## Open Threads
 
-- [ ] Extract global CLAUDE.md sections to `~/.claude/rules/` for additional token savings (~1,800 tokens)
-- [ ] Remove 2 disabled global plugins (code-simplifier, agent-sdk-dev user scope)
-- [ ] Clean up `generate-project-primer` dead entry in pyproject.toml (moved to C010)
-- [ ] Decide whether PRD-NR01 soak validation is complete or needs a second evidence window
+- [ ] MCP server sprawl (11 global servers) — main Claudit ceiling (MCP Config: 75/100)
+- [ ] Superpowers plugin SessionStart hook missing timeout (upstream issue)
+- [ ] `generate-project-primer` entry still in pyproject.toml (deprecated, clean up when convenient)
+- [ ] Consider project `.mcp.json` to scope notebooklm-mcp server to this repo
 
 ## Known Hazards
 
 - Reverse-engineered NotebookLM APIs require fragile local auth (~25 calls before cookie rotation on free tier)
-- `generate-project-primer` entry still in pyproject.toml despite being deprecated (moved to C010_standards)
 - macOS-only hooks (afplay, osascript) in global settings.json will fail silently on Windows sync target
