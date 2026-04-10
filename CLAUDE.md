@@ -50,13 +50,16 @@ src/notebooklm_mcp/
 ├── api_client.py    # Internal API client (reverse-engineered)
 ├── auth.py          # Token caching and validation
 ├── auth_cli.py      # CLI for Chrome-based auth (notebooklm-mcp-auth)
-└── sync_cli.py      # CLI for deterministic doc sync (notebooklm-sync)
+├── sync_cli.py      # CLI for deterministic doc sync (notebooklm-sync)
+├── doc_refresh/     # Scheduled doc sync engine (discovery, hashing, manifests, validation)
+└── primer_gen/      # Project primer generator (DEPRECATED — moved to C010_standards)
 ```
 
 **Executables:**
 - `notebooklm-mcp` - The MCP server
 - `notebooklm-mcp-auth` - CLI for extracting tokens (requires closing Chrome)
 - `notebooklm-sync` - CLI for deterministic doc syncing with receipts
+- `doc-refresh` - Scheduled doc refresh engine (used by launchd nightly job)
 
 ### notebooklm-sync CLI
 
@@ -117,47 +120,7 @@ For CLI references and scheduled-operations details, see **[docs/CLI.md](./docs/
 
 ## MCP Tools Provided
 
-| Tool | Purpose |
-|------|---------|
-| `notebook_list` | List all notebooks |
-| `notebook_create` | Create new notebook |
-| `notebook_get` | Get notebook details |
-| `notebook_describe` | Get AI-generated summary of notebook content with keywords |
-| `source_describe` | Get AI-generated summary and keyword chips for a source |
-| `notebook_rename` | Rename a notebook |
-| `chat_configure` | Configure chat goal/style and response length |
-| `notebook_delete` | Delete a notebook (REQUIRES confirmation) |
-| `notebook_add_url` | Add URL/YouTube source |
-| `notebook_add_text` | Add pasted text source |
-| `notebook_add_drive` | Add Google Drive source |
-| `notebook_query` | Ask questions (AI answers!) |
-| `source_list_drive` | List sources with types, check Drive freshness |
-| `source_sync_drive` | Sync stale Drive sources (REQUIRES confirmation) |
-| `source_delete` | Delete a source from notebook (REQUIRES confirmation) |
-| `research_start` | Start Web or Drive research to discover sources |
-| `research_status` | Check research progress and get results |
-| `research_import` | Import discovered sources into notebook |
-| `audio_overview_create` | Generate audio podcasts (REQUIRES confirmation) |
-| `video_overview_create` | Generate video overviews (REQUIRES confirmation) |
-| `infographic_create` | Generate infographics (REQUIRES confirmation) |
-| `slide_deck_create` | Generate slide decks (REQUIRES confirmation) |
-| `report_create` | Generate reports - Briefing Doc, Study Guide, Blog Post, Custom (REQUIRES confirmation) |
-| `flashcards_create` | Generate flashcards with difficulty options (REQUIRES confirmation) |
-| `quiz_create` | Generate interactive quizzes (REQUIRES confirmation) |
-| `data_table_create` | Generate data tables from sources (REQUIRES confirmation) |
-| `mind_map_create` | Generate and save mind maps (REQUIRES confirmation) |
-| `mind_map_list` | List all mind maps in a notebook |
-| `studio_status` | Check studio artifact generation status |
-| `studio_delete` | Delete studio artifacts (REQUIRES confirmation) |
-| `save_auth_tokens` | Save tokens extracted via Chrome DevTools MCP |
-
-Tools marked "(REQUIRES confirmation)" need `confirm=True`. Always show current state before destructive/expensive operations.
-
-## Features NOT Yet Implemented
-
-- [ ] **Notes** - Save chat responses as notes
-- [ ] **Share notebook** - Collaboration features
-- [ ] **Export** - Download content
+31 tools registered in `server.py`. Tools marked `confirm=True` require explicit user confirmation before execution. Always show current state before destructive/expensive operations. See tool docstrings in `server.py` for the full reference.
 
 ## Troubleshooting
 
@@ -196,6 +159,8 @@ When `notebook_list()` returns 0 notebooks (auth dead):
 ## Contributing
 
 When adding new tools: capture the network request via Chrome DevTools, document the RPC ID in `docs/API_REFERENCE.md`, implement in `api_client.py` + `server.py`, and add a test case to `docs/MCP_TEST_PLAN.md`.
+
+**Gotcha:** `generate-project-primer` entry in `pyproject.toml` is deprecated (moved to C010_standards). Do not use — clean up when convenient.
 
 ## License
 
