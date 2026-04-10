@@ -61,62 +61,9 @@ src/notebooklm_mcp/
 - `notebooklm-sync` - CLI for deterministic doc syncing with receipts
 - `doc-refresh` - Scheduled doc refresh engine (used by launchd nightly job)
 
-### notebooklm-sync CLI
+### CLI Tools
 
-Deterministic document syncing tool with idempotence and audit trails.
-
-**Config paths:**
-- `~/.config/notebooklm-mcp/notebook_map.yaml` - Repo-to-notebook mappings with source IDs
-- `~/.config/notebooklm-mcp/sync_receipts/` - JSON audit trail for each sync run
-
-**Usage modes:**
-
-```bash
-# List notebooks
-notebooklm-sync --list
-
-# Tier 3 auto-discovery (README, CLAUDE, docs/*.md, 10_docs/**/*.md)
-notebooklm-sync --repo C012_round-table --tier3
-
-# With audio overview generation
-notebooklm-sync --repo C012_round-table --tier3 --audio
-
-# Non-interactive (skip prompts)
-notebooklm-sync --repo C012_round-table --tier3 --audio --yes
-
-# Custom focus for audio
-notebooklm-sync --repo C012_round-table --tier3 --audio --focus "Explain the architecture"
-
-# Nightly batch mode (used by launchd)
-notebooklm-sync --all --apply --changed-only
-```
-
-**Key features:**
-- **Idempotence**: SHA256 hashes skip unchanged files
-- **Cross-notebook safety**: Uses mapped notebook_id to prevent accidental source deletion
-- **Receipts**: JSON audit trail with timestamps, actions, and source IDs
-
-## Operations and Scheduling for Docs
-
-Use the scheduled refresh pipeline when maintaining doc hygiene across repos:
-
-- `make install-schedule` installs a macOS launchd job at 02:00 local time.
-- `make uninstall-schedule` removes that launchd job.
-- Scheduled job command:
-
-```bash
-notebooklm-sync --all --apply --changed-only
-```
-
-- Runbook logs are written to:
-
-```bash
-~/.config/notebooklm-mcp/refresh.log
-```
-
-- If batch runs fail, fix auth first and rerun the same command.
-
-For CLI references and scheduled-operations details, see **[docs/CLI.md](./docs/CLI.md)**.
+`notebooklm-sync` (doc syncing) and `doc-refresh` (scheduled refresh) — see **[docs/CLI.md](./docs/CLI.md)** for usage, config paths, and scheduling.
 
 ## MCP Tools Provided
 
@@ -125,17 +72,6 @@ For CLI references and scheduled-operations details, see **[docs/CLI.md](./docs/
 ## Troubleshooting
 
 **For comprehensive troubleshooting**, see **[docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)**.
-
-### Quick Reference: Auth Recovery
-
-When `notebook_list()` returns 0 notebooks (auth dead):
-
-1. Close all NotebookLM tabs in Chrome
-2. Run: `notebooklm-mcp-auth`
-3. **Restart Claude Code** (required to reload tokens)
-4. Verify: `notebook_list()` should return your notebooks
-
-**Auth rotation pattern:** Heavy API usage (~25+ calls) can trigger cookie rotation on free tier.
 
 ### Common Issues
 
