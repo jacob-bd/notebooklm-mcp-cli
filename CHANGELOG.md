@@ -24,6 +24,7 @@ Version numbers in pyproject.toml (no git tags).
 
 ### Changed
 - **CLAUDE.md** — Trimmed from 323 to 202 lines (~936 token savings) by extracting auth section to `docs/AUTHENTICATION.md` pointer, compressing redundant blocks, and consolidating doc references.
+- **CLAUDE.md** — Further trimmed from 202 to 101 lines (~1,200 total token savings) via three optimization passes: architecture tree update, MCP tools table replaced with server.py pointer, sync CLI and ops sections replaced with docs/CLI.md pointer, redundant auth recovery collapsed, boilerplate removed.
 
 - `PROJECT_PRIMER.md` operator auth and scheduled doc-sync guidance were refreshed.
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
