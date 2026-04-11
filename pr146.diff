@@ -1,0 +1,734 @@
+diff --git a/src/notebooklm_tools/cli/ai_docs.py b/src/notebooklm_tools/cli/ai_docs.py
+index 7788434..fd7c4f9 100644
+--- a/src/notebooklm_tools/cli/ai_docs.py
++++ b/src/notebooklm_tools/cli/ai_docs.py
+@@ -254,6 +254,7 @@
+ nlm add url <notebook-id> <url>        # Add URL source
+ nlm add url <notebook-id> <url> --wait # Add URL and wait until processed
+ nlm add text <notebook-id> "content" --title "Title"  # Add text source
++# Note: verb-first `add text` takes the text as a positional argument, not --text
+ nlm add drive <notebook-id> <doc-id>   # Add Drive source
+ nlm get source <source-id>             # Get source metadata
+ nlm describe source <source-id>        # AI summary + keywords
+@@ -434,6 +435,7 @@
+ ```bash
+ nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
+ nlm slides revise <artifact-id> --slide '1 Fix title' --slide '3 Remove image' --confirm
++# Each --slide value must be: '<slide-number> <instruction>'
+ # Creates a NEW slide deck with revisions applied. Original is not modified.
+ ```
+ 
+@@ -568,7 +570,7 @@
+ 
+ **Noun-First:**
+ ```bash
+-nlm alias set <name> <uuid>     # Create/update alias (auto-detects type)
++nlm alias set <name> <id>       # Create/update alias (auto-detects notebook/source)
+ nlm alias get <name>            # Get UUID for alias
+ nlm alias list                  # List all aliases
+ nlm alias delete <name>         # Remove (no --confirm needed)
+diff --git a/src/notebooklm_tools/cli/commands/repl.py b/src/notebooklm_tools/cli/commands/repl.py
+index 1fe3058..61631a0 100644
+--- a/src/notebooklm_tools/cli/commands/repl.py
++++ b/src/notebooklm_tools/cli/commands/repl.py
+@@ -3,7 +3,6 @@
+ import contextlib
+ import re
+ 
+-import typer
+ from rich.console import Console
+ from rich.markdown import Markdown
+ from rich.panel import Panel
+@@ -12,6 +11,7 @@
+ from notebooklm_tools.core.alias import get_alias_manager
+ from notebooklm_tools.core.exceptions import NLMError
+ from notebooklm_tools.services import ServiceError
++from notebooklm_tools.services import notebooks as notebook_service
+ 
+ console = Console()
+ 
+@@ -62,23 +62,19 @@ def run_chat_repl(notebook_id: str, profile: str | None = None) -> None:
+ 
+     try:
+         with get_client(profile) as client:
+-            # Get notebook info for welcome banner
+-            notebook = client.get_notebook(notebook_id)
+-            if not notebook:
+-                console.print("[red]Error:[/red] Notebook not found.")
+-                raise typer.Exit(1)
+-
+-            # Handle dict, list, or Notebook object returns
+-            if isinstance(notebook, dict):
+-                notebook_title = notebook.get("title", "Notebook")
+-                sources_list = notebook.get("sources", [])
+-            elif isinstance(notebook, list):
+-                notebook_title = f"Notebook {notebook_id[:8]}"
+-                sources_list = []
+-            else:
+-                notebook_title = notebook.title or "Notebook"
+-                sources_list = notebook.sources or []
+-            source_count = len(sources_list)
++            # Use normalized notebook metadata so notebooks with source_count
++            # but no inline sources still display the correct banner.
++            notebook = notebook_service.get_notebook(client, notebook_id)
++            notebook_title = notebook.get("title", "Notebook")
++            source_count = notebook.get("source_count", 0)
++            sources_list = notebook.get("sources", [])
++
++            # REPL /sources needs typed source metadata, which may not be
++            # present in normalized notebook details. Fetch it separately when
++            # the notebook is not empty, falling back to summary data on error.
++            if source_count > 0:
++                with contextlib.suppress(Exception):
++                    sources_list = client.get_notebook_sources_with_types(notebook_id)
+ 
+             # Welcome banner
+             console.print(
+@@ -124,7 +120,9 @@ def run_chat_repl(notebook_id: str, profile: str | None = None) -> None:
+                                 console.print("\n[bold]Sources:[/bold]")
+                                 for i, src in enumerate(sources_list, 1):
+                                     title = src.get("title", "Untitled")
+-                                    stype = src.get("type", "unknown")
++                                    stype = src.get("source_type_name") or src.get(
++                                        "type", "unknown"
++                                    )
+                                     console.print(f"  [{i}] {title} [dim]({stype})[/dim]")
+                                 console.print()
+                             else:
+diff --git a/src/notebooklm_tools/core/alias.py b/src/notebooklm_tools/core/alias.py
+index 9fcb346..bb31d32 100644
+--- a/src/notebooklm_tools/core/alias.py
++++ b/src/notebooklm_tools/core/alias.py
+@@ -113,6 +113,8 @@ def detect_id_type(value: str, profile: str | None = None) -> str:
+     """
+     from notebooklm_tools.cli.utils import get_client
+     from notebooklm_tools.core.exceptions import NLMError
++    from notebooklm_tools.services.errors import ServiceError
++    from notebooklm_tools.services.sources import get_source_content
+ 
+     try:
+         with get_client(profile) as client:
+@@ -126,11 +128,12 @@ def detect_id_type(value: str, profile: str | None = None) -> str:
+ 
+             # Try as source ID
+             try:
+-                # Sources need a notebook context, but we can try to get source content
+-                content = client.get_source_content(value)
++                # Reuse the supported source-content path instead of calling a
++                # non-existent legacy client method.
++                content = get_source_content(client, value)
+                 if content:
+                     return "source"
+-            except NLMError:
++            except (NLMError, ServiceError, AttributeError):
+                 pass
+ 
+     except NLMError:
+diff --git a/src/notebooklm_tools/core/download.py b/src/notebooklm_tools/core/download.py
+index 35c7da4..1181f32 100644
+--- a/src/notebooklm_tools/core/download.py
++++ b/src/notebooklm_tools/core/download.py
+@@ -42,6 +42,45 @@ class DownloadMixin(BaseClient):
+     # Core Download Infrastructure
+     # =========================================================================
+ 
++    def _audio_artifact_has_media_urls(self, artifact: list[Any]) -> bool:
++        """Return True when an audio artifact exposes media URLs."""
++        if len(artifact) <= 6:
++            return False
++
++        metadata = artifact[6]
++        if not isinstance(metadata, list) or len(metadata) <= 5:
++            return False
++
++        media_list = metadata[5]
++        if not isinstance(media_list, list):
++            return False
++
++        return any(
++            isinstance(item, list)
++            and len(item) > 0
++            and isinstance(item[0], str)
++            and item[0].startswith("http")
++            for item in media_list
++        )
++
++    def _is_audio_artifact_ready(self, artifact: list[Any]) -> bool:
++        """Treat verified ready audio payloads as downloadable.
++
++        Audio artifacts have been observed with status code ``2`` while already
++        exposing media URLs in their metadata. Keep support narrow to that
++        verified shape; everything else still requires the explicit completed
++        code.
++        """
++        if not isinstance(artifact, list) or len(artifact) <= 4:
++            return False
++        if artifact[2] != self.STUDIO_TYPE_AUDIO:
++            return False
++
++        status_code = artifact[4]
++        return status_code == 3 or (
++            status_code == 2 and self._audio_artifact_has_media_urls(artifact)
++        )
++
+     async def _download_url(
+         self,
+         url: str,
+@@ -211,12 +250,9 @@ async def download_audio(
+         """
+         artifacts = self._list_raw(notebook_id)
+ 
+-        # Filter for completed audio (Type 1, Status 3)
+-        candidates = []
+-        for a in artifacts:
+-            if isinstance(a, list) and len(a) > 4:  # noqa: SIM102
+-                if a[2] == self.STUDIO_TYPE_AUDIO and a[4] == 3:
+-                    candidates.append(a)
++        # Filter for ready audio artifacts. Some completed audio payloads use
++        # status code 2 while already exposing media URLs.
++        candidates = [a for a in artifacts if self._is_audio_artifact_ready(a)]
+ 
+         if not candidates:
+             raise ArtifactNotReadyError("audio")
+diff --git a/src/notebooklm_tools/core/studio.py b/src/notebooklm_tools/core/studio.py
+index d8dc0ae..d9ad632 100644
+--- a/src/notebooklm_tools/core/studio.py
++++ b/src/notebooklm_tools/core/studio.py
+@@ -2,6 +2,7 @@
+ """StudioMixin for NotebookLM client - studio content creation and status."""
+ 
+ import contextlib
++from typing import Any
+ 
+ from . import constants
+ from .base import BaseClient
+@@ -45,6 +46,92 @@ def _get_all_source_ids(self, notebook_id: str) -> list[str]:
+             # Return empty list on error - caller methods will handle gracefully
+             return []
+ 
++    def _audio_has_media_urls(self, artifact_data: list[Any]) -> bool:
++        """Return True when an audio artifact exposes playable/downloadable media URLs."""
++        if len(artifact_data) <= 6:
++            return False
++
++        audio_options = artifact_data[6]
++        if not isinstance(audio_options, list) or len(audio_options) <= 5:
++            return False
++
++        media_list = audio_options[5]
++        if not isinstance(media_list, list):
++            return False
++
++        return any(
++            isinstance(item, list)
++            and len(item) > 0
++            and isinstance(item[0], str)
++            and item[0].startswith("http")
++            for item in media_list
++        )
++
++    def _extract_audio_media_url(self, artifact_data: list[Any]) -> str | None:
++        """Extract the best available audio media URL from an audio artifact payload."""
++        if len(artifact_data) <= 6:
++            return None
++
++        audio_options = artifact_data[6]
++        if not isinstance(audio_options, list):
++            return None
++
++        if len(audio_options) > 5 and isinstance(audio_options[5], list):
++            media_list = audio_options[5]
++
++            # Prefer the explicit downloadable audio/mp4 entry when present.
++            for item in media_list:
++                if (
++                    isinstance(item, list)
++                    and len(item) > 2
++                    and isinstance(item[0], str)
++                    and item[0].startswith("http")
++                    and item[2] == "audio/mp4"
++                ):
++                    return item[0]
++
++            # Otherwise fall back to the first valid media URL in the list.
++            for item in media_list:
++                if (
++                    isinstance(item, list)
++                    and len(item) > 0
++                    and isinstance(item[0], str)
++                    and item[0].startswith("http")
++                ):
++                    return item[0]
++
++        # Older payloads may still expose a direct URL at position 3.
++        if len(audio_options) > 3 and isinstance(audio_options[3], str):
++            return audio_options[3]
++
++        return None
++
++    def _normalize_studio_status(self, artifact_data: list[Any]) -> str:
++        """Map raw artifact status codes to stable CLI status labels.
++
++        Audio artifacts have been observed returning status code ``2`` after
++        generation, while simultaneously exposing media URLs in their payload.
++        Treat only that verified combination as completed; keep other unknown
++        codes unchanged.
++        """
++        status_code = artifact_data[4] if len(artifact_data) > 4 else None
++        if status_code == 1:
++            return "in_progress"
++        if status_code == 3:
++            return "completed"
++        if status_code == 4:
++            return "failed"
++
++        type_code = artifact_data[2] if len(artifact_data) > 2 else None
++        if (
++            status_code == 2
++            and type_code == self.STUDIO_TYPE_AUDIO
++            and self._audio_has_media_urls(artifact_data)
++        ):
++            return "completed"
++
++        return "unknown"
++
+     # =========================================================================
+     # Studio Operations
+     # =========================================================================
+@@ -252,8 +339,6 @@ def poll_studio_status(self, notebook_id: str) -> list[dict]:
+                 artifact_id = artifact_data[0]
+                 title = artifact_data[1] if len(artifact_data) > 1 else ""
+                 type_code = artifact_data[2] if len(artifact_data) > 2 else None
+-                status_code = artifact_data[4] if len(artifact_data) > 4 else None
+-
+                 audio_url = None
+                 video_url = None
+                 duration_seconds = None
+@@ -262,7 +347,7 @@ def poll_studio_status(self, notebook_id: str) -> list[dict]:
+                 if type_code == self.STUDIO_TYPE_AUDIO and len(artifact_data) > 6:
+                     audio_options = artifact_data[6]
+                     if isinstance(audio_options, list) and len(audio_options) > 3:
+-                        audio_url = audio_options[3] if isinstance(audio_options[3], str) else None
++                        audio_url = self._extract_audio_media_url(artifact_data)
+                         # Duration is often at position 9
+                         if len(audio_options) > 9 and isinstance(audio_options[9], list):
+                             duration_seconds = audio_options[9][0] if audio_options[9] else None
+@@ -369,12 +454,7 @@ def poll_studio_status(self, notebook_id: str) -> list[dict]:
+                     self.STUDIO_TYPE_DATA_TABLE: "data_table",
+                 }
+                 artifact_type = "quiz" if is_quiz else type_map.get(type_code, "unknown")
+-                status_map = {
+-                    1: "in_progress",
+-                    3: "completed",
+-                    4: "failed",
+-                }
+-                status = status_map.get(status_code, "unknown")
++                status = self._normalize_studio_status(artifact_data)
+ 
+                 # Extract custom_instructions (focus prompt) if present
+                 # Different artifact types store prompts at different indices:
+diff --git a/src/notebooklm_tools/data/SKILL.md b/src/notebooklm_tools/data/SKILL.md
+index 3d3cf20..e04ddd4 100644
+--- a/src/notebooklm_tools/data/SKILL.md
++++ b/src/notebooklm_tools/data/SKILL.md
+@@ -313,6 +313,7 @@ nlm slides create <id> --confirm
+ nlm slides create <id> --format presenter --length short --confirm
+ # Formats: detailed, presenter | Lengths: short, default
+ nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
++# Each --slide value must be: '<slide-number> <instruction>'
+ # Creates a NEW deck with revisions. Original unchanged.
+ 
+ # Infographic
+@@ -469,7 +470,7 @@ nlm share invite <nb-id> user@example.com --role editor
+ Simplify long UUIDs:
+ 
+ ```bash
+-nlm alias set myproject abc123-def456...  # Create alias (auto-detects type)
++nlm alias set myproject abc123-def456...  # Create alias (auto-detects notebook/source)
+ nlm alias get myproject                    # Resolve to UUID
+ nlm alias list                             # List all aliases
+ nlm alias delete myproject                 # Remove alias
+diff --git a/src/notebooklm_tools/data/references/command_reference.md b/src/notebooklm_tools/data/references/command_reference.md
+index 9c722cb..e5ae4ab 100644
+--- a/src/notebooklm_tools/data/references/command_reference.md
++++ b/src/notebooklm_tools/data/references/command_reference.md
+@@ -763,13 +763,13 @@ nlm chat configure <notebook-id> [OPTIONS]
+ 
+ ### nlm alias set
+ 
+-Create or update an alias for a UUID.
++Create or update an alias for a NotebookLM ID.
+ 
+ ```bash
+-nlm alias set <name> <uuid>
++nlm alias set <name> <id>
+ ```
+ 
+-Type is auto-detected (notebook, source, artifact, task).
++Type is auto-detected. Notebook and source IDs are verified automatically.
+ 
+ ### nlm alias get
+ 
+diff --git a/tests/cli/test_repl.py b/tests/cli/test_repl.py
+new file mode 100644
+index 0000000..044df3a
+--- /dev/null
++++ b/tests/cli/test_repl.py
+@@ -0,0 +1,89 @@
++"""Tests for the interactive chat REPL."""
++
++from contextlib import nullcontext
++from types import SimpleNamespace
++from unittest.mock import MagicMock
++
++from notebooklm_tools.cli.commands import repl
++
++
++def test_run_chat_repl_banner_uses_normalized_source_count(monkeypatch):
++    client = MagicMock()
++    client.get_notebook_sources_with_types.return_value = [
++        {"id": "src-1", "title": "Source 1", "source_type_name": "text"},
++        {"id": "src-2", "title": "Source 2", "source_type_name": "url"},
++    ]
++
++    panel_text = []
++
++    monkeypatch.setattr(
++        repl,
++        "get_client",
++        lambda profile=None: nullcontext(client),
++    )
++    monkeypatch.setattr(
++        repl,
++        "get_alias_manager",
++        lambda: SimpleNamespace(resolve=lambda value: value),
++    )
++    monkeypatch.setattr(
++        repl.notebook_service,
++        "get_notebook",
++        lambda _client, _notebook_id: {
++            "title": "Notebook Title",
++            "source_count": 2,
++            "sources": [],
++        },
++    )
++    monkeypatch.setattr(
++        repl,
++        "Panel",
++        lambda renderable, **kwargs: panel_text.append(renderable) or renderable,
++    )
++    monkeypatch.setattr(repl.console, "input", lambda prompt: "/exit")
++    monkeypatch.setattr(repl.console, "print", lambda *args, **kwargs: None)
++
++    repl.run_chat_repl("nb-123")
++
++    assert panel_text
++    assert "2 source(s) loaded" in panel_text[0]
++    client.get_notebook_sources_with_types.assert_called_once_with("nb-123")
++
++
++def test_run_chat_repl_empty_notebook_skips_source_fetch(monkeypatch):
++    client = MagicMock()
++
++    panel_text = []
++
++    monkeypatch.setattr(
++        repl,
++        "get_client",
++        lambda profile=None: nullcontext(client),
++    )
++    monkeypatch.setattr(
++        repl,
++        "get_alias_manager",
++        lambda: SimpleNamespace(resolve=lambda value: value),
++    )
++    monkeypatch.setattr(
++        repl.notebook_service,
++        "get_notebook",
++        lambda _client, _notebook_id: {
++            "title": "Empty Notebook",
++            "source_count": 0,
++            "sources": [],
++        },
++    )
++    monkeypatch.setattr(
++        repl,
++        "Panel",
++        lambda renderable, **kwargs: panel_text.append(renderable) or renderable,
++    )
++    monkeypatch.setattr(repl.console, "input", lambda prompt: "/exit")
++    monkeypatch.setattr(repl.console, "print", lambda *args, **kwargs: None)
++
++    repl.run_chat_repl("nb-empty")
++
++    assert panel_text
++    assert "0 source(s) loaded" in panel_text[0]
++    client.get_notebook_sources_with_types.assert_not_called()
+diff --git a/tests/core/test_alias.py b/tests/core/test_alias.py
+new file mode 100644
+index 0000000..4c05ebd
+--- /dev/null
++++ b/tests/core/test_alias.py
+@@ -0,0 +1,65 @@
++"""Tests for alias type detection."""
++
++from contextlib import nullcontext
++from unittest.mock import MagicMock
++
++from notebooklm_tools.core.alias import detect_id_type
++from notebooklm_tools.core.exceptions import NLMError
++
++
++def test_detect_id_type_returns_notebook(monkeypatch):
++    client = MagicMock()
++    client.get_notebook.return_value = {"id": "nb-123"}
++
++    monkeypatch.setattr(
++        "notebooklm_tools.cli.utils.get_client",
++        lambda profile=None: nullcontext(client),
++    )
++
++    assert detect_id_type("nb-123") == "notebook"
++
++
++def test_detect_id_type_returns_source_without_legacy_method(monkeypatch):
++    class SourceOnlyClient:
++        def get_notebook(self, _value):
++            raise NLMError("Notebook not found")
++
++        def get_source_fulltext(self, _value):
++            return {
++                "content": "source body",
++                "title": "Source Title",
++                "type": "text",
++            }
++
++    monkeypatch.setattr(
++        "notebooklm_tools.cli.utils.get_client",
++        lambda profile=None: nullcontext(SourceOnlyClient()),
++    )
++
++    assert detect_id_type("src-123") == "source"
++
++
++def test_detect_id_type_returns_unknown_when_source_lookup_fails(monkeypatch):
++    client = MagicMock()
++    client.get_notebook.side_effect = NLMError("Notebook not found")
++    client.get_source_fulltext.side_effect = RuntimeError("boom")
++
++    monkeypatch.setattr(
++        "notebooklm_tools.cli.utils.get_client",
++        lambda profile=None: nullcontext(client),
++    )
++
++    assert detect_id_type("missing-id") == "unknown"
++
++
++def test_detect_id_type_returns_unknown_when_client_lacks_source_lookup(monkeypatch):
++    class ClientWithoutSourceLookup:
++        def get_notebook(self, _value):
++            raise NLMError("Notebook not found")
++
++    monkeypatch.setattr(
++        "notebooklm_tools.cli.utils.get_client",
++        lambda profile=None: nullcontext(ClientWithoutSourceLookup()),
++    )
++
++    assert detect_id_type("maybe-source") == "unknown"
+diff --git a/tests/core/test_download.py b/tests/core/test_download.py
+index a4ca996..233770d 100644
+--- a/tests/core/test_download.py
++++ b/tests/core/test_download.py
+@@ -1,6 +1,10 @@
+ #!/usr/bin/env python3
+ """Tests for DownloadMixin."""
+ 
++from unittest.mock import AsyncMock
++
++import pytest
++
+ from notebooklm_tools.core.base import BaseClient
+ from notebooklm_tools.core.download import DownloadMixin
+ 
+@@ -112,3 +116,58 @@ def test_format_flashcards_markdown(self):
+         assert "## Card 1" in result
+         assert "**Front:** Front text" in result
+         assert "**Back:** Back text" in result
++
++    def test_is_audio_artifact_ready_accepts_verified_status_2_payload(self):
++        mixin = DownloadMixin(cookies={"test": "cookie"}, csrf_token="test")
++        artifact = [
++            "art-1",
++            "Audio",
++            mixin.STUDIO_TYPE_AUDIO,
++            [],
++            2,
++            None,
++            [
++                None,
++                ["", 2, None, [["src-1"]], "en", True, 1],
++                "https://example.com/thumb",
++                "https://example.com/thumb-dv",
++                None,
++                [["https://example.com/audio.m4a", 1, "audio/mp4"]],
++                [],
++            ],
++        ]
++
++        assert mixin._is_audio_artifact_ready(artifact) is True
++
++    @pytest.mark.asyncio
++    async def test_download_audio_accepts_verified_status_2_payload(self):
++        mixin = DownloadMixin(cookies={"test": "cookie"}, csrf_token="test")
++        artifact = [
++            "art-1",
++            "Audio",
++            mixin.STUDIO_TYPE_AUDIO,
++            [],
++            2,
++            None,
++            [
++                None,
++                ["", 2, None, [["src-1"]], "en", True, 1],
++                "https://example.com/thumb",
++                "https://example.com/thumb-dv",
++                None,
++                [["https://example.com/audio.m4a", 1, "audio/mp4"]],
++                [],
++            ],
++        ]
++
++        mixin._list_raw = lambda notebook_id: [artifact]
++        mixin._download_url = AsyncMock(return_value="/tmp/audio.m4a")
++
++        result = await mixin.download_audio("nb-1", "/tmp/audio.m4a")
++
++        assert result == "/tmp/audio.m4a"
++        mixin._download_url.assert_awaited_once_with(
++            "https://example.com/audio.m4a",
++            "/tmp/audio.m4a",
++            None,
++        )
+diff --git a/tests/core/test_studio.py b/tests/core/test_studio.py
+index ef420b9..a5bb79c 100644
+--- a/tests/core/test_studio.py
++++ b/tests/core/test_studio.py
+@@ -1,6 +1,8 @@
+ #!/usr/bin/env python3
+ """Tests for StudioMixin."""
+ 
++from unittest.mock import MagicMock
++
+ import pytest
+ 
+ from notebooklm_tools.core.base import BaseClient
+@@ -74,6 +76,109 @@ def test_get_studio_status_is_alias(self):
+         # Method docstring should indicate it's an alias
+         assert "Alias" in mixin.get_studio_status.__doc__
+ 
++    def test_normalize_studio_status_treats_audio_status_2_with_media_as_completed(self):
++        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
++
++        artifact_data = [
++            "art-1",
++            "Audio Artifact",
++            mixin.STUDIO_TYPE_AUDIO,
++            [],
++            2,
++            None,
++            [
++                None,
++                ["", 2, None, [["src-1"]], "en", True, 1],
++                "https://example.com/thumb",
++                "https://example.com/thumb-dv",
++                None,
++                [["https://example.com/audio.m4a", 1, "audio/mp4"]],
++                [],
++            ],
++        ]
++
++        assert mixin._normalize_studio_status(artifact_data) == "completed"
++
++    def test_normalize_studio_status_keeps_unverified_code_unknown(self):
++        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
++
++        artifact_data = [
++            "art-2",
++            "Unknown Artifact",
++            mixin.STUDIO_TYPE_REPORT,
++            [],
++            2,
++        ]
++
++        assert mixin._normalize_studio_status(artifact_data) == "unknown"
++
++    def test_extract_audio_media_url_prefers_media_list_over_thumbnail_slot(self):
++        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
++
++        artifact_data = [
++            "art-1",
++            "Audio Artifact",
++            mixin.STUDIO_TYPE_AUDIO,
++            [],
++            2,
++            None,
++            [
++                None,
++                ["", 2, None, [["src-1"]], "en", True, 1],
++                "https://example.com/thumb",
++                "https://example.com/thumb-dv",
++                None,
++                [
++                    ["https://example.com/audio-stream.m3u8", 2],
++                    ["https://example.com/audio.m4a", 1, "audio/mp4"],
++                ],
++                [],
++            ],
++        ]
++
++        assert mixin._extract_audio_media_url(artifact_data) == "https://example.com/audio.m4a"
++
++    def test_poll_studio_status_uses_normalized_status_mapping(self):
++        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
++        http_client = MagicMock()
++        http_client.post.return_value = MagicMock(
++            text="unused",
++            raise_for_status=lambda: None,
++        )
++
++        mixin._get_client = MagicMock(return_value=http_client)
++        mixin._build_request_body = MagicMock(return_value="body")
++        mixin._build_url = MagicMock(return_value="url")
++        mixin._parse_response = MagicMock(return_value=["parsed"])
++        mixin._extract_rpc_result = MagicMock(
++            return_value=[
++                [
++                    [
++                        "art-1",
++                        "Audio Artifact",
++                        mixin.STUDIO_TYPE_AUDIO,
++                        [],
++                        2,
++                        None,
++                        [
++                            None,
++                            ["", 2, None, [["src-1"]], "en", True, 1],
++                            "https://example.com/thumb",
++                            "https://example.com/thumb-dv",
++                            None,
++                            [["https://example.com/audio.m4a", 1, "audio/mp4"]],
++                            [],
++                        ],
++                    ]
++                ]
++            ]
++        )
++
++        result = mixin.poll_studio_status("nb-1")
++
++        assert result[0]["status"] == "completed"
++        assert result[0]["audio_url"] == "https://example.com/audio.m4a"
++
+ 
+ class TestCinematicVideoConstant:
+     """Test that the Cinematic video format constant is correctly defined."""
