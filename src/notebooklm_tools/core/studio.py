@@ -67,6 +67,45 @@ class StudioMixin(BaseClient):
             for item in media_list
         )
 
+    def _extract_audio_media_url(self, artifact_data: list[Any]) -> str | None:
+        """Extract the best available audio media URL from an audio artifact payload."""
+        if len(artifact_data) <= 6:
+            return None
+
+        audio_options = artifact_data[6]
+        if not isinstance(audio_options, list):
+            return None
+
+        if len(audio_options) > 5 and isinstance(audio_options[5], list):
+            media_list = audio_options[5]
+
+            # Prefer the explicit downloadable audio/mp4 entry when present.
+            for item in media_list:
+                if (
+                    isinstance(item, list)
+                    and len(item) > 2
+                    and isinstance(item[0], str)
+                    and item[0].startswith("http")
+                    and item[2] == "audio/mp4"
+                ):
+                    return item[0]
+
+            # Otherwise fall back to the first valid media URL in the list.
+            for item in media_list:
+                if (
+                    isinstance(item, list)
+                    and len(item) > 0
+                    and isinstance(item[0], str)
+                    and item[0].startswith("http")
+                ):
+                    return item[0]
+
+        # Older payloads may still expose a direct URL at position 3.
+        if len(audio_options) > 3 and isinstance(audio_options[3], str):
+            return audio_options[3]
+
+        return None
+
     def _normalize_studio_status(self, artifact_data: list[Any]) -> str:
         """Map raw artifact status codes to stable CLI status labels.
 
@@ -308,7 +347,7 @@ class StudioMixin(BaseClient):
                 if type_code == self.STUDIO_TYPE_AUDIO and len(artifact_data) > 6:
                     audio_options = artifact_data[6]
                     if isinstance(audio_options, list) and len(audio_options) > 3:
-                        audio_url = audio_options[3] if isinstance(audio_options[3], str) else None
+                        audio_url = self._extract_audio_media_url(artifact_data)
                         # Duration is often at position 9
                         if len(audio_options) > 9 and isinstance(audio_options[9], list):
                             duration_seconds = audio_options[9][0] if audio_options[9] else None

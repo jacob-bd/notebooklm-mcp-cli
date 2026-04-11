@@ -112,6 +112,32 @@ class TestStudioMixinMethods:
 
         assert mixin._normalize_studio_status(artifact_data) == "unknown"
 
+    def test_extract_audio_media_url_prefers_media_list_over_thumbnail_slot(self):
+        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
+
+        artifact_data = [
+            "art-1",
+            "Audio Artifact",
+            mixin.STUDIO_TYPE_AUDIO,
+            [],
+            2,
+            None,
+            [
+                None,
+                ["", 2, None, [["src-1"]], "en", True, 1],
+                "https://example.com/thumb",
+                "https://example.com/thumb-dv",
+                None,
+                [
+                    ["https://example.com/audio-stream.m3u8", 2],
+                    ["https://example.com/audio.m4a", 1, "audio/mp4"],
+                ],
+                [],
+            ],
+        ]
+
+        assert mixin._extract_audio_media_url(artifact_data) == "https://example.com/audio.m4a"
+
     def test_poll_studio_status_uses_normalized_status_mapping(self):
         mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
         http_client = MagicMock()
@@ -151,6 +177,7 @@ class TestStudioMixinMethods:
         result = mixin.poll_studio_status("nb-1")
 
         assert result[0]["status"] == "completed"
+        assert result[0]["audio_url"] == "https://example.com/audio.m4a"
 
 
 class TestCinematicVideoConstant:
