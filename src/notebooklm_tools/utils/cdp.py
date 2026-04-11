@@ -477,7 +477,9 @@ def find_existing_nlm_chrome(
     return None, None
 
 
-def find_any_existing_cdp_browser(port_range: range = CDP_PORT_RANGE) -> tuple[int | None, str | None]:
+def find_any_existing_cdp_browser(
+    port_range: range = CDP_PORT_RANGE,
+) -> tuple[int | None, str | None]:
     """Find a single reachable CDP browser in our local port range.
 
     This is a fallback for environments where the browser is already running

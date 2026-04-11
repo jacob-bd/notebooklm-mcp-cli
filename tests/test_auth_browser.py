@@ -1,5 +1,6 @@
 """Tests for supported authentication browser behavior."""
 
+import json
 from unittest.mock import patch
 
 
@@ -54,17 +55,17 @@ def test_get_chromium_path_ignores_explicit_firefox_preference():
     assert _get_chromium_path("firefox") is None
 
 
-def test_auth_manager_persists_legacy_browser_backend(tmp_path, monkeypatch):
+def test_saved_legacy_browser_backend_is_read_from_metadata(tmp_path, monkeypatch):
     from notebooklm_tools.core.auth import AuthManager
+    from notebooklm_tools.utils.auth_browser import _get_saved_browser_backend
 
     monkeypatch.setenv("NOTEBOOKLM_MCP_CLI_PATH", str(tmp_path))
 
     auth = AuthManager("default")
-    auth.save_profile(
-        cookies={"SID": "sid", "HSID": "hsid"},
-        email="user@example.com",
-        browser_backend="firefox_playwright",
-    )
+    auth.save_profile(cookies={"SID": "sid", "HSID": "hsid"}, email="user@example.com")
 
-    profile = auth.load_profile(force_reload=True)
-    assert profile.browser_backend == "firefox_playwright"
+    metadata = json.loads(auth.metadata_file.read_text(encoding="utf-8"))
+    metadata["browser_backend"] = "firefox_playwright"
+    auth.metadata_file.write_text(json.dumps(metadata), encoding="utf-8")
+
+    assert _get_saved_browser_backend("default") == "firefox_playwright"

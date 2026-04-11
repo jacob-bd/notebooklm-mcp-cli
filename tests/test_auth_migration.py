@@ -230,7 +230,10 @@ class TestCDPStartupHandling:
 
         with (
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value="chromium"),
             patch("notebooklm_tools.utils.cdp.find_available_port", return_value=9222),
@@ -476,7 +479,10 @@ class TestBrowserErrorMessages:
             patch("notebooklm_tools.utils.cdp.platform.system", return_value="Darwin"),
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value=None),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
         ):
             with pytest.raises(AuthenticationError) as exc_info:
@@ -495,7 +501,10 @@ class TestBrowserErrorMessages:
             patch("notebooklm_tools.utils.cdp.platform.system", return_value="Linux"),
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value=None),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
         ):
             with pytest.raises(AuthenticationError) as exc_info:
@@ -515,7 +524,10 @@ class TestBrowserErrorMessages:
             patch("notebooklm_tools.utils.cdp.platform.system", return_value="Windows"),
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value=None),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
         ):
             with pytest.raises(AuthenticationError) as exc_info:
@@ -534,7 +546,10 @@ class TestBrowserErrorMessages:
         with (  # noqa: SIM117
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value=None),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
         ):
             with pytest.raises(AuthenticationError) as exc_info:
@@ -549,7 +564,10 @@ class TestBrowserErrorMessages:
         with (  # noqa: SIM117
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value=None),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
         ):
             with pytest.raises(AuthenticationError) as exc_info:
@@ -565,7 +583,10 @@ class TestBrowserErrorMessages:
         with (  # noqa: SIM117
             patch("notebooklm_tools.utils.cdp.get_chrome_path", return_value="/some/browser"),
             patch("notebooklm_tools.utils.cdp.find_existing_nlm_chrome", return_value=(None, None)),
-            patch("notebooklm_tools.utils.cdp.find_any_existing_cdp_browser", return_value=(None, None)),
+            patch(
+                "notebooklm_tools.utils.cdp.find_any_existing_cdp_browser",
+                return_value=(None, None),
+            ),
             patch("notebooklm_tools.utils.cdp.is_profile_locked", return_value=False),
             patch("notebooklm_tools.utils.cdp.find_available_port", return_value=9222),
             patch("notebooklm_tools.utils.cdp.launch_chrome", return_value=False),
