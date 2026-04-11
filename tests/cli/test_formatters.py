@@ -73,6 +73,7 @@ def test_json_formatter_format_artifacts_full_preserves_rich_fields(capsys):
             "status": "completed",
             "title": "Audio Overview",
             "url": "https://example.com/view",
+            "created_at": "2026-04-11T19:00:00Z",
             "audio_url": "https://example.com/audio.m4a",
             "duration_seconds": 321,
             "custom_instructions": "Focus on key themes",
@@ -94,6 +95,7 @@ def test_json_formatter_format_artifacts_full_preserves_rich_fields(capsys):
             "visual_style_prompt": None,
             "title": "Audio Overview",
             "url": "https://example.com/view",
+            "created_at": "2026-04-11T19:00:00Z",
             "audio_url": "https://example.com/audio.m4a",
             "duration_seconds": 321,
         }

@@ -293,6 +293,7 @@ class JsonFormatter(Formatter):
     ARTIFACT_FULL_FIELDS = (
         "title",
         "url",
+        "created_at",
         "audio_url",
         "video_url",
         "infographic_url",
