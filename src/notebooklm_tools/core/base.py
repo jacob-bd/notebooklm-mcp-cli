@@ -670,8 +670,12 @@ class BaseClient:
                 # Exhausted retries, re-raise
                 raise
 
-            # Check for auth failures (401/403 HTTP)
-            is_http_auth = e.response.status_code in (401, 403)
+            # Check for auth failures (400/401/403 HTTP)
+            # 400 is included because Google returns "400 Bad Request" when
+            # the CSRF token (at= body param) is expired or invalid, rather
+            # than a 401/403.  Our Layer-1 recovery (_refresh_auth_tokens)
+            # re-extracts a fresh CSRF token from the page, which fixes this.
+            is_http_auth = e.response.status_code in (400, 401, 403)
             if not is_http_auth:
                 # Not a retryable or auth error, re-raise immediately
                 raise

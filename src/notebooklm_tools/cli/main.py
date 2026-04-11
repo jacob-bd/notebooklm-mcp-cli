@@ -185,6 +185,7 @@ def login_callback(
                 cookies=p.cookies,
                 csrf_token=p.csrf_token or "",
                 session_id=p.session_id or "",
+                build_label=p.build_label or "",
             ) as client:
                 notebooks = client.list_notebooks()
 
