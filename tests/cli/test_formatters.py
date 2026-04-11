@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -61,3 +62,69 @@ def test_json_formatter_format_notebooks_preserves_non_ascii(capsys):
 
     assert '"title": "Café notes"' in output
     assert "\\u00e9" not in output
+
+
+def test_json_formatter_format_artifacts_full_preserves_rich_fields(capsys):
+    formatter = JsonFormatter()
+    artifacts = [
+        {
+            "artifact_id": "art-1",
+            "type": "audio",
+            "status": "completed",
+            "title": "Audio Overview",
+            "url": "https://example.com/view",
+            "audio_url": "https://example.com/audio.m4a",
+            "duration_seconds": 321,
+            "custom_instructions": "Focus on key themes",
+            "visual_style_prompt": None,
+        }
+    ]
+
+    formatter.format_artifacts(artifacts, full=True)
+
+    output = capsys.readouterr().out
+    data = json.loads(output)
+
+    assert data == [
+        {
+            "id": "art-1",
+            "type": "audio",
+            "status": "completed",
+            "custom_instructions": "Focus on key themes",
+            "visual_style_prompt": None,
+            "title": "Audio Overview",
+            "url": "https://example.com/view",
+            "audio_url": "https://example.com/audio.m4a",
+            "duration_seconds": 321,
+        }
+    ]
+
+
+def test_json_formatter_format_artifacts_without_full_keeps_minimal_shape(capsys):
+    formatter = JsonFormatter()
+    artifacts = [
+        {
+            "artifact_id": "art-1",
+            "type": "audio",
+            "status": "completed",
+            "title": "Audio Overview",
+            "audio_url": "https://example.com/audio.m4a",
+            "custom_instructions": None,
+            "visual_style_prompt": None,
+        }
+    ]
+
+    formatter.format_artifacts(artifacts, full=False)
+
+    output = capsys.readouterr().out
+    data = json.loads(output)
+
+    assert data == [
+        {
+            "id": "art-1",
+            "type": "audio",
+            "status": "completed",
+            "custom_instructions": None,
+            "visual_style_prompt": None,
+        }
+    ]
