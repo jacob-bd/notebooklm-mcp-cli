@@ -763,13 +763,13 @@ nlm chat configure <notebook-id> [OPTIONS]
 
 ### nlm alias set
 
-Create or update an alias for a UUID.
+Create or update an alias for a NotebookLM ID.
 
 ```bash
-nlm alias set <name> <uuid>
+nlm alias set <name> <id>
 ```
 
-Type is auto-detected (notebook, source, artifact, task).
+Type is auto-detected. Notebook and source IDs are verified automatically.
 
 ### nlm alias get
 

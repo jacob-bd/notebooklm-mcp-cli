@@ -313,6 +313,7 @@ nlm slides create <id> --confirm
 nlm slides create <id> --format presenter --length short --confirm
 # Formats: detailed, presenter | Lengths: short, default
 nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
+# Each --slide value must be: '<slide-number> <instruction>'
 # Creates a NEW deck with revisions. Original unchanged.
 
 # Infographic
@@ -469,7 +470,7 @@ nlm share invite <nb-id> user@example.com --role editor
 Simplify long UUIDs:
 
 ```bash
-nlm alias set myproject abc123-def456...  # Create alias (auto-detects type)
+nlm alias set myproject abc123-def456...  # Create alias (auto-detects notebook/source)
 nlm alias get myproject                    # Resolve to UUID
 nlm alias list                             # List all aliases
 nlm alias delete myproject                 # Remove alias

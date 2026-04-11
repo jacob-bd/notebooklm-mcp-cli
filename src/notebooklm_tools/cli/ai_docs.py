@@ -254,6 +254,7 @@ nlm list sources <notebook-id>         # List sources
 nlm add url <notebook-id> <url>        # Add URL source
 nlm add url <notebook-id> <url> --wait # Add URL and wait until processed
 nlm add text <notebook-id> "content" --title "Title"  # Add text source
+# Note: verb-first `add text` takes the text as a positional argument, not --text
 nlm add drive <notebook-id> <doc-id>   # Add Drive source
 nlm get source <source-id>             # Get source metadata
 nlm describe source <source-id>        # AI summary + keywords
@@ -434,6 +435,7 @@ nlm create slides <notebook-id> --length short --format detailed_deck --confirm
 ```bash
 nlm slides revise <artifact-id> --slide '1 Make the title larger' --confirm
 nlm slides revise <artifact-id> --slide '1 Fix title' --slide '3 Remove image' --confirm
+# Each --slide value must be: '<slide-number> <instruction>'
 # Creates a NEW slide deck with revisions applied. Original is not modified.
 ```
 
@@ -568,7 +570,7 @@ nlm export to-sheets <notebook-id> <artifact-id>            # Export data table 
 
 **Noun-First:**
 ```bash
-nlm alias set <name> <uuid>     # Create/update alias (auto-detects type)
+nlm alias set <name> <id>       # Create/update alias (auto-detects notebook/source)
 nlm alias get <name>            # Get UUID for alias
 nlm alias list                  # List all aliases
 nlm alias delete <name>         # Remove (no --confirm needed)
