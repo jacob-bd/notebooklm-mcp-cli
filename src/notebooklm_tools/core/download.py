@@ -42,6 +42,45 @@ class DownloadMixin(BaseClient):
     # Core Download Infrastructure
     # =========================================================================
 
+    def _audio_artifact_has_media_urls(self, artifact: list[Any]) -> bool:
+        """Return True when an audio artifact exposes media URLs."""
+        if len(artifact) <= 6:
+            return False
+
+        metadata = artifact[6]
+        if not isinstance(metadata, list) or len(metadata) <= 5:
+            return False
+
+        media_list = metadata[5]
+        if not isinstance(media_list, list):
+            return False
+
+        return any(
+            isinstance(item, list)
+            and len(item) > 0
+            and isinstance(item[0], str)
+            and item[0].startswith("http")
+            for item in media_list
+        )
+
+    def _is_audio_artifact_ready(self, artifact: list[Any]) -> bool:
+        """Treat verified ready audio payloads as downloadable.
+
+        Audio artifacts have been observed with status code ``2`` while already
+        exposing media URLs in their metadata. Keep support narrow to that
+        verified shape; everything else still requires the explicit completed
+        code.
+        """
+        if not isinstance(artifact, list) or len(artifact) <= 4:
+            return False
+        if artifact[2] != self.STUDIO_TYPE_AUDIO:
+            return False
+
+        status_code = artifact[4]
+        return status_code == 3 or (
+            status_code == 2 and self._audio_artifact_has_media_urls(artifact)
+        )
+
     async def _download_url(
         self,
         url: str,
@@ -211,12 +250,9 @@ class DownloadMixin(BaseClient):
         """
         artifacts = self._list_raw(notebook_id)
 
-        # Filter for completed audio (Type 1, Status 3)
-        candidates = []
-        for a in artifacts:
-            if isinstance(a, list) and len(a) > 4:  # noqa: SIM102
-                if a[2] == self.STUDIO_TYPE_AUDIO and a[4] == 3:
-                    candidates.append(a)
+        # Filter for ready audio artifacts. Some completed audio payloads use
+        # status code 2 while already exposing media URLs.
+        candidates = [a for a in artifacts if self._is_audio_artifact_ready(a)]
 
         if not candidates:
             raise ArtifactNotReadyError("audio")

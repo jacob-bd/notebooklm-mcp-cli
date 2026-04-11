@@ -3,7 +3,6 @@
 import contextlib
 import re
 
-import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -12,6 +11,7 @@ from notebooklm_tools.cli.utils import get_client, handle_error
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.services import ServiceError
+from notebooklm_tools.services import notebooks as notebook_service
 
 console = Console()
 
@@ -62,23 +62,19 @@ def run_chat_repl(notebook_id: str, profile: str | None = None) -> None:
 
     try:
         with get_client(profile) as client:
-            # Get notebook info for welcome banner
-            notebook = client.get_notebook(notebook_id)
-            if not notebook:
-                console.print("[red]Error:[/red] Notebook not found.")
-                raise typer.Exit(1)
+            # Use normalized notebook metadata so notebooks with source_count
+            # but no inline sources still display the correct banner.
+            notebook = notebook_service.get_notebook(client, notebook_id)
+            notebook_title = notebook.get("title", "Notebook")
+            source_count = notebook.get("source_count", 0)
+            sources_list = notebook.get("sources", [])
 
-            # Handle dict, list, or Notebook object returns
-            if isinstance(notebook, dict):
-                notebook_title = notebook.get("title", "Notebook")
-                sources_list = notebook.get("sources", [])
-            elif isinstance(notebook, list):
-                notebook_title = f"Notebook {notebook_id[:8]}"
-                sources_list = []
-            else:
-                notebook_title = notebook.title or "Notebook"
-                sources_list = notebook.sources or []
-            source_count = len(sources_list)
+            # REPL /sources needs typed source metadata, which may not be
+            # present in normalized notebook details. Fetch it separately when
+            # the notebook is not empty, falling back to summary data on error.
+            if source_count > 0:
+                with contextlib.suppress(Exception):
+                    sources_list = client.get_notebook_sources_with_types(notebook_id)
 
             # Welcome banner
             console.print(
@@ -124,7 +120,9 @@ def run_chat_repl(notebook_id: str, profile: str | None = None) -> None:
                                 console.print("\n[bold]Sources:[/bold]")
                                 for i, src in enumerate(sources_list, 1):
                                     title = src.get("title", "Untitled")
-                                    stype = src.get("type", "unknown")
+                                    stype = src.get("source_type_name") or src.get(
+                                        "type", "unknown"
+                                    )
                                     console.print(f"  [{i}] {title} [dim]({stype})[/dim]")
                                 console.print()
                             else:

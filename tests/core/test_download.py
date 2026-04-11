@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Tests for DownloadMixin."""
 
+from unittest.mock import AsyncMock
+
+import pytest
+
 from notebooklm_tools.core.base import BaseClient
 from notebooklm_tools.core.download import DownloadMixin
 
@@ -112,3 +116,58 @@ class TestDownloadMixinMethods:
         assert "## Card 1" in result
         assert "**Front:** Front text" in result
         assert "**Back:** Back text" in result
+
+    def test_is_audio_artifact_ready_accepts_verified_status_2_payload(self):
+        mixin = DownloadMixin(cookies={"test": "cookie"}, csrf_token="test")
+        artifact = [
+            "art-1",
+            "Audio",
+            mixin.STUDIO_TYPE_AUDIO,
+            [],
+            2,
+            None,
+            [
+                None,
+                ["", 2, None, [["src-1"]], "en", True, 1],
+                "https://example.com/thumb",
+                "https://example.com/thumb-dv",
+                None,
+                [["https://example.com/audio.m4a", 1, "audio/mp4"]],
+                [],
+            ],
+        ]
+
+        assert mixin._is_audio_artifact_ready(artifact) is True
+
+    @pytest.mark.asyncio
+    async def test_download_audio_accepts_verified_status_2_payload(self):
+        mixin = DownloadMixin(cookies={"test": "cookie"}, csrf_token="test")
+        artifact = [
+            "art-1",
+            "Audio",
+            mixin.STUDIO_TYPE_AUDIO,
+            [],
+            2,
+            None,
+            [
+                None,
+                ["", 2, None, [["src-1"]], "en", True, 1],
+                "https://example.com/thumb",
+                "https://example.com/thumb-dv",
+                None,
+                [["https://example.com/audio.m4a", 1, "audio/mp4"]],
+                [],
+            ],
+        ]
+
+        mixin._list_raw = lambda notebook_id: [artifact]
+        mixin._download_url = AsyncMock(return_value="/tmp/audio.m4a")
+
+        result = await mixin.download_audio("nb-1", "/tmp/audio.m4a")
+
+        assert result == "/tmp/audio.m4a"
+        mixin._download_url.assert_awaited_once_with(
+            "https://example.com/audio.m4a",
+            "/tmp/audio.m4a",
+            None,
+        )
