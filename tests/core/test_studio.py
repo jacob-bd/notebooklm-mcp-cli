@@ -112,6 +112,13 @@ class TestStudioMixinMethods:
 
         assert mixin._normalize_studio_status(artifact_data) == "unknown"
 
+    def test_normalize_studio_status_handles_non_list_payloads(self):
+        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
+
+        assert mixin._normalize_studio_status("unexpected-payload") == "unknown"
+        assert mixin._normalize_studio_status({"status": 3}) == "unknown"
+        assert mixin._normalize_studio_status(["too-short"]) == "unknown"
+
     def test_extract_audio_media_url_prefers_media_list_over_thumbnail_slot(self):
         mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
 
@@ -216,6 +223,25 @@ class TestStudioMixinMethods:
         result = mixin.create_audio_overview("nb-1", ["src-1"])
 
         assert result["status"] == "completed"
+
+    def test_create_audio_overview_keeps_unknown_for_unexpected_payload_shape(self):
+        mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
+        http_client = MagicMock()
+        http_client.post.return_value = MagicMock(
+            text="unused",
+            raise_for_status=lambda: None,
+        )
+
+        mixin._get_client = MagicMock(return_value=http_client)
+        mixin._build_request_body = MagicMock(return_value="body")
+        mixin._build_url = MagicMock(return_value="url")
+        mixin._parse_response = MagicMock(return_value=["parsed"])
+        mixin._extract_rpc_result = MagicMock(return_value=["unexpected-payload"])
+
+        result = mixin.create_audio_overview("nb-1", ["src-1"])
+
+        assert result["artifact_id"] is None
+        assert result["status"] == "unknown"
 
     def test_revise_slide_deck_uses_normalized_failed_status(self):
         mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")

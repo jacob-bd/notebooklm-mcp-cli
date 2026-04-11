@@ -106,7 +106,7 @@ class StudioMixin(BaseClient):
 
         return None
 
-    def _normalize_studio_status(self, artifact_data: list[Any]) -> str:
+    def _normalize_studio_status(self, artifact_data: Any) -> str:
         """Map raw artifact status codes to stable CLI status labels.
 
         Audio artifacts have been observed returning status code ``2`` after
@@ -114,6 +114,9 @@ class StudioMixin(BaseClient):
         Treat only that verified combination as completed; keep other unknown
         codes unchanged.
         """
+        if not isinstance(artifact_data, list) or len(artifact_data) <= 4:
+            return "unknown"
+
         status_code = artifact_data[4] if len(artifact_data) > 4 else None
         if status_code == 1:
             return "in_progress"
