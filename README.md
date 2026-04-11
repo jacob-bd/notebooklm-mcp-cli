@@ -300,7 +300,7 @@ nlm login --manual     # Manual file mode
 
 **How it works:** Auto mode launches a dedicated browser profile (supports Chrome, Arc, Brave, Edge, Chromium, and more), you log in to Google, and cookies are extracted automatically. Your login persists for future auth refreshes.
 
-**Prefer a specific browser?** Set it with `nlm config set auth.browser brave` (or `arc`, `edge`, `chromium`, etc.). Falls back to auto-detection if the preferred browser is not found.
+**Prefer a specific browser?** Set it with `nlm config set auth.browser chromium` (or `brave`, `arc`, `edge`, `chrome`, etc.). Falls back to auto-detection if the preferred browser is not found.
 
 For detailed instructions and troubleshooting, see **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)**.
 

@@ -37,7 +37,7 @@ nlm --help             # Show help and exit
 
 ### nlm login
 
-Authenticate with NotebookLM using Chrome DevTools Protocol.
+Authenticate with NotebookLM using the managed browser auth flow.
 
 ```bash
 nlm login [OPTIONS]
@@ -50,7 +50,7 @@ nlm login [OPTIONS]
 | `--provider` | | Auth provider: `builtin` (default) or `openclaw` |
 | `--cdp-url` | | CDP endpoint URL for external provider mode (default: `http://127.0.0.1:18800`) |
 | `--legacy` | `-l` | Use browser-cookie3 fallback (not recommended) |
-| `--browser` | `-b` | Browser for legacy mode (chrome, firefox, edge) |
+| `--browser` | `-b` | Browser for legacy mode (chrome, chromium, edge) |
 | `--manual` | `-m` | Import cookies from file |
 | `--file` | `-f` | Cookie file path for manual mode |
 

@@ -74,6 +74,31 @@ import logging as _logging  # noqa: E402
 _logger = _logging.getLogger(__name__)
 
 
+def _cdp_http_base(port: int) -> str:
+    """Return the local CDP HTTP base URL using IPv4 loopback explicitly."""
+    return f"http://127.0.0.1:{port}"
+
+
+def _summarize_browser_startup_failure(process: subprocess.Popen | None) -> str | None:
+    """Best-effort summary when the launched browser exits before CDP is ready."""
+    if process is None or process.poll() is None or process.stderr is None:
+        return None
+
+    try:
+        stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
+    except Exception:
+        return None
+
+    if not stderr:
+        return None
+
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    if not lines:
+        return None
+
+    return lines[-1]
+
+
 # =============================================================================
 # Port-to-Profile Mapping
 # =============================================================================
@@ -308,10 +333,10 @@ def _get_preferred_browser() -> str:
         return "auto"
 
 
-def get_chrome_path() -> str | None:
+def _get_chromium_path(preferred: str | None = None) -> str | None:
     """Return the path/executable for the first available Chromium-based browser.
 
-    Respects the ``auth.browser`` config setting:
+    Respects the ``auth.browser`` config setting when ``preferred`` is omitted:
     - ``auto`` (default): tries browsers in priority order.
     - A specific name (e.g. ``brave``): tries that browser first, then
       falls back to the full priority list if not found.
@@ -320,7 +345,15 @@ def get_chrome_path() -> str | None:
     Valid names: auto, chrome, arc, brave, edge, chromium, vivaldi, opera.
     """
     global _detected_browser_name
-    preferred = _get_preferred_browser()
+    if preferred is None:
+        preferred = _get_preferred_browser()
+        if preferred not in {"auto", *_BROWSER_CONFIG_MAP}:
+            preferred = "auto"
+    preferred = preferred.lower().strip()
+
+    if preferred not in {"auto", *_BROWSER_CONFIG_MAP}:
+        return None
+
     preferred_names = _BROWSER_CONFIG_MAP.get(preferred, [])
 
     def _found(name: str, path: str, fallback: bool = False) -> str:
@@ -368,6 +401,11 @@ def get_chrome_path() -> str | None:
         return None
 
     return None
+
+
+def get_chrome_path() -> str | None:
+    """Return the path/executable for the first available Chromium-based browser."""
+    return _get_chromium_path()
 
 
 def get_supported_browsers() -> list[str]:
@@ -436,6 +474,24 @@ def find_existing_nlm_chrome(
             _clear_port_map(port)
 
     # No mapped instance found for this profile
+    return None, None
+
+
+def find_any_existing_cdp_browser(port_range: range = CDP_PORT_RANGE) -> tuple[int | None, str | None]:
+    """Find a single reachable CDP browser in our local port range.
+
+    This is a fallback for environments where the browser is already running
+    with remote debugging enabled but wasn't launched by this tool, so no
+    port-map entry exists yet.
+    """
+    matches: list[tuple[int, str]] = []
+    for port in port_range:
+        debugger_url = get_debugger_url(port, tries=1, timeout=2)
+        if debugger_url:
+            matches.append((port, debugger_url))
+
+    if len(matches) == 1:
+        return matches[0]
     return None, None
 
 
@@ -554,7 +610,7 @@ def get_debugger_url(
     """Get the WebSocket debugger URL for Chrome."""
     for attempt in range(tries):
         try:
-            response = httpx_client.get(f"http://localhost:{port}/json/version", timeout=timeout)
+            response = httpx_client.get(f"{_cdp_http_base(port)}/json/version", timeout=timeout)
             data = response.json()
             return _normalize_ws_url(data.get("webSocketDebuggerUrl"))
         except Exception:
@@ -607,7 +663,7 @@ def find_or_create_notebooklm_page_by_cdp_url(cdp_http_url: str) -> dict | None:
 
 def find_or_create_notebooklm_page(port: int = CDP_DEFAULT_PORT) -> dict | None:
     """Find an existing NotebookLM page or create a new one."""
-    return find_or_create_notebooklm_page_by_cdp_url(f"http://localhost:{port}")
+    return find_or_create_notebooklm_page_by_cdp_url(_cdp_http_base(port))
 
 
 def execute_cdp_command(
@@ -819,6 +875,8 @@ def extract_cookies_via_cdp(
     existing_port, debugger_url = None, None
     if not clear_profile:
         existing_port, debugger_url = find_existing_nlm_chrome(profile_name=profile_name)
+        if not debugger_url:
+            existing_port, debugger_url = find_any_existing_cdp_browser()
 
     if existing_port:
         port = existing_port
@@ -858,16 +916,20 @@ def extract_cookies_via_cdp(
                 hint="Try 'nlm login --manual' to import cookies from a file.",
             )
 
-        # Non-Chrome browsers (Brave, Edge, etc.) may take longer to start,
-        # so allow up to 10 seconds for the CDP debugger to become available.
-        debugger_url = get_debugger_url(port, tries=10)
+        # Snap Chromium and some Chromium forks can take noticeably longer
+        # to expose CDP than the browser window itself takes to appear.
+        debugger_url = get_debugger_url(port, tries=30)
 
     if not debugger_url:
+        startup_error = _summarize_browser_startup_failure(_chrome_process)
+        hint = "Use 'nlm login --manual' to import cookies from a file."
+        if startup_error:
+            hint = f"{hint} Browser startup error: {startup_error}"
         raise AuthenticationError(
             message=f"Cannot connect to browser on port {port}",
-            hint="Use 'nlm login --manual' to import cookies from a file.",
+            hint=hint,
         )
-    result = extract_cookies_from_page(f"http://localhost:{port}", wait_for_login, login_timeout)
+    result = extract_cookies_from_page(_cdp_http_base(port), wait_for_login, login_timeout)
     result["reused_existing"] = reused_existing
     return result
 

@@ -116,6 +116,13 @@ def get_chrome_profile_dir(profile_name: str = "default") -> Path:
     return chrome_dir
 
 
+def get_firefox_profile_dir(profile_name: str = "default") -> Path:
+    """Get Firefox profile directory kept for backwards compatibility."""
+    firefox_dir = get_storage_dir() / "firefox-profiles" / profile_name
+    firefox_dir.mkdir(parents=True, exist_ok=True)
+    return firefox_dir
+
+
 def get_config_file() -> Path:
     """Get the config file path."""
     return get_storage_dir() / "config.toml"
@@ -339,7 +346,10 @@ class AuthConfig(BaseModel):
 
     browser: str = Field(
         default="auto",
-        description="Browser for auth: auto, chrome, arc, brave, edge, chromium, vivaldi, opera",
+        description=(
+            "Browser for auth: auto, chrome, arc, brave, edge, chromium, "
+            "vivaldi, opera"
+        ),
     )
     default_profile: str = Field(default="default", description="Default profile name")
 

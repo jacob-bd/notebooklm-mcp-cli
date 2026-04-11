@@ -21,7 +21,7 @@ nlm version {version}
 ```bash
 nlm login
 ```
-This opens NotebookLM in your browser (Chrome, Arc, Brave, Edge, or any Chromium-based browser) and extracts cookies automatically.
+This opens NotebookLM in your browser (Chrome, Arc, Brave, Edge, Chromium, or another supported Chromium-family browser) and extracts cookies automatically.
 Output on success: `✓ Successfully authenticated!`
 
 ### Check If Already Authenticated

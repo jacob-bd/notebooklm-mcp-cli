@@ -4,15 +4,16 @@ This guide explains how to authenticate with NotebookLM MCP and CLI.
 
 ## Overview
 
-NotebookLM uses browser cookies for authentication (there is no official API). The CLI/MCP extracts these cookies automatically via Chrome DevTools Protocol (CDP) from any Chromium-based browser.
+NotebookLM uses browser cookies for authentication (there is no official API). The CLI/MCP extracts these cookies automatically from a managed browser session:
+- Chromium-family browsers use Chrome DevTools Protocol (CDP)
 
-**Supported browsers** (in priority order): Google Chrome, Arc (macOS), Brave, Microsoft Edge, Chromium, Vivaldi, Opera.
+**Supported browsers**: Google Chrome, Arc (macOS), Brave, Microsoft Edge, Chromium, Vivaldi, Opera.
 
 **Two authentication methods are available:**
 
 | Method | Best For | Requires |
 |--------|----------|----------|
-| **Auto Mode** (default) | Most users | Any supported browser installed, browser closed |
+| **Auto Mode** (default) | Most users | Any supported Chromium-family browser installed |
 | **File Mode** (`--file`) | Complex setups, troubleshooting | Manual cookie extraction |
 
 ---
@@ -23,8 +24,8 @@ This method launches your browser automatically and extracts cookies after you l
 
 ### Prerequisites
 
-- A supported Chromium-based browser installed (Chrome, Arc, Brave, Edge, Chromium, Vivaldi, or Opera)
-- The browser must be **completely closed** before running
+- A supported browser installed (Chrome, Arc, Brave, Edge, Chromium, Vivaldi, or Opera)
+- Chromium-family browsers should be **completely closed** before running
 
 ### Steps
 
@@ -49,7 +50,7 @@ nlm login --devtools-timeout 15
 
 1. The first available supported browser is detected (or your preferred browser if configured)
 2. A dedicated browser profile is created for authentication
-3. The browser launches with remote debugging enabled
+3. The browser launches with the appropriate automation backend
 4. You log in to NotebookLM via the browser
 5. Cookies, CSRF token, and account email are extracted and cached
 6. The browser is closed automatically
@@ -75,7 +76,7 @@ The dedicated browser profile persists your Google login:
 - **First run:** You must log in to Google
 - **Future runs:** Already logged in, just extracts fresh cookies
 
-This profile is separate from your regular browser profile and includes no extensions.
+This profile is separate from your regular browser profile. Chromium profiles disable extensions.
 
 ---
 
