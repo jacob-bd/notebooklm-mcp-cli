@@ -12,6 +12,7 @@ Bundled inside the .mcpb extension and invoked via manifest.json:
 import os
 import platform
 import shutil
+import subprocess
 import sys
 
 
@@ -56,6 +57,25 @@ def _find_uvx() -> str | None:
     return None
 
 
+def _launch_server(uvx: str, args: list[str] | None = None) -> None:
+    """Launch the MCP server, preserving stdio for Claude Desktop."""
+    command = [uvx, "--from", "notebooklm-mcp-cli", "notebooklm-mcp", *(args or [])]
+
+    if platform.system() == "Windows":
+        # On Windows, replacing the current Python process can break the stdio
+        # handles Claude Desktop uses for the MCP transport.
+        result = subprocess.run(
+            command,
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            check=False,
+        )
+        sys.exit(result.returncode)
+
+    os.execvp(uvx, command)
+
+
 def main() -> None:
     """Find uvx and launch the NotebookLM MCP server."""
     uvx = _find_uvx()
@@ -70,8 +90,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Replace this process with the MCP server
-    os.execvp(uvx, [uvx, "--from", "notebooklm-mcp-cli", "notebooklm-mcp", *sys.argv[1:]])
+    _launch_server(uvx, sys.argv[1:])
 
 
 if __name__ == "__main__":

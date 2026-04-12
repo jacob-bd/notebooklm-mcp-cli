@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **API `poll_studio_status` bypassing auth recovery** — The core `poll_studio_status` helper function was making raw HTTP calls and dodging the standard `_call_rpc` pipeline. This caused it to immediately fail on `400 Bad Request` exceptions whenever the user's `build_label` or session tokens went stale. The polling function now correctly wraps its logic in `_call_rpc`, securing free auth recovery loops, retries, and unified debug capability during studio polling.
+- **Windows Claude Desktop `.mcpb` launcher disconnect (Issue #150)** — The bundled `run_server.py` launcher now keeps the MCP stdio transport attached on Windows by spawning `uvx --from notebooklm-mcp-cli notebooklm-mcp` with inherited standard streams instead of replacing the Python process with `os.execvp()`. This prevents Claude Desktop from disconnecting immediately after startup.
 
 ## [0.5.21] - 2026-04-11
 
