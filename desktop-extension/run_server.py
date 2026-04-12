@@ -12,6 +12,7 @@ Bundled inside the .mcpb extension and invoked via manifest.json:
 import os
 import platform
 import shutil
+import subprocess
 import sys
 
 
@@ -70,8 +71,12 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Replace this process with the MCP server
-    os.execvp(uvx, [uvx, "--from", "notebooklm-mcp-cli", "notebooklm-mcp", *sys.argv[1:]])
+    # Run the MCP server
+    cmd = [uvx, "--from", "notebooklm-mcp-cli", "notebooklm-mcp", *sys.argv[1:]]
+    try:
+        sys.exit(subprocess.run(cmd, check=False).returncode)
+    except KeyboardInterrupt:
+        sys.exit(130)
 
 
 if __name__ == "__main__":
