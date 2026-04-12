@@ -244,7 +244,8 @@ def coerce_list(
       - A single bare value    → ``'a'``
       - None                   → ``[]``
 
-    This helper normalizes all forms into ``list[item_type]``.
+    This helper normalizes all forms into ``list[item_type]`` while preserving
+    ``None`` as ``None`` for "use default / all" semantics.
     """
     converter = cast(Callable[[Any], R], item_type)
     if val is None:

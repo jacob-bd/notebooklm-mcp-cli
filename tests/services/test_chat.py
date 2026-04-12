@@ -70,7 +70,6 @@ class TestQuery:
             query_text="question",
             source_ids=["src-1"],
             conversation_id=None,
-            timeout=None,
         )
 
     def test_timeout_passed_through(self, mock_client):

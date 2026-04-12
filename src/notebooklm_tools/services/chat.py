@@ -104,7 +104,7 @@ def query(
             query_text=query_text,
             source_ids=source_ids,
             conversation_id=conversation_id,
-            timeout=cast(float, timeout),
+            **({"timeout": cast(float, timeout)} if timeout is not None else {}),
         )
     except QueryRejectedError as e:
         raise ServiceError(
