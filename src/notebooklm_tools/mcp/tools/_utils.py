@@ -242,7 +242,7 @@ def coerce_list(
       - A JSON string          → ``'["a","b"]'``
       - A comma-separated str  → ``'a,b,c'``
       - A single bare value    → ``'a'``
-      - None                   → ``[]``
+      - None                   → ``None``
 
     This helper normalizes all forms into ``list[item_type]`` while preserving
     ``None`` as ``None`` for "use default / all" semantics.
