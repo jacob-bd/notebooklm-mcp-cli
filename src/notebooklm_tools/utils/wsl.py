@@ -211,21 +211,42 @@ def launch_windows_chrome(
     # C:\Program Files\... -> /mnt/c/Program Files/...
     wsl_chrome = Path("/mnt/c") / chrome_path[3:].replace("\\", "/")
 
-    # Create a temp profile directory for clean Chrome instance
+    # Create a temp profile directory on the WINDOWS filesystem.
+    # Using WSL's /tmp causes "Profile error occurred" because Chrome
+    # struggles with UNC paths (\\wsl.localhost\...) for its profile dir.
     import tempfile
 
-    temp_dir = tempfile.mkdtemp(prefix="nlm-chrome-")
-    windows_temp = subprocess.run(
-        ["wslpath", "-w", temp_dir],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
+    try:
+        win_temp_base = subprocess.run(
+            ["powershell.exe", "-Command", "echo $env:TEMP"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        # Create a unique subdir name
+        import uuid
+
+        windows_temp = f"{win_temp_base}\\nlm-chrome-{uuid.uuid4().hex[:8]}"
+        # Convert to WSL path for cleanup tracking
+        temp_dir = subprocess.run(
+            ["wslpath", "-u", windows_temp],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except Exception:
+        # Fallback to WSL temp (may cause profile error but won't crash)
+        temp_dir = tempfile.mkdtemp(prefix="nlm-chrome-")
+        windows_temp = subprocess.run(
+            ["wslpath", "-w", temp_dir],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
 
     args = [
         str(wsl_chrome),
         f"--remote-debugging-port={port}",
-        "--remote-debugging-address=0.0.0.0",
         f"--user-data-dir={windows_temp}",  # CRITICAL: Fresh profile for separate instance
         "--no-first-run",
         "--no-default-browser-check",

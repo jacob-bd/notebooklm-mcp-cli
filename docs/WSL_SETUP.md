@@ -23,16 +23,26 @@ NotebookLM MCP now includes WSL2-aware authentication that:
 
 ### Chrome Remote Debugging Address
 
-The `--wsl` flag launches Chrome with `--remote-debugging-address=0.0.0.0`, which
-binds the DevTools Protocol to all network interfaces (not just localhost). This
-is necessary because WSL2 uses a virtual network bridge, and connections from
-WSL to Windows must traverse this virtual network.
+Chrome (v136+) ignores `--remote-debugging-address=0.0.0.0` and binds the
+DevTools Protocol to `127.0.0.1` only. Since WSL2 uses a virtual network
+bridge, a **netsh port proxy** is required to forward traffic from the WSL
+virtual network to Chrome's localhost listener.
+
+The `--wsl` flag launches Chrome on port **9223** (localhost) and connects
+via port **9222** (the proxy port accessible from WSL).
+
+**One-time setup** (run in an elevated PowerShell):
+```powershell
+netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9223 connectaddress=127.0.0.1
+```
 
 **Mitigations in place:**
 - **Windows Firewall**: Only connections from `LocalSubnet` (WSL virtual network)
   are allowed to reach port 9222
+- **Port proxy**: Only forwards to localhost:9223; Chrome is never exposed
+  directly on the network
 - **Temporary profiles**: Each Chrome instance uses a fresh, isolated profile
-  that is cleaned up after authentication
+  on the Windows filesystem that is cleaned up after authentication
 - **Short-lived**: Remote debugging is only active during the explicit `nlm login --wsl`
   command and terminated immediately after
 - **No external exposure**: The Windows Firewall rule prevents connections from
@@ -53,7 +63,23 @@ Download: https://www.google.com/chrome/
 
 **Important:** Before running `nlm login --wsl`, **close all Chrome windows** on Windows. Chrome's remote debugging requires a fresh instance.
 
-### 2. Authenticate
+### 2. Set up the port proxy (one-time)
+
+Chrome (v136+) only binds its debug port to localhost, so a Windows port proxy
+is needed to make it reachable from WSL.
+
+Run in an **elevated PowerShell** (Run as Administrator):
+
+```powershell
+netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9223 connectaddress=127.0.0.1
+```
+
+This persists across reboots. Verify with:
+```powershell
+netsh interface portproxy show v4tov4
+```
+
+### 3. Authenticate
 
 ```bash
 nlm login --wsl
@@ -62,14 +88,15 @@ nlm login --wsl
 This will:
 - Detect your Windows IP address from WSL
 - **Check Windows Firewall setup** (prompts with instructions)
-- Launch Chrome on Windows with remote debugging
+- Launch Chrome on Windows on port 9223 with remote debugging
+- Connect via the port proxy on port 9222
 - Open NotebookLM in Chrome
 - Wait for you to log in
 - Extract cookies automatically
 - Close Chrome
 - Save credentials to your profile
 
-### 3. Verify
+### 4. Verify
 
 ```bash
 nlm login --check
@@ -82,13 +109,14 @@ When you run `nlm login --wsl`:
 
 ```
 WSL Terminal
-    ↓  detects Windows host IP (from /etc/resolv.conf)
+    ↓  detects Windows host IP (from default gateway)
     ↓  launches /mnt/c/Program Files/Google/Chrome/Application/chrome.exe
 Windows Chrome
-    ↓  starts on 127.0.0.1:9222 (Windows side)
-    ↓  port accessible from WSL via Windows host IP
+    ↓  starts on 127.0.0.1:9223 (Windows side, localhost only)
+netsh portproxy
+    ↓  forwards 0.0.0.0:9222 → 127.0.0.1:9223
 WSL Auth Script
-    ↓  connects to http://172.x.x.x:9222
+    ↓  connects to http://172.x.x.x:9222 (via port proxy)
     ↓  opens notebooklm.google.com tab
     ↓  waits for login
     ↓  extracts cookies via CDP

@@ -268,6 +268,12 @@ def login_callback(
                 from notebooklm_tools.utils.wsl import DEFAULT_WSL_CDP_PORT
 
                 wsl_port = DEFAULT_WSL_CDP_PORT
+                # Chrome binds to localhost only (newer Chrome ignores
+                # --remote-debugging-address=0.0.0.0), so we launch it
+                # on a different port and rely on a netsh portproxy rule
+                # (listenport=wsl_port -> connectport=chrome_port) to
+                # bridge WSL traffic to localhost.
+                chrome_port = wsl_port + 1
                 windows_ip = get_windows_host_ip()
 
                 if not windows_ip:
@@ -278,8 +284,8 @@ def login_callback(
                 wsl_cdp_url = f"http://{windows_ip}:{wsl_port}"
 
                 console.print("[bold]WSL2 detected - launching Windows Chrome[/bold]")
-                console.print(f"[dim]Windows host: {windows_ip}:{wsl_port}[/dim]")
-                console.print("[dim]Chrome will bind to 0.0.0.0 to allow WSL connections[/dim]")
+                console.print(f"[dim]Windows host: {windows_ip}:{wsl_port} (proxy) -> localhost:{chrome_port} (Chrome)[/dim]")
+                console.print("[dim]Chrome binds to localhost; netsh portproxy bridges WSL[/dim]")
 
                 # Check Windows Firewall
 
@@ -314,7 +320,7 @@ def login_callback(
                 console.print()
 
                 try:
-                    chrome_process = launch_windows_chrome(wsl_port)
+                    chrome_process = launch_windows_chrome(chrome_port)
                     console.print(f"[dim]Chrome PID: {chrome_process.pid}[/dim]")
                 except RuntimeError as e:
                     console.print(f"[red]Error:[/red] {e}")
