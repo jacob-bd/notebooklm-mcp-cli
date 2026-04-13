@@ -755,13 +755,20 @@ def revise_artifact(
         formatted_error = (
             f"Google API error code {e.error_code} ({short_detail})" if short_detail else str(e)
         )
+        if e.error_code == 7:
+            hint = (
+                "Verify the artifact_id points to a completed slide deck in an editable "
+                "notebook you own. NotebookLM rejects revisions for view-only/shared decks."
+            )
+        else:
+            hint = (
+                "Verify the artifact_id points to a completed slide deck and retry. "
+                "If it still fails, NotebookLM is rejecting the revision request."
+            )
         raise ServiceError(
             f"Failed to revise slide deck: {formatted_error}",
             user_message=f"Failed to revise slide deck — {formatted_error}.",
-            hint=(
-                "Verify the artifact_id points to a completed slide deck and retry. "
-                "If it still fails, NotebookLM is rejecting the revision request."
-            ),
+            hint=hint,
         ) from e
     except Exception as e:
         raise ServiceError(

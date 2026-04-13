@@ -314,7 +314,8 @@ class TestReviseArtifact:
         assert "ReviseSlideDeckErrorDetail" in err.user_message
         assert "type.googleapis.com" not in err.user_message
         assert err.hint is not None
-        assert "artifact_id" in err.hint
+        assert "editable notebook you own" in err.hint
+        assert "view-only/shared decks" in err.hint
 
     def test_rpc_error_without_detail_type_preserves_original_message(self, mock_client):
         mock_client.revise_slide_deck.side_effect = RPCError(
@@ -332,6 +333,7 @@ class TestReviseArtifact:
         err = exc_info.value
         assert "PERMISSION_DENIED" in err.user_message
         assert err.hint is not None
+        assert "editable notebook you own" in err.hint
 
 
 class TestRenameArtifact:

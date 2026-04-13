@@ -16,7 +16,10 @@ def test_studio_revise_preserves_hint_on_service_error():
             side_effect=ServiceError(
                 "backend rejected revision",
                 user_message="Failed to revise slide deck — Google API error code 7 (PERMISSION_DENIED).",
-                hint="Verify the artifact_id points to a completed slide deck and retry.",
+                hint=(
+                    "Verify the artifact_id points to a completed slide deck in an editable "
+                    "notebook you own. NotebookLM rejects revisions for view-only/shared decks."
+                ),
             ),
         ),
     ):
@@ -29,4 +32,4 @@ def test_studio_revise_preserves_hint_on_service_error():
 
     assert result["status"] == "error"
     assert "PERMISSION_DENIED" in result["error"]
-    assert result["hint"] == "Verify the artifact_id points to a completed slide deck and retry."
+    assert "editable notebook you own" in result["hint"]

@@ -29,7 +29,10 @@ def test_slides_revise_surfaces_service_hint(runner):
             side_effect=ServiceError(
                 "backend rejected revision",
                 user_message="Failed to revise slide deck — Google API error code 7 (PERMISSION_DENIED).",
-                hint="Verify the artifact_id points to a completed slide deck and retry.",
+                hint=(
+                    "Verify the artifact_id points to a completed slide deck in an editable "
+                    "notebook you own. NotebookLM rejects revisions for view-only/shared decks."
+                ),
             ),
         ),
     ):
@@ -47,4 +50,5 @@ def test_slides_revise_surfaces_service_hint(runner):
     assert result.exit_code == 1
     assert "PERMISSION_DENIED" in result.output
     assert "Hint:" in result.output
-    assert "artifact_id points to a completed slide deck" in result.output
+    assert "editable" in result.output
+    assert "notebook you own" in result.output

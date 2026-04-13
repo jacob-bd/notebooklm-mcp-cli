@@ -245,7 +245,7 @@ class TestStudioMixinMethods:
 
     def test_revise_slide_deck_uses_normalized_failed_status(self):
         mixin = StudioMixin(cookies={"test": "cookie"}, csrf_token="test")
-        mixin._call_rpc = MagicMock(return_value=[["art-2", None, "Revised Deck", None, 4]])
+        mixin._call_rpc = MagicMock(return_value=[["art-2", "Revised Deck", 8, None, 4]])
 
         result = mixin.revise_slide_deck("art-1", [(0, "Tighten slide title")])
 

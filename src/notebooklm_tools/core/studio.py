@@ -605,7 +605,9 @@ class StudioMixin(BaseClient):
             artifact_data = result[0]
             if isinstance(artifact_data, list) and len(artifact_data) > 0:
                 new_artifact_id = artifact_data[0]
-                title = artifact_data[2] if len(artifact_data) > 2 else None
+                # Studio artifact payloads use index 1 for the title and index 2
+                # for the artifact type code. Reuse the same layout as status polling.
+                title = artifact_data[1] if len(artifact_data) > 1 else None
 
                 return {
                     "artifact_id": new_artifact_id,
