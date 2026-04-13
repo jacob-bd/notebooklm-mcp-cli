@@ -254,7 +254,7 @@ def studio_status(
         }
     except (ValidationError, ServiceError) as e:
         message = e.user_message if isinstance(e, ServiceError) else str(e)
-        return error_result(message)
+        return error_result(message, hint=getattr(e, "hint", None))
     except Exception as e:
         return error_result(str(e))
 
@@ -362,6 +362,6 @@ def studio_revise(
         }
     except (ValidationError, ServiceError) as e:
         message = e.user_message if isinstance(e, ServiceError) else str(e)
-        return error_result(message)
+        return error_result(message, hint=getattr(e, "hint", None))
     except Exception as e:
         return error_result(str(e))

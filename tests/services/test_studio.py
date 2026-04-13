@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from notebooklm_tools.core.errors import RPCError
 from notebooklm_tools.services.errors import ServiceError, ValidationError
 from notebooklm_tools.services.studio import (
     VALID_ARTIFACT_TYPES,
@@ -14,6 +15,7 @@ from notebooklm_tools.services.studio import (
     get_studio_status,
     rename_artifact,
     resolve_code,
+    revise_artifact,
     validate_artifact_type,
 )
 
@@ -286,6 +288,32 @@ class TestGetStudioStatus:
         mock_client.poll_studio_status.side_effect = RuntimeError("fail")
         with pytest.raises(ServiceError, match="Failed to poll"):
             get_studio_status(mock_client, "nb-1")
+
+
+class TestReviseArtifact:
+    """Test revise_artifact function."""
+
+    def test_rpc_error_preserves_structured_detail_and_hint(self, mock_client):
+        mock_client.revise_slide_deck.side_effect = RPCError(
+            "API error (code 7): PERMISSION_DENIED",
+            error_code=7,
+            detail_type="type.googleapis.com/notebooklm.ReviseSlideDeckErrorDetail",
+            detail_data=[1],
+        )
+
+        with pytest.raises(ServiceError) as exc_info:
+            revise_artifact(
+                mock_client,
+                "art-123",
+                [{"slide": 1, "instruction": "Tighten the title"}],
+            )
+
+        err = exc_info.value
+        assert "PERMISSION_DENIED" in err.user_message
+        assert "code 7" in err.user_message
+        assert "ReviseSlideDeckErrorDetail" in err.user_message
+        assert err.hint is not None
+        assert "artifact_id" in err.hint
 
 
 class TestRenameArtifact:

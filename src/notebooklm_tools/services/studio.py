@@ -16,6 +16,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from notebooklm_tools.core import constants
+from notebooklm_tools.core.errors import RPCError
 
 from .errors import ServiceError, ValidationError
 
@@ -749,6 +750,17 @@ def revise_artifact(
             artifact_id=artifact_id,
             slide_instructions=converted,
         )
+    except RPCError as e:
+        short_detail = e.detail_type.rsplit(".", 1)[-1] if e.detail_type else ""
+        detail_suffix = f" ({short_detail})" if short_detail else ""
+        raise ServiceError(
+            f"Failed to revise slide deck: {e}{detail_suffix}",
+            user_message=f"Failed to revise slide deck — {e}{detail_suffix}.",
+            hint=(
+                "Verify the artifact_id points to a completed slide deck and retry. "
+                "If it still fails, NotebookLM is rejecting the revision request."
+            ),
+        ) from e
     except Exception as e:
         raise ServiceError(
             f"Failed to revise slide deck: {e}",

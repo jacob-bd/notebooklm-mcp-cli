@@ -185,9 +185,7 @@ def studio_rename(
             result = studio_service.rename_artifact(client, artifact_id, new_title)
         console.print(f"[green]✓[/green] Renamed artifact to: {result['new_title']}")
     except (ValidationError, ServiceError) as e:
-        msg = e.user_message if isinstance(e, ServiceError) else str(e)
-        console.print(f"[red]Error:[/red] {msg}")
-        raise typer.Exit(1) from e
+        handle_error(e)
     except NLMError as e:
         handle_error(e, json_output=locals().get("json_output", False))
 
@@ -510,9 +508,7 @@ def revise_slides(
         console.print(f"  Original: {artifact_id}")
         console.print("\n[dim]Run 'nlm studio status <notebook-id>' to check progress.[/dim]")
     except (ValidationError, ServiceError) as e:
-        msg = e.user_message if isinstance(e, ServiceError) else str(e)
-        console.print(f"[red]Error:[/red] {msg}")
-        raise typer.Exit(1) from e
+        handle_error(e)
     except NLMError as e:
         handle_error(e, json_output=locals().get("json_output", False))
 
