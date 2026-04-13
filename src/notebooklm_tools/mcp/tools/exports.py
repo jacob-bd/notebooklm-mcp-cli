@@ -1,10 +1,8 @@
 """Export tools - Export artifacts to Google Docs/Sheets."""
 
-from typing import Any
-
 from ...services import ServiceError
 from ...services import exports as export_service
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -13,7 +11,7 @@ def export_artifact(
     artifact_id: str,
     export_type: str,
     title: str | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Export a NotebookLM artifact to Google Docs or Sheets.
 
     Supports:
@@ -37,11 +35,8 @@ def export_artifact(
             export_type=export_type,
             title=title,
         )
-        return result
+        return dict(result)
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

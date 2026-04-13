@@ -367,8 +367,12 @@ class JsonFormatter(Formatter):
                     "visual_style_prompt": art.get("visual_style_prompt", None),
                 }
                 if full:
+                    # Always include title/url with defaults for backward compat
+                    item["title"] = art.get("title", "")
+                    item["url"] = art.get("url", "")
+                    # Add rich fields dynamically when present
                     for field in self.ARTIFACT_FULL_FIELDS:
-                        if field in art:
+                        if field not in ("title", "url") and field in art:
                             item[field] = art.get(field)
             else:
                 item = {
@@ -381,10 +385,15 @@ class JsonFormatter(Formatter):
                     "visual_style_prompt": getattr(art, "visual_style_prompt", None),
                 }
                 if full:
+                    # Always include title/url with defaults for backward compat
+                    item["title"] = getattr(art, "title", "")
+                    item["url"] = getattr(art, "url", "")
+                    # Add rich fields dynamically when present
                     for field in self.ARTIFACT_FULL_FIELDS:
-                        value = getattr(art, field, None)
-                        if value is not None or hasattr(art, field):
-                            item[field] = value
+                        if field not in ("title", "url"):
+                            value = getattr(art, field, None)
+                            if value is not None or hasattr(art, field):
+                                item[field] = value
             data.append(item)
         print_json(data)
 

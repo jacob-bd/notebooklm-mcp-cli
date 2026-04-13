@@ -1,21 +1,21 @@
 """Download tools - Consolidated download_artifact for all artifact types."""
 
-from typing import Any
+import asyncio
 
-from ...services import ServiceError
+from ...services import ServiceError, ValidationError
 from ...services import downloads as downloads_service
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
-async def download_artifact(
+def download_artifact(
     notebook_id: str,
     artifact_type: str,
     output_path: str,
     artifact_id: str | None = None,
     output_format: str = "json",
     slide_deck_format: str = "pdf",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Download any NotebookLM artifact to a file.
 
     Unified download tool replacing 9 separate download tools.
@@ -49,20 +49,24 @@ async def download_artifact(
     """
     try:
         client = get_client()
-        result = await downloads_service.download_async(
-            client,
-            notebook_id,
-            artifact_type,
-            output_path,
-            artifact_id=artifact_id,
-            output_format=output_format,
-            slide_deck_format=slide_deck_format,
+        download_result = asyncio.run(
+            downloads_service.download_async(
+                client,
+                notebook_id,
+                artifact_type,
+                output_path,
+                artifact_id=artifact_id,
+                output_format=output_format,
+                slide_deck_format=slide_deck_format,
+            )
         )
-        return {"status": "success", **result}
+        return {"status": "success", **download_result}
+    except ValidationError as e:
+        message = str(e)
+        if message.startswith("Unknown artifact type "):
+            message = message.replace("Unknown artifact type", "Unknown artifact_type", 1)
+        return error_result(message)
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

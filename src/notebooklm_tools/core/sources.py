@@ -15,9 +15,11 @@ This mixin provides source-related operations:
 HTTP resumable upload implementation adapted from notebooklm-py.
 """
 
+import textwrap
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import httpx
 
@@ -26,6 +28,10 @@ from .base import SOURCE_ADD_TIMEOUT, BaseClient
 from .errors import RPCError
 from .exceptions import FileUploadError, FileValidationError
 from .retry import execute_with_retry
+
+
+class _NotebookLookupProtocol(Protocol):
+    def get_notebook(self, notebook_id: str) -> Any: ...
 
 
 class SourceMixin(BaseClient):
@@ -65,7 +71,7 @@ class SourceMixin(BaseClient):
         source_id: str,
         timeout: float = 120.0,
         poll_interval: float = 3.0,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Wait for a source to finish processing.
 
         Polls the source status until it becomes READY or times out.
@@ -131,10 +137,12 @@ class SourceMixin(BaseClient):
         if result and isinstance(result, list) and len(result) > 0:
             inner = result[0] if result else []
             if isinstance(inner, list) and len(inner) >= 2:
-                return inner[1]  # true = fresh, false = stale
+                freshness = inner[1]
+                if isinstance(freshness, bool):
+                    return freshness
         return None
 
-    def sync_drive_source(self, source_id: str) -> dict | None:
+    def sync_drive_source(self, source_id: str) -> dict[str, Any] | None:
         """Sync a Drive source with the latest content from Google Drive."""
         # Sync params: [null, ["source_id"], [2]]
         params = [None, [source_id], [2]]
@@ -163,7 +171,9 @@ class SourceMixin(BaseClient):
                 }
         return None
 
-    def rename_source(self, notebook_id: str, source_id: str, new_title: str) -> dict | None:
+    def rename_source(
+        self, notebook_id: str, source_id: str, new_title: str
+    ) -> dict[str, Any] | None:
         """Rename a source in a notebook.
 
         Args:
@@ -227,9 +237,10 @@ class SourceMixin(BaseClient):
         # Response is typically [] on success
         return result is not None
 
-    def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict]:
+    def get_notebook_sources_with_types(self, notebook_id: str) -> list[dict[str, Any]]:
         """Get all sources from a notebook with their type information."""
-        result = self.get_notebook(notebook_id)
+        notebook_client = cast(_NotebookLookupProtocol, self)
+        result = notebook_client.get_notebook(notebook_id)
 
         sources = []
         # The notebook data is wrapped in an outer array
@@ -299,7 +310,7 @@ class SourceMixin(BaseClient):
         url: str,
         wait: bool = False,
         wait_timeout: float = 120.0,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Add a URL (website or YouTube) as a source to a notebook.
 
         Supports automatic fallback between legacy (izAoDd) and new (ozz5Z)
@@ -401,7 +412,7 @@ class SourceMixin(BaseClient):
         )
 
     @staticmethod
-    def _parse_source_result(result: Any) -> dict | None:
+    def _parse_source_result(result: Any) -> dict[str, Any] | None:
         """Parse the source creation result from either v1 or v2 RPC response."""
         if result and isinstance(result, list) and len(result) > 0:
             source_list = result[0] if result else []
@@ -420,7 +431,7 @@ class SourceMixin(BaseClient):
         urls: list[str],
         wait: bool = False,
         wait_timeout: float = 120.0,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Add multiple URLs as sources to a notebook in a single request.
 
         Supports automatic fallback between legacy (izAoDd) and new (ozz5Z)
@@ -521,9 +532,9 @@ class SourceMixin(BaseClient):
         )
 
     @staticmethod
-    def _parse_source_results(result: Any) -> list[dict]:
+    def _parse_source_results(result: Any) -> list[dict[str, Any]]:
         """Parse multiple source creation results from either v1 or v2 RPC response."""
-        source_results = []
+        source_results: list[dict[str, Any]] = []
         if result and isinstance(result, list) and len(result) > 0:
             source_list = result[0] if result else []
             if isinstance(source_list, list):
@@ -541,7 +552,7 @@ class SourceMixin(BaseClient):
         title: str = "Pasted Text",
         wait: bool = False,
         wait_timeout: float = 120.0,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Add pasted text as a source to a notebook.
 
         Args:
@@ -551,25 +562,48 @@ class SourceMixin(BaseClient):
             wait: If True, block until source is ready
             wait_timeout: Seconds to wait if wait=True (default 120)
         """
-        # Text source params structure:
-        source_data = [None, [title, text], None, 2, None, None, None, None, None, None, 1]
-        params = [
-            [source_data],
-            notebook_id,
-            [2],
-            [1, None, None, None, None, None, None, None, None, None, [1]],
-        ]
         source_path = f"/notebook/{notebook_id}"
+        normalized_text = textwrap.dedent(text).strip()
+        text_variants = [text]
+        if normalized_text and normalized_text != text:
+            text_variants.append(normalized_text)
 
-        try:
-            result = self._call_rpc(
-                self.RPC_ADD_SOURCE, params, path=source_path, timeout=SOURCE_ADD_TIMEOUT
-            )
-        except httpx.TimeoutException:
-            return {
-                "status": "timeout",
-                "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s.",
-            }
+        result = None
+        for text_payload in text_variants:
+            source_data = [
+                None,
+                [title, text_payload],
+                None,
+                2,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                1,
+            ]
+            params = [
+                [source_data],
+                notebook_id,
+                [2],
+                [1, None, None, None, None, None, None, None, None, None, [1]],
+            ]
+            try:
+                result = self._call_rpc(
+                    self.RPC_ADD_SOURCE, params, path=source_path, timeout=SOURCE_ADD_TIMEOUT
+                )
+                break
+            except httpx.TimeoutException:
+                return {
+                    "status": "timeout",
+                    "message": f"Operation timed out after {SOURCE_ADD_TIMEOUT}s.",
+                }
+            except RPCError as e:
+                if e.error_code == 9 and text_payload != normalized_text:
+                    time.sleep(0.25)
+                    continue
+                raise
 
         source_result = None
         if result and isinstance(result, list) and len(result) > 0:
@@ -581,7 +615,9 @@ class SourceMixin(BaseClient):
                 source_result = {"id": source_id, "title": source_title}
 
         if source_result and wait:
-            return self.wait_for_source_ready(notebook_id, source_result["id"], wait_timeout)
+            source_id = source_result.get("id")
+            if isinstance(source_id, str):
+                return self.wait_for_source_ready(notebook_id, source_id, wait_timeout)
 
         return source_result
 
@@ -593,7 +629,7 @@ class SourceMixin(BaseClient):
         mime_type: str = "application/vnd.google-apps.document",
         wait: bool = False,
         wait_timeout: float = 120.0,
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """Add a Google Drive document as a source to a notebook.
 
         Args:
@@ -645,7 +681,9 @@ class SourceMixin(BaseClient):
                 source_result = {"id": source_id, "title": source_title}
 
         if source_result and wait:
-            return self.wait_for_source_ready(notebook_id, source_result["id"], wait_timeout)
+            source_id = source_result.get("id")
+            if isinstance(source_id, str):
+                return self.wait_for_source_ready(notebook_id, source_id, wait_timeout)
 
         return source_result
 
@@ -676,7 +714,7 @@ class SourceMixin(BaseClient):
         result = self._call_rpc(self.RPC_ADD_SOURCE_FILE, params, path=source_path, timeout=60.0)
 
         # Extract SOURCE_ID from nested response
-        def extract_id(data):
+        def extract_id(data: Any) -> str | None:
             if isinstance(data, str):
                 return data
             if isinstance(data, list) and len(data) > 0:
@@ -740,7 +778,7 @@ class SourceMixin(BaseClient):
 
         with httpx.Client(timeout=60.0, cookies=cookies) as client:
 
-            def _do_request():
+            def _do_request() -> httpx.Response:
                 resp = client.post(url, headers=headers, content=body)
                 resp.raise_for_status()
                 return resp
@@ -751,7 +789,7 @@ class SourceMixin(BaseClient):
             if not upload_url:
                 raise FileUploadError(filename, "Failed to get upload URL from response headers")
 
-            return upload_url
+            return cast(str, upload_url)
 
     def _upload_file_streaming(self, upload_url: str, file_path: Path) -> None:
         """Stream upload file content to the resumable upload URL.
@@ -779,14 +817,14 @@ class SourceMixin(BaseClient):
         }
 
         # Generator for streaming file content
-        def file_stream():
+        def file_stream() -> Iterator[bytes]:
             with open(file_path, "rb") as f:
                 while chunk := f.read(65536):  # 64KB chunks
                     yield chunk
 
         with httpx.Client(timeout=300.0, cookies=cookies) as client:
 
-            def _do_upload():
+            def _do_upload() -> httpx.Response:
                 resp = client.post(upload_url, headers=headers, content=file_stream())
                 resp.raise_for_status()
                 return resp
@@ -799,7 +837,7 @@ class SourceMixin(BaseClient):
         file_path: str | Path,
         wait: bool = False,
         wait_timeout: float = 120.0,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Add a local file as a source using resumable upload.
 
         Uses Google's resumable upload protocol:
@@ -978,7 +1016,7 @@ class SourceMixin(BaseClient):
             "char_count": len(content),
         }
 
-    def _extract_all_text(self, data: list) -> list[str]:
+    def _extract_all_text(self, data: list[Any]) -> list[str]:
         """Recursively extract all text strings from nested arrays."""
         texts = []
         for item in data:

@@ -1,10 +1,8 @@
 """Notes tools - Note management with consolidated note tool."""
 
-from typing import Any
-
 from ...services import ServiceError, ValidationError
 from ...services import notes as notes_service
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -15,7 +13,7 @@ def note(
     content: str | None = None,
     title: str | None = None,
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Manage notes in a notebook. Unified tool for all note operations.
 
     Supports: create, list, update, delete
@@ -53,34 +51,33 @@ def note(
         client = get_client()
 
         if action == "create":
-            result = notes_service.create_note(client, notebook_id, content or "", title)
-            return {"status": "success", "action": "create", **result}
+            create_result = notes_service.create_note(client, notebook_id, content or "", title)
+            return {"status": "success", "action": "create", **create_result}
 
         elif action == "list":
-            result = notes_service.list_notes(client, notebook_id)
-            return {"status": "success", "action": "list", **result}
+            list_result = notes_service.list_notes(client, notebook_id)
+            return {"status": "success", "action": "list", **list_result}
 
         elif action == "update":
             if not note_id:
-                return {"status": "error", "error": "note_id is required for action='update'"}
-            result = notes_service.update_note(client, notebook_id, note_id, content, title)
-            return {"status": "success", "action": "update", **result}
+                return error_result("note_id is required for action='update'")
+            update_result = notes_service.update_note(client, notebook_id, note_id, content, title)
+            return {"status": "success", "action": "update", **update_result}
 
         elif action == "delete":
             if not note_id:
-                return {"status": "error", "error": "note_id is required for action='delete'"}
+                return error_result("note_id is required for action='delete'")
             if not confirm:
-                return {
-                    "status": "error",
-                    "error": "Deletion not confirmed. Set confirm=True after user approval.",
-                    "warning": "This action is IRREVERSIBLE.",
-                }
-            result = notes_service.delete_note(client, notebook_id, note_id)
-            return {"status": "success", "action": "delete", **result}
+                return error_result(
+                    "Deletion not confirmed. Set confirm=True after user approval.",
+                    warning="This action is IRREVERSIBLE.",
+                )
+            delete_result = notes_service.delete_note(client, notebook_id, note_id)
+            return {"status": "success", "action": "delete", **delete_result}
 
-        return {"status": "error", "error": f"Unhandled action: {action}"}
+        return error_result(f"Unhandled action: {action}")
 
     except (ServiceError, ValidationError) as e:
-        return {"status": "error", "error": e.user_message}
+        return error_result(e.user_message)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

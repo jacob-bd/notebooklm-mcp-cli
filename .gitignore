@@ -72,3 +72,24 @@ run*.notebooklm-py-analysis/
 *.mcpb
 test_pr_61.py
 notebooklm-mcp-*.mcpb
+
+# Agent config (local, not project source)
+.agent/
+.agents/
+
+# Claude / AI assistant settings
+.claude_settings.json
+
+# GitHub CLI temp files
+.gh_comment_body.md
+
+# PR diff/patch scratch files
+*.diff
+*.patch
+
+# Internal planning docs
+docs/plans/
+docs/superpowers/
+
+# uv lockfile (library, not app)
+uv.lock

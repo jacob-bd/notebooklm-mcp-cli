@@ -1,8 +1,9 @@
 """Downloads service — shared validation and routing for artifact downloads."""
 
-from collections.abc import Callable
+import inspect
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 from ..core.client import NotebookLMClient
 from .errors import ServiceError, ValidationError
@@ -274,6 +275,24 @@ def _dispatch_sync(
         )
 
 
+async def _resolve_download_result(result: str | Awaitable[str]) -> str:
+    """Await async download results but also accept synchronous implementations."""
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+def _get_download_method(
+    client: NotebookLMClient,
+    async_name: str,
+    sync_name: str,
+) -> Callable[..., Any]:
+    """Prefer explicit async client aliases when the concrete client class provides them."""
+    if getattr(type(client), async_name, None) is not None:
+        return cast(Callable[..., Any], getattr(client, async_name))
+    return cast(Callable[..., Any], getattr(client, sync_name))
+
+
 async def _dispatch_async(
     client: NotebookLMClient,
     notebook_id: str,
@@ -287,54 +306,84 @@ async def _dispatch_async(
     """Route to the correct async client method."""
     # Non-streaming types (sync client methods callable from async context)
     if artifact_type == "report":
-        return client.download_report(notebook_id, output_path, artifact_id)
+        return await _resolve_download_result(
+            client.download_report(notebook_id, output_path, artifact_id)
+        )
     elif artifact_type == "mind_map":
-        return client.download_mind_map(notebook_id, output_path, artifact_id)
+        return await _resolve_download_result(
+            client.download_mind_map(notebook_id, output_path, artifact_id)
+        )
     elif artifact_type == "data_table":
-        return client.download_data_table(notebook_id, output_path, artifact_id)
+        return await _resolve_download_result(
+            client.download_data_table(notebook_id, output_path, artifact_id)
+        )
     # Streaming types (async client methods)
     elif artifact_type == "audio":
-        return await client.download_audio(
-            notebook_id,
-            output_path,
-            artifact_id,
-            progress_callback=progress_callback,
+        download_audio = _get_download_method(client, "download_audio_async", "download_audio")
+        return await _resolve_download_result(
+            download_audio(
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
         )
     elif artifact_type == "video":
-        return await client.download_video(
-            notebook_id,
-            output_path,
-            artifact_id,
-            progress_callback=progress_callback,
+        download_video = _get_download_method(client, "download_video_async", "download_video")
+        return await _resolve_download_result(
+            download_video(
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
         )
     elif artifact_type == "slide_deck":
-        return await client.download_slide_deck(
-            notebook_id,
-            output_path,
-            artifact_id,
-            progress_callback=progress_callback,
-            file_format=slide_deck_format,
+        download_slide_deck = _get_download_method(
+            client, "download_slide_deck_async", "download_slide_deck"
+        )
+        return await _resolve_download_result(
+            download_slide_deck(
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+                file_format=slide_deck_format,
+            )
         )
     elif artifact_type == "infographic":
-        return await client.download_infographic(
-            notebook_id,
-            output_path,
-            artifact_id,
-            progress_callback=progress_callback,
+        download_infographic = _get_download_method(
+            client, "download_infographic_async", "download_infographic"
+        )
+        return await _resolve_download_result(
+            download_infographic(
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
         )
     elif artifact_type == "quiz":
-        return await client.download_quiz(
-            notebook_id,
-            output_path,
-            artifact_id,
-            output_format,
+        download_quiz = _get_download_method(client, "download_quiz_async", "download_quiz")
+        return await _resolve_download_result(
+            download_quiz(
+                notebook_id,
+                output_path,
+                artifact_id,
+                output_format,
+            )
         )
     elif artifact_type == "flashcards":
-        return await client.download_flashcards(
-            notebook_id,
-            output_path,
-            artifact_id,
-            output_format,
+        download_flashcards = _get_download_method(
+            client, "download_flashcards_async", "download_flashcards"
+        )
+        return await _resolve_download_result(
+            download_flashcards(
+                notebook_id,
+                output_path,
+                artifact_id,
+                output_format,
+            )
         )
     else:
         raise ValidationError(

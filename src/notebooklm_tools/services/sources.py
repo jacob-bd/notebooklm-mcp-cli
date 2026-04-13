@@ -1,7 +1,7 @@
 """Sources service — shared validation and logic for source management."""
 
 import urllib.parse
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from ..core.client import NotebookLMClient
 from .errors import ServiceError, ValidationError
@@ -74,7 +74,7 @@ class DriveListResult(TypedDict):
     """Result of listing Drive sources."""
 
     drive_sources: list[DriveSourceInfo]
-    other_sources: list[dict]
+    other_sources: list[dict[str, object | None]]
     drive_count: int
     stale_count: int
 
@@ -209,7 +209,7 @@ def add_source(
 
 
 def _extract_result(
-    result: dict | None,
+    result: dict[str, Any] | None,
     source_type: str,
     fallback_title: str,
 ) -> AddSourceResult:
@@ -229,7 +229,7 @@ def _extract_result(
 def add_sources(
     client: NotebookLMClient,
     notebook_id: str,
-    sources: list[dict],
+    sources: list[dict[str, Any]],
     *,
     wait: bool = False,
     wait_timeout: float = 120.0,
@@ -360,10 +360,10 @@ def list_drive_sources(
         ) from e
 
     drive_sources: list[DriveSourceInfo] = []
-    other_sources: list[dict] = []
+    other_sources: list[dict[str, object | None]] = []
 
     for source in sources:
-        source_info: dict = {
+        source_info: dict[str, object | None] = {
             "id": source.get("id"),
             "title": source.get("title"),
             "type": source.get("source_type_name"),
@@ -371,9 +371,17 @@ def list_drive_sources(
 
         if source.get("can_sync"):
             is_fresh = client.check_source_freshness(source["id"])
-            source_info["stale"] = not is_fresh if is_fresh is not None else None
-            source_info["drive_doc_id"] = source.get("drive_doc_id")
-            drive_sources.append(source_info)
+            source_id = source.get("id")
+            source_title = source.get("title")
+            source_type_name = source.get("source_type_name")
+            drive_info: DriveSourceInfo = {
+                "id": source_id if isinstance(source_id, str) else "",
+                "title": source_title if isinstance(source_title, str) else "",
+                "type": source_type_name if isinstance(source_type_name, str) else "unknown",
+                "stale": (not is_fresh) if is_fresh is not None else None,
+                "drive_doc_id": source.get("drive_doc_id"),
+            }
+            drive_sources.append(drive_info)
         else:
             other_sources.append(source_info)
 

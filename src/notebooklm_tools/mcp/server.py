@@ -62,7 +62,7 @@ async def health_check(request: Request) -> JSONResponse:
     )
 
 
-def _register_tools():
+def _register_tools() -> None:
     """Import and register all tools from the modular tools package."""
     # Import all tool modules to populate the registry
     from .tools import (  # noqa: F401
@@ -92,7 +92,7 @@ def _register_tools():
 _register_tools()
 
 
-def main():
+def main() -> None:
     """Run the MCP server.
 
     Supports multiple transports:

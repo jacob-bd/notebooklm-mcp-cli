@@ -1,14 +1,12 @@
 """Notebook tools - Notebook management operations."""
 
-from typing import Any
-
 from ...services import ServiceError
 from ...services import notebooks as notebooks_service
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
-def notebook_list(max_results: int = 100) -> dict[str, Any]:
+def notebook_list(max_results: int = 100) -> ResultDict:
     """List all notebooks.
 
     Args:
@@ -19,16 +17,13 @@ def notebook_list(max_results: int = 100) -> dict[str, Any]:
         result = notebooks_service.list_notebooks(client, max_results)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def notebook_get(notebook_id: str) -> dict[str, Any]:
+def notebook_get(notebook_id: str) -> ResultDict:
     """Get notebook details with sources.
 
     Args:
@@ -48,16 +43,13 @@ def notebook_get(notebook_id: str) -> dict[str, Any]:
             "sources": result["sources"],
         }
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def notebook_describe(notebook_id: str) -> dict[str, Any]:
+def notebook_describe(notebook_id: str) -> ResultDict:
     """Get AI-generated notebook summary with suggested topics.
 
     Args:
@@ -70,16 +62,13 @@ def notebook_describe(notebook_id: str) -> dict[str, Any]:
         result = notebooks_service.describe_notebook(client, notebook_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def notebook_create(title: str = "") -> dict[str, Any]:
+def notebook_create(title: str = "") -> ResultDict:
     """Create a new notebook.
 
     Args:
@@ -99,16 +88,13 @@ def notebook_create(title: str = "") -> dict[str, Any]:
             "message": result["message"],
         }
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def notebook_rename(notebook_id: str, new_title: str) -> dict[str, Any]:
+def notebook_rename(notebook_id: str, new_title: str) -> ResultDict:
     """Rename a notebook.
 
     Args:
@@ -120,16 +106,13 @@ def notebook_rename(notebook_id: str, new_title: str) -> dict[str, Any]:
         result = notebooks_service.rename_notebook(client, notebook_id, new_title)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def notebook_delete(notebook_id: str, confirm: bool = False) -> dict[str, Any]:
+def notebook_delete(notebook_id: str, confirm: bool = False) -> ResultDict:
     """Delete notebook permanently. IRREVERSIBLE. Requires confirm=True.
 
     Args:
@@ -149,9 +132,6 @@ def notebook_delete(notebook_id: str, confirm: bool = False) -> dict[str, Any]:
         result = notebooks_service.delete_notebook(client, notebook_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

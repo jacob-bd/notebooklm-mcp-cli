@@ -1,10 +1,15 @@
 """Source tools - Source management with consolidated source_add."""
 
-from typing import Any
-
-from ...services import ServiceError
+from ...services import ServiceError, ValidationError
 from ...services import sources as sources_service
-from ._utils import coerce_list, get_client, logged_tool
+from ._utils import ResultDict, coerce_list, error_result, get_client, logged_tool
+
+
+def _normalize_source_validation_error(message: str) -> str:
+    """Preserve historical MCP wire wording for invalid source_type."""
+    if message.startswith("Unknown source type "):
+        return message.replace("Unknown source type", "Unknown source_type", 1)
+    return message
 
 
 @logged_tool()
@@ -20,7 +25,7 @@ def source_add(
     doc_type: str = "doc",
     wait: bool = False,
     wait_timeout: float = 120.0,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Add a source to a notebook. Unified tool for all source types.
 
     Supports: url, text, drive, file
@@ -52,21 +57,21 @@ def source_add(
         client = get_client()
 
         # Coerce list params from MCP clients (may arrive as strings)
-        urls = coerce_list(urls)
+        coerced_urls: list[str] | None = coerce_list(urls)
 
         # Bulk URL add: when urls list is provided
-        if urls and source_type == "url":
-            result = sources_service.add_sources(
+        if coerced_urls and source_type == "url":
+            bulk_result = sources_service.add_sources(
                 client,
                 notebook_id,
-                [{"source_type": "url", "url": u} for u in urls],
+                [{"source_type": "url", "url": url_value} for url_value in coerced_urls],
                 wait=wait,
                 wait_timeout=wait_timeout,
             )
-            return {"status": "success", "ready": wait, **result}
+            return {"status": "success", "ready": wait, **bulk_result}
 
         # Single source add (existing behavior)
-        result = sources_service.add_source(
+        single_result = sources_service.add_source(
             client,
             notebook_id,
             source_type,
@@ -79,18 +84,17 @@ def source_add(
             wait=wait,
             wait_timeout=wait_timeout,
         )
-        return {"status": "success", "ready": wait, **result}
+        return {"status": "success", "ready": wait, **single_result}
+    except ValidationError as e:
+        return error_result(_normalize_source_validation_error(str(e)))
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def source_list_drive(notebook_id: str) -> dict[str, Any]:
+def source_list_drive(notebook_id: str) -> ResultDict:
     """List sources with types and Drive freshness status.
 
     Use before source_sync_drive to identify stale sources.
@@ -103,16 +107,13 @@ def source_list_drive(notebook_id: str) -> dict[str, Any]:
         result = sources_service.list_drive_sources(client, notebook_id)
         return {"status": "success", "notebook_id": notebook_id, **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def source_sync_drive(source_ids: list[str], confirm: bool = False) -> dict[str, Any]:
+def source_sync_drive(source_ids: list[str], confirm: bool = False) -> ResultDict:
     """Sync Drive sources with latest content. Requires confirm=True.
 
     Call source_list_drive first to identify stale sources.
@@ -122,35 +123,33 @@ def source_sync_drive(source_ids: list[str], confirm: bool = False) -> dict[str,
         confirm: Must be True after user approval
     """
     if not confirm:
-        return {
-            "status": "error",
-            "error": "Sync not confirmed. Set confirm=True after user approval.",
-            "hint": "Call source_list_drive first to see which sources are stale.",
-        }
+        return error_result(
+            "Sync not confirmed. Set confirm=True after user approval.",
+            hint="Call source_list_drive first to see which sources are stale.",
+        )
 
     try:
         client = get_client()
         # Coerce list params from MCP clients (may arrive as strings)
-        source_ids = coerce_list(source_ids)
-        results = sources_service.sync_drive_sources(client, source_ids)
-        synced_count = sum(1 for r in results if r.get("synced"))
+        coerced_source_ids: list[str] | None = coerce_list(source_ids)
+        if not coerced_source_ids:
+            return error_result("source_ids is required.")
+        sync_results = sources_service.sync_drive_sources(client, coerced_source_ids)
+        synced_count = sum(1 for item in sync_results if item.get("synced"))
         return {
             "status": "success",
             "synced_count": synced_count,
-            "total_count": len(source_ids),
-            "results": results,
+            "total_count": len(coerced_source_ids),
+            "results": sync_results,
         }
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def source_rename(notebook_id: str, source_id: str, new_title: str) -> dict[str, Any]:
+def source_rename(notebook_id: str, source_id: str, new_title: str) -> ResultDict:
     """Rename a source in a notebook.
 
     Args:
@@ -163,12 +162,9 @@ def source_rename(notebook_id: str, source_id: str, new_title: str) -> dict[str,
         result = sources_service.rename_source(client, notebook_id, source_id, new_title)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -176,7 +172,7 @@ def source_delete(
     source_id: str | None = None,
     source_ids: list[str] | None = None,
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Delete source(s) permanently. IRREVERSIBLE. Requires confirm=True.
 
     Args:
@@ -185,30 +181,29 @@ def source_delete(
         confirm: Must be True after user approval
     """
     if not confirm:
-        return {
-            "status": "error",
-            "error": "Deletion not confirmed. Set confirm=True after user approval.",
-            "warning": "This action is IRREVERSIBLE.",
-        }
+        return error_result(
+            "Deletion not confirmed. Set confirm=True after user approval.",
+            warning="This action is IRREVERSIBLE.",
+        )
 
     try:
         client = get_client()
 
         # Coerce list params from MCP clients (may arrive as strings)
-        source_ids = coerce_list(source_ids)
+        coerced_source_ids: list[str] | None = coerce_list(source_ids)
 
         # Bulk delete: when source_ids list is provided
-        if source_ids:
-            sources_service.delete_sources(client, source_ids)
+        if coerced_source_ids:
+            sources_service.delete_sources(client, coerced_source_ids)
             return {
                 "status": "success",
-                "message": f"{len(source_ids)} sources have been permanently deleted.",
-                "deleted_count": len(source_ids),
+                "message": f"{len(coerced_source_ids)} sources have been permanently deleted.",
+                "deleted_count": len(coerced_source_ids),
             }
 
         # Single delete (existing behavior)
         if not source_id:
-            return {"status": "error", "error": "Either source_id or source_ids is required."}
+            return error_result("Either source_id or source_ids is required.")
 
         sources_service.delete_source(client, source_id)
         return {
@@ -216,16 +211,13 @@ def source_delete(
             "message": f"Source {source_id} has been permanently deleted.",
         }
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def source_describe(source_id: str) -> dict[str, Any]:
+def source_describe(source_id: str) -> ResultDict:
     """Get AI-generated source summary with keyword chips.
 
     Args:
@@ -238,16 +230,13 @@ def source_describe(source_id: str) -> dict[str, Any]:
         result = sources_service.describe_source(client, source_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
-def source_get_content(source_id: str) -> dict[str, Any]:
+def source_get_content(source_id: str) -> ResultDict:
     """Get raw text content of a source (no AI processing).
 
     Returns the original indexed text from PDFs, web pages, pasted text,
@@ -263,9 +252,6 @@ def source_get_content(source_id: str) -> dict[str, Any]:
         result = sources_service.get_source_content(client, source_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

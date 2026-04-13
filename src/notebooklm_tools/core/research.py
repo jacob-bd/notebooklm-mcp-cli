@@ -100,18 +100,9 @@ class ResearchMixin(BaseClient):
         Returns:
             Dict with status, sources, and summary when complete
         """
-        client = self._get_client()
-
         # Poll params: [null, null, "notebook_id"]
         params = [None, None, notebook_id]
-        body = self._build_request_body(self.RPC_POLL_RESEARCH, params)
-        url = self._build_url(self.RPC_POLL_RESEARCH, f"/notebook/{notebook_id}")
-
-        response = client.post(url, content=body)
-        response.raise_for_status()
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_POLL_RESEARCH)
+        result = self._call_rpc(self.RPC_POLL_RESEARCH, params, f"/notebook/{notebook_id}")
 
         if not result or not isinstance(result, list) or len(result) == 0:
             return {"status": "no_research", "message": "No active research found"}
@@ -299,8 +290,6 @@ class ResearchMixin(BaseClient):
         if not sources:
             return []
 
-        client = self._get_client()
-
         # Build source array for import
         source_array = []
 
@@ -374,14 +363,9 @@ class ResearchMixin(BaseClient):
             source_array.append(source_data)
 
         params = [None, [1], task_id, notebook_id, source_array]
-        body = self._build_request_body(self.RPC_IMPORT_RESEARCH, params)
-        url = self._build_url(self.RPC_IMPORT_RESEARCH, f"/notebook/{notebook_id}")
-
-        response = client.post(url, content=body, timeout=timeout)
-        response.raise_for_status()
-
-        parsed = self._parse_response(response.text)
-        result = self._extract_rpc_result(parsed, self.RPC_IMPORT_RESEARCH)
+        result = self._call_rpc(
+            self.RPC_IMPORT_RESEARCH, params, f"/notebook/{notebook_id}", timeout=timeout
+        )
 
         imported_sources = []
         if result and isinstance(result, list):

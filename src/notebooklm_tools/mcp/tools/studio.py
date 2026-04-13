@@ -5,7 +5,14 @@ from typing import Any
 from ...services import ServiceError, ValidationError
 from ...services import studio as studio_service
 from ...utils.config import get_base_url, get_default_language
-from ._utils import coerce_list, get_client, logged_tool
+from ._utils import ResultDict, coerce_list, error_result, get_client, logged_tool
+
+
+def _normalize_studio_validation_error(message: str) -> str:
+    """Preserve historical MCP wire wording for invalid artifact_type."""
+    if message.startswith("Unknown artifact type "):
+        return message.replace("Unknown artifact type", "Unknown artifact_type", 1)
+    return message
 
 
 @logged_tool()
@@ -40,7 +47,7 @@ def studio_create(
     title: str = "Mind Map",
     # Data table options
     description: str = "",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Create any NotebookLM studio artifact. Unified creation tool.
 
     Supports: audio, video, infographic, slide_deck, report, flashcards, quiz, data_table, mind_map
@@ -89,7 +96,7 @@ def studio_create(
     try:
         studio_service.validate_artifact_type(artifact_type)
     except ValidationError as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(_normalize_studio_validation_error(str(e)))
 
     # Confirmation check — show settings preview
     if not confirm:
@@ -163,18 +170,22 @@ def studio_create(
             title=title,
             description=description,
         )
+        artifact_status = result.get("status")
+        result_payload = dict(result)
+        if artifact_status is not None:
+            result_payload["artifact_status"] = artifact_status
+            result_payload.pop("status", None)
         return {
+            **result_payload,
             "status": "success",
             "notebook_url": f"{get_base_url()}/notebook/{notebook_id}",
-            **result,
         }
-    except (ValidationError, ServiceError) as e:
-        return {
-            "status": "error",
-            "error": e.user_message if isinstance(e, ServiceError) else str(e),
-        }
+    except ValidationError as e:
+        return error_result(_normalize_studio_validation_error(str(e)))
+    except ServiceError as e:
+        return error_result(e.user_message)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -183,7 +194,7 @@ def studio_status(
     action: str = "status",
     artifact_id: str | None = None,
     new_title: str | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Check studio content generation status and get URLs, or rename an artifact.
 
     Args:
@@ -217,33 +228,35 @@ def studio_status(
         client = get_client()
 
         if action == "rename":
-            result = studio_service.rename_artifact(client, artifact_id, new_title)
+            if not artifact_id:
+                return error_result("artifact_id is required for action=rename")
+            if not new_title:
+                return error_result("new_title is required for action=rename")
+            rename_result = studio_service.rename_artifact(client, artifact_id, new_title)
             return {
                 "status": "success",
                 "action": "rename",
-                "message": f"Artifact renamed to '{result['new_title']}'",
-                **result,
+                "message": f"Artifact renamed to '{rename_result['new_title']}'",
+                **rename_result,
             }
 
-        result = studio_service.get_studio_status(client, notebook_id)
+        status_result = studio_service.get_studio_status(client, notebook_id)
         return {
             "status": "success",
             "notebook_id": notebook_id,
             "summary": {
-                "total": result["total"],
-                "completed": result["completed"],
-                "in_progress": result["in_progress"],
+                "total": status_result["total"],
+                "completed": status_result["completed"],
+                "in_progress": status_result["in_progress"],
             },
-            "artifacts": result["artifacts"],
+            "artifacts": status_result["artifacts"],
             "notebook_url": f"{get_base_url()}/notebook/{notebook_id}",
         }
     except (ValidationError, ServiceError) as e:
-        return {
-            "status": "error",
-            "error": e.user_message if isinstance(e, ServiceError) else str(e),
-        }
+        message = e.user_message if isinstance(e, ServiceError) else str(e)
+        return error_result(message)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -251,7 +264,7 @@ def studio_delete(
     notebook_id: str,
     artifact_id: str,
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Delete studio artifact. IRREVERSIBLE. Requires confirm=True.
 
     Args:
@@ -260,14 +273,15 @@ def studio_delete(
         confirm: Must be True after user approval
     """
     if not confirm:
-        return {
-            "status": "error",
-            "error": "Deletion not confirmed. Set confirm=True after user approval.",
-            "warning": "This action is IRREVERSIBLE.",
-            "hint": "Call studio_status first to list artifacts with their IDs.",
-        }
+        return error_result(
+            "Deletion not confirmed. Set confirm=True after user approval.",
+            warning="This action is IRREVERSIBLE.",
+            hint="Call studio_status first to list artifacts with their IDs.",
+        )
 
     try:
+        if not artifact_id:
+            return error_result("artifact_id is required.")
         client = get_client()
         studio_service.delete_artifact(client, artifact_id, notebook_id)
         return {
@@ -276,21 +290,18 @@ def studio_delete(
             "notebook_id": notebook_id,
         }
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
 def studio_revise(
     notebook_id: str,
     artifact_id: str,
-    slide_instructions: list,
+    slide_instructions: list[studio_service.SlideInstruction],
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Revise individual slides in an existing slide deck. Creates a NEW artifact.
 
     Only slide decks support revision. The original artifact is not modified.
@@ -334,6 +345,10 @@ def studio_revise(
         }
 
     try:
+        if not artifact_id:
+            return error_result("artifact_id is required.")
+        if not slide_instructions:
+            return error_result("slide_instructions must not be empty.")
         client = get_client()
         result = studio_service.revise_artifact(
             client,
@@ -346,9 +361,7 @@ def studio_revise(
             **result,
         }
     except (ValidationError, ServiceError) as e:
-        return {
-            "status": "error",
-            "error": e.user_message if isinstance(e, ServiceError) else str(e),
-        }
+        message = e.user_message if isinstance(e, ServiceError) else str(e)
+        return error_result(message)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

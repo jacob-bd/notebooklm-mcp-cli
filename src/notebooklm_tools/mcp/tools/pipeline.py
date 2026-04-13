@@ -1,10 +1,8 @@
 """Pipeline tools — consolidated tool for multi-step notebook workflows."""
 
-from typing import Any
-
 from ...services import pipeline as pipeline_service
 from ...services.errors import ServiceError
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -13,7 +11,7 @@ def pipeline(
     notebook_id: str | None = None,
     pipeline_name: str | None = None,
     input_url: str = "",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Manage and execute multi-step notebook pipelines.
 
     Actions:
@@ -31,9 +29,9 @@ def pipeline(
             if not notebook_id:
                 return {"status": "error", "error": "notebook_id is required for action=run"}
             if not pipeline_name:
-                return {"status": "error", "error": "pipeline_name is required for action=run"}
+                return error_result("pipeline_name is required for action=run")
             client = get_client()
-            variables = {}
+            variables: dict[str, str] = {}
             if input_url:
                 variables["INPUT_URL"] = input_url
             result = pipeline_service.pipeline_run(client, notebook_id, pipeline_name, variables)
@@ -48,12 +46,9 @@ def pipeline(
             }
 
         else:
-            return {"status": "error", "error": f"Unknown action: {action}. Use: run, list"}
+            return error_result(f"Unknown action: {action}. Use: run, list")
 
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

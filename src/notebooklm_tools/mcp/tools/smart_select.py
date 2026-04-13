@@ -1,10 +1,8 @@
 """Smart select tools — consolidated tag management and notebook selection."""
 
-from typing import Any
-
 from ...services import smart_select as smart_select_service
 from ...services.errors import ServiceError
-from ._utils import logged_tool
+from ._utils import ResultDict, error_result, logged_tool
 
 
 @logged_tool()
@@ -14,7 +12,7 @@ def tag(
     tags: str | None = None,
     notebook_title: str = "",
     query: str | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Manage notebook tags and find relevant notebooks by tag matching.
 
     Actions:
@@ -33,31 +31,35 @@ def tag(
     try:
         if action == "add":
             if not notebook_id:
-                return {"status": "error", "error": "notebook_id is required for action=add"}
+                return error_result("notebook_id is required for action=add")
             if not tags:
-                return {"status": "error", "error": "tags parameter is required for action=add"}
+                return error_result("tags parameter is required for action=add")
             tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-            result = smart_select_service.tag_add(notebook_id, tag_list, notebook_title)
-            return {"status": "success", "notebook_id": notebook_id, "tags": result["tags"]}
+            add_result = smart_select_service.tag_add(notebook_id, tag_list, notebook_title)
+            return {"status": "success", "notebook_id": notebook_id, "tags": add_result["tags"]}
 
         elif action == "remove":
             if not notebook_id:
-                return {"status": "error", "error": "notebook_id is required for action=remove"}
+                return error_result("notebook_id is required for action=remove")
             if not tags:
-                return {"status": "error", "error": "tags parameter is required for action=remove"}
+                return error_result("tags parameter is required for action=remove")
             tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-            result = smart_select_service.tag_remove(notebook_id, tag_list)
-            return {"status": "success", "notebook_id": notebook_id, "tags": result["tags"]}
+            remove_result = smart_select_service.tag_remove(notebook_id, tag_list)
+            return {
+                "status": "success",
+                "notebook_id": notebook_id,
+                "tags": remove_result["tags"],
+            }
 
         elif action == "list":
-            result = smart_select_service.tag_list()
-            return {"status": "success", **result}
+            list_result = smart_select_service.tag_list()
+            return {"status": "success", **list_result}
 
         elif action == "select":
             if not query:
-                return {"status": "error", "error": "query parameter is required for action=select"}
-            result = smart_select_service.smart_select(query)
-            return {"status": "success", **result}
+                return error_result("query parameter is required for action=select")
+            select_result = smart_select_service.smart_select(query)
+            return {"status": "success", **select_result}
 
         else:
             return {
@@ -66,9 +68,6 @@ def tag(
             }
 
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

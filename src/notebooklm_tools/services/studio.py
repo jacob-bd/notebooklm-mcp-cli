@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, TypedDict
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from notebooklm_tools.core import constants
 
@@ -73,6 +74,15 @@ class ArtifactInfo(TypedDict, total=False):
     status: str
     created_at: str | None
     url: str | None
+    custom_instructions: str | None
+    visual_style_prompt: str | None
+    audio_url: str | None
+    video_url: str | None
+    infographic_url: str | None
+    slide_deck_url: str | None
+    report_content: str | None
+    flashcard_count: int | None
+    duration_seconds: int | None
 
 
 class StatusResult(TypedDict):
@@ -99,6 +109,13 @@ class ReviseResult(TypedDict):
     original_artifact_id: str  # original artifact UUID
     status: str  # "in_progress"
     message: str
+
+
+class SlideInstruction(TypedDict):
+    """Instruction for revising a single slide."""
+
+    slide: int
+    instruction: str
 
 
 # ---------- Validation ----------
@@ -168,7 +185,7 @@ def _resolve_source_ids(
     return ids
 
 
-def _validate_result(result: dict | None, artifact_type: str) -> str:
+def _validate_result(result: Mapping[str, object] | None, artifact_type: str) -> str:
     """Validate creation result has an artifact_id.
 
     Returns:
@@ -177,7 +194,8 @@ def _validate_result(result: dict | None, artifact_type: str) -> str:
     Raises:
         ServiceError: If result is missing or has no artifact_id
     """
-    if not result or not result.get("artifact_id"):
+    artifact_id = result.get("artifact_id") if result else None
+    if not isinstance(artifact_id, str) or not artifact_id:
         raise ServiceError(
             f"NotebookLM rejected {artifact_type.replace('_', ' ')} creation — no artifact returned.",
             user_message=(
@@ -185,7 +203,7 @@ def _validate_result(result: dict | None, artifact_type: str) -> str:
                 f"Try again later or create from NotebookLM UI for diagnosis."
             ),
         )
-    return result["artifact_id"]
+    return artifact_id
 
 
 def _normalize_video_style(
@@ -300,6 +318,7 @@ def create_artifact(
         )
 
         artifact_id = _validate_result(result, artifact_type)
+        assert result is not None
         return CreateResult(
             artifact_type=artifact_type,
             artifact_id=artifact_id,
@@ -322,8 +341,8 @@ def _dispatch_create(
     notebook_id: str,
     artifact_type: str,
     source_ids: list[str],
-    **kwargs,
-) -> dict | None:
+    **kwargs: Any,
+) -> dict[str, Any] | None:
     """Dispatch to the appropriate client method based on artifact_type."""
 
     if artifact_type == "audio":
@@ -514,24 +533,89 @@ def get_studio_status(
         ServiceError: If polling fails
     """
     try:
-        artifacts = client.poll_studio_status(notebook_id)
+        raw_artifacts = client.poll_studio_status(notebook_id)
     except Exception as e:
         raise ServiceError(
             f"Failed to poll studio status: {e}",
             user_message="Could not retrieve studio status.",
         ) from e
 
+    artifacts: list[ArtifactInfo] = []
+    for raw_artifact in raw_artifacts:
+        artifact: ArtifactInfo = {
+            "type": raw_artifact.get("type")
+            if isinstance(raw_artifact.get("type"), str)
+            else "unknown",
+            "title": raw_artifact.get("title")
+            if isinstance(raw_artifact.get("title"), str)
+            else "",
+            "status": raw_artifact.get("status")
+            if isinstance(raw_artifact.get("status"), str)
+            else "unknown",
+            "created_at": raw_artifact.get("created_at")
+            if isinstance(raw_artifact.get("created_at"), str)
+            or raw_artifact.get("created_at") is None
+            else str(raw_artifact.get("created_at")),
+            "custom_instructions": raw_artifact.get("custom_instructions")
+            if isinstance(raw_artifact.get("custom_instructions"), str)
+            or raw_artifact.get("custom_instructions") is None
+            else str(raw_artifact.get("custom_instructions")),
+            "visual_style_prompt": raw_artifact.get("visual_style_prompt")
+            if isinstance(raw_artifact.get("visual_style_prompt"), str)
+            or raw_artifact.get("visual_style_prompt") is None
+            else str(raw_artifact.get("visual_style_prompt")),
+            "audio_url": raw_artifact.get("audio_url")
+            if isinstance(raw_artifact.get("audio_url"), str)
+            or raw_artifact.get("audio_url") is None
+            else None,
+            "video_url": raw_artifact.get("video_url")
+            if isinstance(raw_artifact.get("video_url"), str)
+            or raw_artifact.get("video_url") is None
+            else None,
+            "infographic_url": raw_artifact.get("infographic_url")
+            if isinstance(raw_artifact.get("infographic_url"), str)
+            or raw_artifact.get("infographic_url") is None
+            else None,
+            "slide_deck_url": raw_artifact.get("slide_deck_url")
+            if isinstance(raw_artifact.get("slide_deck_url"), str)
+            or raw_artifact.get("slide_deck_url") is None
+            else None,
+            "report_content": raw_artifact.get("report_content")
+            if isinstance(raw_artifact.get("report_content"), str)
+            or raw_artifact.get("report_content") is None
+            else None,
+            "flashcard_count": raw_artifact.get("flashcard_count")
+            if isinstance(raw_artifact.get("flashcard_count"), int)
+            or raw_artifact.get("flashcard_count") is None
+            else None,
+            "duration_seconds": raw_artifact.get("duration_seconds")
+            if isinstance(raw_artifact.get("duration_seconds"), int)
+            or raw_artifact.get("duration_seconds") is None
+            else None,
+        }
+        artifact_id = raw_artifact.get("artifact_id")
+        if isinstance(artifact_id, str):
+            artifact["artifact_id"] = artifact_id
+        artifacts.append(artifact)
+
     # Also fetch mind maps
     try:
         mind_maps = client.list_mind_maps(notebook_id)
         for mm in mind_maps:
+            mind_map_id = mm.get("mind_map_id")
+            if not isinstance(mind_map_id, str):
+                continue
+            mind_map_title = mm.get("title")
+            mind_map_created_at = mm.get("created_at")
             artifacts.append(
                 {
-                    "artifact_id": mm.get("mind_map_id"),
+                    "artifact_id": mind_map_id,
                     "type": "mind_map",
-                    "title": mm.get("title", "Mind Map"),
+                    "title": mind_map_title if isinstance(mind_map_title, str) else "Mind Map",
                     "status": "completed",
-                    "created_at": mm.get("created_at"),
+                    "created_at": mind_map_created_at
+                    if isinstance(mind_map_created_at, str) or mind_map_created_at is None
+                    else str(mind_map_created_at),
                 }
             )
     except Exception:
@@ -622,7 +706,7 @@ def delete_artifact(
 def revise_artifact(
     client: NotebookLMClient,
     artifact_id: str,
-    slide_instructions: list[dict],
+    slide_instructions: Sequence[SlideInstruction],
 ) -> ReviseResult:
     """Revise a slide deck with per-slide instructions.
 

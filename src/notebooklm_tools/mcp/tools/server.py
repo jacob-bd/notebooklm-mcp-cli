@@ -2,7 +2,7 @@
 
 import json
 import urllib.request
-from typing import Any
+from typing import Any, cast
 
 from notebooklm_tools import __version__
 
@@ -19,10 +19,15 @@ def _get_latest_pypi_version() -> str | None:
         url = "https://pypi.org/pypi/notebooklm-mcp-cli/json"
         req = urllib.request.Request(url, headers={"User-Agent": "notebooklm-mcp-cli"})
         with urllib.request.urlopen(req, timeout=2) as response:
-            data = json.loads(response.read().decode())
-            return data.get("info", {}).get("version")
+            data = cast(dict[str, Any], json.loads(response.read().decode()))
+            info = data.get("info")
+            if isinstance(info, dict):
+                version = info.get("version")
+                if isinstance(version, str):
+                    return version
     except Exception:
         return None
+    return None
 
 
 def _compare_versions(current: str, latest: str) -> bool:

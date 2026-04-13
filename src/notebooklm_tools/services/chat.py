@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from ..core.client import NotebookLMClient
 from ..core.conversation import QueryRejectedError
@@ -17,20 +17,30 @@ VALID_GOALS = ("default", "learning_guide", "custom")
 VALID_RESPONSE_LENGTHS = ("default", "longer", "shorter")
 MAX_PROMPT_LENGTH = 10_000
 
-# --- Async query state management ---
-_QUERY_TTL_SECONDS = 600  # 10 minutes
-_pending_queries: dict[str, dict[str, Any]] = {}
-_pending_lock = threading.Lock()
-
 
 class QueryResult(TypedDict):
     """Result of a notebook query."""
 
     answer: str
     conversation_id: str | None
-    sources_used: list
-    citations: dict
-    references: list
+    sources_used: list[Any]
+    citations: dict[str, Any]
+    references: list[dict[str, Any]]
+
+
+class PendingQueryState(TypedDict):
+    """Tracked state for an async query."""
+
+    status: str
+    result: QueryResult | None
+    error: str | None
+    created_at: float
+
+
+# --- Async query state management ---
+_QUERY_TTL_SECONDS = 600  # 10 minutes
+_pending_queries: dict[str, PendingQueryState] = {}
+_pending_lock = threading.Lock()
 
 
 class ConfigureResult(TypedDict):
@@ -94,7 +104,7 @@ def query(
             query_text=query_text,
             source_ids=source_ids,
             conversation_id=conversation_id,
-            timeout=timeout,
+            **({"timeout": cast(float, timeout)} if timeout is not None else {}),
         )
     except QueryRejectedError as e:
         raise ServiceError(

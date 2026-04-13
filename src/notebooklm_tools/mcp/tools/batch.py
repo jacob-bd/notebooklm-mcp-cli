@@ -1,10 +1,8 @@
 """Batch operations — consolidated tool for multi-notebook actions."""
 
-from typing import Any
-
 from ...services import batch as batch_service
 from ...services.errors import ServiceError
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -18,7 +16,7 @@ def batch(
     tags: str | None = None,
     all: bool = False,
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Perform batch operations across multiple notebooks.
 
     Actions:
@@ -47,7 +45,7 @@ def batch(
 
         if action == "query":
             if not query:
-                return {"status": "error", "error": "query parameter is required for action=query"}
+                return error_result("query parameter is required for action=query")
             client = get_client()
             result = batch_service.batch_query(client, query, names, tag_list, all)
             return {"status": "success", **result}
@@ -96,9 +94,6 @@ def batch(
             }
 
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

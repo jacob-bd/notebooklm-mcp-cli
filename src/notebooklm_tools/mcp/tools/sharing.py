@@ -1,14 +1,12 @@
 """Sharing tools - Notebook sharing and collaboration."""
 
-from typing import Any
-
 from ...services import ServiceError
 from ...services import sharing as sharing_service
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
-def notebook_share_status(notebook_id: str) -> dict[str, Any]:
+def notebook_share_status(notebook_id: str) -> ResultDict:
     """Get current sharing settings and collaborators.
 
     Args:
@@ -21,19 +19,16 @@ def notebook_share_status(notebook_id: str) -> dict[str, Any]:
         result = sharing_service.get_share_status(client, notebook_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
 def notebook_share_public(
     notebook_id: str,
     is_public: bool = True,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Enable or disable public link access.
 
     Args:
@@ -47,12 +42,9 @@ def notebook_share_public(
         result = sharing_service.set_public_access(client, notebook_id, is_public)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -60,7 +52,7 @@ def notebook_share_invite(
     notebook_id: str,
     email: str,
     role: str = "viewer",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Invite a collaborator by email.
 
     Args:
@@ -75,20 +67,17 @@ def notebook_share_invite(
         result = sharing_service.invite_collaborator(client, notebook_id, email, role)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
 def notebook_share_batch(
     notebook_id: str,
-    recipients: list[dict],
+    recipients: list[dict[str, str]],
     confirm: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Invite multiple collaborators in a single request.
 
     Args:
@@ -110,9 +99,6 @@ def notebook_share_batch(
         result = sharing_service.invite_collaborators_bulk(client, notebook_id, recipients)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

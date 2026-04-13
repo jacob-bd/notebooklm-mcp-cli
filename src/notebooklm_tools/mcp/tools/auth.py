@@ -2,13 +2,19 @@
 
 import time
 import urllib.parse
-from typing import Any
 
-from ._utils import ESSENTIAL_COOKIES, get_client, logged_tool, reset_client
+from ._utils import (
+    ESSENTIAL_COOKIES,
+    ResultDict,
+    error_result,
+    get_client,
+    logged_tool,
+    reset_client,
+)
 
 
 @logged_tool()
-def refresh_auth() -> dict[str, Any]:
+def refresh_auth() -> ResultDict:
     """Reload auth tokens from disk or run headless re-authentication.
 
     Call this after running `nlm login` to pick up new tokens,
@@ -50,7 +56,7 @@ def refresh_auth() -> dict[str, Any]:
             "error": "No cached tokens found. Run 'nlm login' to authenticate.",
         }
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -60,7 +66,7 @@ def save_auth_tokens(
     session_id: str = "",
     request_body: str = "",
     request_url: str = "",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Save NotebookLM cookies (FALLBACK method - try `nlm login` first!).
 
     IMPORTANT FOR AI ASSISTANTS:
@@ -143,4 +149,4 @@ def save_auth_tokens(
             "extracted_session_id": bool(session_id),
         }
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

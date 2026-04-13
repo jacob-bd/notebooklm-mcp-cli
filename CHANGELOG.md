@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.23] - 2026-04-12
+
+### Added
+- **Restore NotebookLM MCP and CLI runtime contracts (PR #152)** — Fixed MCP tool boundary registration, normalized error payloads, and restored download/upload sync-compatible entrypoints. Thank you **@sickn33** for this immense contribution!
+
+### Fixed
+- **Windows: Server crashes immediately on startup (Issue #150)** — `os.execvp` fails on Windows. Replaced with `subprocess.run` to prevent immediate crashes on Windows 11 during server startup via the `.mcpb` bundle. Added explicit `stdin=sys.stdin`, `stdout=sys.stdout`, and `stderr=sys.stderr` to ensure the JSON-RPC stdio channel between Claude Desktop and the server remains properly connected across platforms. Thanks to **@m3saros** for diagnosing the root cause and providing the exact fix!
+
+## [0.5.22] - 2026-04-11
+
+### Added
+- **Studio status code parity and normalization (PR #149)** — Consolidated the extraction logic for studio artifacts into a centralized `_normalize_studio_status` routine. The `JsonFormatter` has been updated to dynamically populate returned JSON payloads with newly available artifact fields (such as `audio_url`, `video_url`, `slide_deck_url`, `flashcard_count`) without breaking the shape expected by downstream consumers. Huge thanks to **@sickn33** for this amazing contribution!
+
+### Fixed
+- **API `poll_studio_status` bypassing auth recovery** — The core `poll_studio_status` helper function was making raw HTTP calls and dodging the standard `_call_rpc` pipeline. This caused it to immediately fail on `400 Bad Request` exceptions whenever the user's `build_label` or session tokens went stale. The polling function now correctly wraps its logic in `_call_rpc`, securing free auth recovery loops, retries, and unified debug capability during studio polling.
+
 ## [0.5.21] - 2026-04-11
 
 ### Fixed

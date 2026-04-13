@@ -7,6 +7,10 @@ and adds all domain-specific operations (notebooks, sources, studio, etc.).
 Internal API. See CLAUDE.md for full documentation.
 """
 
+import asyncio
+from collections.abc import Callable
+from typing import Any
+
 from . import constants
 from .conversation import ConversationMixin
 from .download import DownloadMixin
@@ -138,6 +142,230 @@ class NotebookLMClient(
     # - list_notes
     # - update_note
     # - delete_note
+
+    def upload_file(
+        self,
+        notebook_id: str,
+        file_path: str,
+        wait: bool = False,
+        wait_timeout: float = 120.0,
+    ) -> bool:
+        """Backward-compatible upload alias expected by live E2E/browser tests."""
+        result: dict[str, Any] = self.add_file(
+            notebook_id,
+            file_path,
+            wait=wait,
+            wait_timeout=wait_timeout,
+        )
+        return bool(result.get("id"))
+
+    def download_audio(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download audio via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_audio(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
+        )
+
+    async def download_audio_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download audio asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_audio(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            progress_callback=progress_callback,
+        )
+
+    def download_video(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download video via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_video(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
+        )
+
+    async def download_video_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download video asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_video(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            progress_callback=progress_callback,
+        )
+
+    def download_infographic(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download infographic via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_infographic(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+            )
+        )
+
+    async def download_infographic_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> str:
+        """Download infographic asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_infographic(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            progress_callback=progress_callback,
+        )
+
+    def download_slide_deck(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+        file_format: str = "pdf",
+    ) -> str:
+        """Download slide deck via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_slide_deck(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                progress_callback=progress_callback,
+                file_format=file_format,
+            )
+        )
+
+    async def download_slide_deck_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+        file_format: str = "pdf",
+    ) -> str:
+        """Download slide deck asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_slide_deck(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            progress_callback=progress_callback,
+            file_format=file_format,
+        )
+
+    def download_quiz(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "json",
+    ) -> str:
+        """Download quiz via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_quiz(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                output_format,
+            )
+        )
+
+    async def download_quiz_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "json",
+    ) -> str:
+        """Download quiz asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_quiz(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            output_format,
+        )
+
+    def download_flashcards(  # type: ignore[override]
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "json",
+    ) -> str:
+        """Download flashcards via synchronous compatibility wrapper."""
+        return asyncio.run(
+            DownloadMixin.download_flashcards(
+                self,
+                notebook_id,
+                output_path,
+                artifact_id,
+                output_format,
+            )
+        )
+
+    async def download_flashcards_async(
+        self,
+        notebook_id: str,
+        output_path: str,
+        artifact_id: str | None = None,
+        output_format: str = "json",
+    ) -> str:
+        """Download flashcards asynchronously for service/CLI callers."""
+        return await DownloadMixin.download_flashcards(
+            self,
+            notebook_id,
+            output_path,
+            artifact_id,
+            output_format,
+        )
 
     def close(self) -> None:
         """Close the HTTP client."""

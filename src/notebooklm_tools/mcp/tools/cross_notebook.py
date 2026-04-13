@@ -1,10 +1,8 @@
 """Cross-notebook tools — query across multiple notebooks."""
 
-from typing import Any
-
 from ...services import cross_notebook as cross_notebook_service
 from ...services.errors import ServiceError
-from ._utils import get_client, logged_tool
+from ._utils import ResultDict, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -13,7 +11,7 @@ def cross_notebook_query(
     notebook_names: str | None = None,
     tags: str | None = None,
     all: bool = False,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Query multiple notebooks and get aggregated answers with per-notebook citations.
 
     Specify notebooks by name, by tags, or use all=True for all notebooks.
@@ -45,9 +43,6 @@ def cross_notebook_query(
 
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

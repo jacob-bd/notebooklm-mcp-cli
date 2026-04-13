@@ -1,10 +1,8 @@
 """Research tools - Deep research and source discovery."""
 
-from typing import Any
-
 from ...services import ServiceError
 from ...services import research as research_service
-from ._utils import coerce_list, get_client, logged_tool
+from ._utils import ResultDict, coerce_list, error_result, get_client, logged_tool
 
 
 @logged_tool()
@@ -14,7 +12,7 @@ def research_start(
     mode: str = "fast",
     notebook_id: str | None = None,
     title: str | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Deep research / fast research: Search web or Google Drive to FIND NEW sources.
 
     Use this for: "deep research on X", "find sources about Y", "search web for Z", "search Drive".
@@ -36,9 +34,8 @@ def research_start(
             nb_result = notebook_service.create_notebook(client, title=title)
             notebook_id = nb_result["notebook_id"]
         elif not notebook_id:
-            raise ServiceError(
-                "Research requires an existing notebook_id or a title to create a new one.",
-                user_message="Please provide either a notebook_id or a title for a new notebook.",
+            return error_result(
+                "Please provide either a notebook_id or a title for a new notebook."
             )
 
         result = research_service.start_research(
@@ -50,12 +47,9 @@ def research_start(
         )
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -66,7 +60,7 @@ def research_status(
     compact: bool = True,
     task_id: str | None = None,
     query: str | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Poll research progress. Blocks until complete or timeout.
 
     Args:
@@ -90,14 +84,11 @@ def research_status(
             poll_interval=poll_interval,
             max_wait=max_wait,
         )
-        return result
+        return dict(result)
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -106,7 +97,7 @@ def research_import(
     task_id: str,
     source_indices: list[int] | None = None,
     timeout: float = 300.0,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Import discovered sources into notebook.
 
     Call after research_status shows status="completed".
@@ -130,9 +121,6 @@ def research_import(
         )
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))

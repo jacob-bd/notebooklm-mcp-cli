@@ -1,10 +1,15 @@
 """Chat tools - Query and conversation management."""
 
-from typing import Any
-
 from ...services import ServiceError
 from ...services import chat as chat_service
-from ._utils import coerce_list, get_client, get_query_timeout, logged_tool
+from ._utils import (
+    ResultDict,
+    coerce_list,
+    error_result,
+    get_client,
+    get_query_timeout,
+    logged_tool,
+)
 
 
 @logged_tool()
@@ -14,7 +19,7 @@ def notebook_query(
     source_ids: list[str] | None = None,
     conversation_id: str | None = None,
     timeout: float | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Ask AI about EXISTING sources already in notebook. NOT for finding new sources.
 
     Use research_start instead for: deep research, web search, find new sources, Drive search.
@@ -29,24 +34,21 @@ def notebook_query(
     try:
         client = get_client()
         # Coerce list params from MCP clients (may arrive as strings)
-        source_ids = coerce_list(source_ids)
+        coerced_source_ids: list[str] | None = coerce_list(source_ids)
         effective_timeout = timeout or get_query_timeout()
         result = chat_service.query(
             client,
             notebook_id,
             query,
-            source_ids=source_ids,
+            source_ids=coerced_source_ids,
             conversation_id=conversation_id,
             timeout=effective_timeout,
         )
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -55,7 +57,7 @@ def chat_configure(
     goal: str = "default",
     custom_prompt: str | None = None,
     response_length: str = "default",
-) -> dict[str, Any]:
+) -> ResultDict:
     """Configure notebook chat settings.
 
     Args:
@@ -75,12 +77,9 @@ def chat_configure(
         )
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
@@ -90,7 +89,7 @@ def notebook_query_start(
     source_ids: list[str] | None = None,
     conversation_id: str | None = None,
     timeout: float | None = None,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Start a notebook query asynchronously for large notebooks that may timeout.
 
     Use this instead of notebook_query when querying notebooks with many sources
@@ -108,30 +107,27 @@ def notebook_query_start(
     """
     try:
         client = get_client()
-        source_ids = coerce_list(source_ids)
+        coerced_source_ids: list[str] | None = coerce_list(source_ids)
         effective_timeout = timeout or get_query_timeout()
         result = chat_service.query_start(
             client,
             notebook_id,
             query,
-            source_ids=source_ids,
+            source_ids=coerced_source_ids,
             conversation_id=conversation_id,
             timeout=effective_timeout,
         )
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
 
 
 @logged_tool()
 def notebook_query_status(
     query_id: str,
-) -> dict[str, Any]:
+) -> ResultDict:
     """Check the status of an async notebook query started with notebook_query_start.
 
     Returns the query result when completed, or current status if still in progress.
@@ -144,9 +140,6 @@ def notebook_query_status(
         result = chat_service.query_status(query_id)
         return {"status": "success", **result}
     except ServiceError as e:
-        err = {"status": "error", "error": e.user_message}
-        if getattr(e, "hint", None):
-            err["hint"] = e.hint
-        return err
+        return error_result(e.user_message, hint=e.hint)
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        return error_result(str(e))
