@@ -187,7 +187,7 @@ def studio_rename(
     except (ValidationError, ServiceError) as e:
         handle_error(e)
     except NLMError as e:
-        handle_error(e, json_output=locals().get("json_output", False))
+        handle_error(e)
 
 
 # ========== Audio ==========
@@ -510,7 +510,7 @@ def revise_slides(
     except (ValidationError, ServiceError) as e:
         handle_error(e)
     except NLMError as e:
-        handle_error(e, json_output=locals().get("json_output", False))
+        handle_error(e)
 
 
 # ========== Infographic ==========
