@@ -293,7 +293,7 @@ class TestGetStudioStatus:
 class TestReviseArtifact:
     """Test revise_artifact function."""
 
-    def test_rpc_error_preserves_structured_detail_and_hint(self, mock_client):
+    def test_rpc_error_uses_short_detail_name_and_hint(self, mock_client):
         mock_client.revise_slide_deck.side_effect = RPCError(
             "API error (code 7): PERMISSION_DENIED",
             error_code=7,
@@ -309,11 +309,29 @@ class TestReviseArtifact:
             )
 
         err = exc_info.value
-        assert "PERMISSION_DENIED" in err.user_message
+        assert "Google API error code 7" in err.user_message
         assert "code 7" in err.user_message
         assert "ReviseSlideDeckErrorDetail" in err.user_message
+        assert "type.googleapis.com" not in err.user_message
         assert err.hint is not None
         assert "artifact_id" in err.hint
+
+    def test_rpc_error_without_detail_type_preserves_original_message(self, mock_client):
+        mock_client.revise_slide_deck.side_effect = RPCError(
+            "API error (code 7): PERMISSION_DENIED",
+            error_code=7,
+        )
+
+        with pytest.raises(ServiceError) as exc_info:
+            revise_artifact(
+                mock_client,
+                "art-123",
+                [{"slide": 1, "instruction": "Tighten the title"}],
+            )
+
+        err = exc_info.value
+        assert "PERMISSION_DENIED" in err.user_message
+        assert err.hint is not None
 
 
 class TestRenameArtifact:
