@@ -1,12 +1,16 @@
 """Output formatting utilities for NLM CLI."""
 
+from __future__ import annotations
+
 import json
 import sys
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from rich.console import Console
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 
 class OutputFormat(StrEnum):
@@ -56,7 +60,11 @@ class Formatter:
     """Base class for output formatters."""
 
     def __init__(self, console: Console | None = None) -> None:
-        self.console = console or Console()
+        if console is None:
+            from notebooklm_tools.cli.utils import make_console
+
+            console = make_console()
+        self.console = console
 
     def format_notebooks(
         self,

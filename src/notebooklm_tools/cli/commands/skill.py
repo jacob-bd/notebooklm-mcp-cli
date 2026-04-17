@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Any
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from notebooklm_tools import __version__
+from notebooklm_tools.cli.utils import make_console
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     name="skill",
     help="Install NotebookLM skills for AI tools",

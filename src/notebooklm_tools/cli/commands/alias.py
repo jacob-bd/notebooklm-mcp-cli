@@ -1,12 +1,12 @@
 """Alias CLI commands."""
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.core.alias import detect_id_type, get_alias_manager
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Manage ID aliases",
     rich_markup_mode="rich",

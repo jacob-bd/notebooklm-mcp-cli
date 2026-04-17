@@ -1,13 +1,13 @@
 """Configuration CLI commands."""
 
 import typer
-from rich.console import Console
 from rich.syntax import Syntax
 
 from notebooklm_tools.cli.formatters import print_json
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.utils.config import _config_to_toml, get_config, save_config
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Manage configuration settings",
     rich_markup_mode="rich",

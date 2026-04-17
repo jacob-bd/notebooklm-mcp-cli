@@ -5,7 +5,6 @@ from collections.abc import Callable
 from typing import Any
 
 import typer
-from rich.console import Console
 from rich.progress import (
     BarColumn,
     DownloadColumn,
@@ -15,15 +14,15 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
-from notebooklm_tools.cli.utils import get_client, handle_error
+from notebooklm_tools.cli.utils import get_client, handle_error, make_console
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.errors import ArtifactNotReadyError
 from notebooklm_tools.services import ServiceError
 from notebooklm_tools.services import downloads as downloads_service
 
 app = typer.Typer(help="Download artifacts from notebooks.")
-console = Console()
-err_console = Console(stderr=True)
+console = make_console()
+err_console = make_console(stderr=True)
 
 
 def _download_with_progress(

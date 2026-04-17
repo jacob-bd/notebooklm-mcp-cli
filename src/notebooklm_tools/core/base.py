@@ -277,11 +277,14 @@ class BaseClient:
             session_id: Session ID (optional - will be auto-extracted from page if not provided)
             build_label: Build label / bl param (optional - auto-extracted from page if not provided)
         """
+        import time as _time
+
         self.cookies = cookies
         self.csrf_token = csrf_token
         self._client: httpx.Client | None = None
         self._session_id = session_id
         self._bl = build_label
+        self._created_at: float = _time.time()
 
         # Conversation cache for follow-up queries
         # Key: conversation_id, Value: list of ConversationTurn objects
@@ -708,7 +711,9 @@ class BaseClient:
 
         # All recovery attempts failed
         raise AuthenticationError(
-            "Authentication expired. Run 'nlm login' in your terminal to re-authenticate."
+            "Authentication expired. Run 'nlm login' in your terminal to re-authenticate. "
+            "MCP users: the server should auto-detect the new credentials; "
+            "if not, call the refresh_auth tool."
         )
 
     # =========================================================================

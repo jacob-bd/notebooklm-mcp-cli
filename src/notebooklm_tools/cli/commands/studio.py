@@ -1,18 +1,17 @@
 """Studio CLI commands for generation (audio, report, quiz, etc.)."""
 
 import typer
-from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from notebooklm_tools.cli.formatters import detect_output_format, get_formatter
-from notebooklm_tools.cli.utils import get_client, handle_error
+from notebooklm_tools.cli.utils import get_client, handle_error, make_console
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.services import ServiceError, ValidationError
 from notebooklm_tools.services import studio as studio_service
 from notebooklm_tools.utils.config import get_default_language
 
-console = Console()
+console = make_console()
 
 # Main studio app for status/delete
 app = typer.Typer(

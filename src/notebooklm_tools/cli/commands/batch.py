@@ -1,12 +1,12 @@
 """Batch CLI commands — perform operations across multiple notebooks."""
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.services.errors import ServiceError
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Batch operations across multiple notebooks",
     rich_markup_mode="rich",

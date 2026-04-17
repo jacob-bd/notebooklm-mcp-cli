@@ -3,17 +3,16 @@
 import contextlib
 import re
 
-from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from notebooklm_tools.cli.utils import get_client, handle_error
+from notebooklm_tools.cli.utils import get_client, handle_error, make_console
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.services import ServiceError
 from notebooklm_tools.services import notebooks as notebook_service
 
-console = Console()
+console = make_console()
 
 HELP_TEXT = """
 [bold]Available Commands:[/bold]

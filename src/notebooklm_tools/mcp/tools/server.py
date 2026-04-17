@@ -1,6 +1,7 @@
 """Server tools - Server info and version checking."""
 
 import json
+import time
 import urllib.request
 from typing import Any, cast
 
@@ -45,18 +46,44 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
+def _check_auth_status() -> str:
+    """Check local auth token state (no network call).
+
+    Returns one of:
+        configured  — tokens present and < 7 days old
+        stale       — tokens present but > 7 days old
+        not_configured — no tokens found
+        error       — failed to check
+    """
+    try:
+        from notebooklm_tools.core.auth import load_cached_tokens
+
+        cached = load_cached_tokens()
+        if not cached or not cached.cookies:
+            return "not_configured"
+        age_hours = (time.time() - cached.extracted_at) / 3600
+        return "stale" if age_hours > 168 else "configured"
+    except Exception:
+        return "error"
+
+
 @logged_tool()
 def server_info() -> dict[str, Any]:
-    """Get server version and check for updates.
+    """Get server version, check for updates, and report auth status.
 
     AI assistants: If update_available is True, inform the user that a new
     version is available and suggest updating with the provided command.
+
+    Note: auth_status is a LOCAL check (token presence and age on disk).
+    It does NOT make a live Google API call. A "configured" status means
+    tokens exist and are recent — not that they are guaranteed valid.
 
     Returns:
         dict with version info:
         - version: Current installed version
         - latest_version: Latest version on PyPI (or None if check failed)
         - update_available: True if a newer version exists
+        - auth_status: configured | stale | not_configured | error
         - update_command: Command to run to update
     """
     latest = _get_latest_pypi_version()
@@ -70,6 +97,7 @@ def server_info() -> dict[str, Any]:
         "version": __version__,
         "latest_version": latest,
         "update_available": update_available,
+        "auth_status": _check_auth_status(),
         "update_command": "uv tool upgrade notebooklm-mcp-cli",
         "pip_update_command": "pip install --upgrade notebooklm-mcp-cli",
     }

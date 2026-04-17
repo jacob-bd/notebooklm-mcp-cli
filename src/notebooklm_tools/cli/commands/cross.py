@@ -1,12 +1,12 @@
 """Cross-notebook CLI commands — query across multiple notebooks."""
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.services.errors import ServiceError
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Cross-notebook operations",
     rich_markup_mode="rich",

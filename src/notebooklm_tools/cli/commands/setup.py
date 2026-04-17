@@ -16,12 +16,13 @@ import tomllib
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 from rich.table import Table
 
-console = Console()
+from notebooklm_tools.cli.utils import make_console
+
+console = make_console()
 app = typer.Typer(
     name="setup",
     help="Configure NotebookLM MCP server for AI tools",

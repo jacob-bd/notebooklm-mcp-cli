@@ -1,15 +1,14 @@
 """Chat configuration CLI commands."""
 
 import typer
-from rich.console import Console
 
-from notebooklm_tools.cli.utils import get_client, handle_error
+from notebooklm_tools.cli.utils import get_client, handle_error, make_console
 from notebooklm_tools.core.alias import get_alias_manager
 from notebooklm_tools.core.exceptions import NLMError
 from notebooklm_tools.services import ServiceError
 from notebooklm_tools.services import chat as chat_service
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Configure chat settings",
     rich_markup_mode="rich",

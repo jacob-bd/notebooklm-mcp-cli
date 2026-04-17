@@ -1,13 +1,13 @@
 """Tag CLI commands — manage notebook tags for smart selection."""
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.services import smart_select as smart_select_service
 from notebooklm_tools.services.errors import ServiceError
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Manage notebook tags for smart selection",
     rich_markup_mode="rich",

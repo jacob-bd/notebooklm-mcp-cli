@@ -1,13 +1,13 @@
 """Pipeline CLI commands — define and execute multi-step workflows."""
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
+from notebooklm_tools.cli.utils import make_console
 from notebooklm_tools.services import pipeline as pipeline_service
 from notebooklm_tools.services.errors import ServiceError
 
-console = Console()
+console = make_console()
 app = typer.Typer(
     help="Pipeline automation for multi-step workflows",
     rich_markup_mode="rich",
