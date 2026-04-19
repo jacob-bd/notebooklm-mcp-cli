@@ -122,6 +122,82 @@ class TestAddSource:
         assert result["source_type"] == "file"
         assert result["source_id"] == "src-4"
 
+    def test_add_file_source_without_title_does_not_rename(self, mock_client):
+        """When no title is supplied, we must not call rename_source."""
+        add_source(mock_client, "nb-1", "file", file_path="/tmp/doc.pdf")
+        mock_client.rename_source.assert_not_called()
+
+    def test_add_file_source_with_title_renames_after_upload(self, mock_client):
+        """A --title supplied with --file must survive upload via rename_source."""
+        mock_client.rename_source.return_value = {
+            "id": "src-4",
+            "title": "My Custom Title",
+        }
+        result = add_source(
+            mock_client,
+            "nb-1",
+            "file",
+            file_path="/tmp/doc.pdf",
+            title="My Custom Title",
+        )
+        mock_client.rename_source.assert_called_once_with("nb-1", "src-4", "My Custom Title")
+        assert result["title"] == "My Custom Title"
+
+    def test_add_file_source_with_title_forces_wait_for_readiness(self, mock_client):
+        """A supplied title must force wait=True on add_file.
+
+        The NotebookLM rename RPC races against source registration: if it
+        fires before the source is ready, the RPC returns success-shaped data
+        but the rename silently doesn't apply. Forcing wait on add_file avoids
+        this race.
+        """
+        mock_client.rename_source.return_value = {"id": "src-4", "title": "My Title"}
+        add_source(
+            mock_client,
+            "nb-1",
+            "file",
+            file_path="/tmp/doc.pdf",
+            title="My Title",
+            wait=False,  # caller didn't ask for wait
+        )
+        # add_file must still have been invoked with wait=True because title
+        # was supplied and we need the source to be ready before rename.
+        mock_client.add_file.assert_called_once()
+        assert mock_client.add_file.call_args.kwargs["wait"] is True
+
+    def test_add_file_source_without_title_preserves_caller_wait(self, mock_client):
+        """No title → we don't override the caller's wait preference."""
+        add_source(
+            mock_client,
+            "nb-1",
+            "file",
+            file_path="/tmp/doc.pdf",
+            wait=False,
+        )
+        assert mock_client.add_file.call_args.kwargs["wait"] is False
+
+    def test_add_file_source_rename_failure_does_not_mask_upload(self, mock_client):
+        """If rename fails post-upload, the upload still counts as succeeded.
+
+        The returned title reflects what's actually stored in NotebookLM (the
+        filename), not the caller's intended title, because a failed rename
+        means the notebook-side title was never updated. Reporting the
+        intended title here would be misleading.
+        """
+        mock_client.rename_source.side_effect = RuntimeError("rename boom")
+        result = add_source(
+            mock_client,
+            "nb-1",
+            "file",
+            file_path="/tmp/doc.pdf",
+            title="My Custom Title",
+        )
+        # Upload succeeded despite rename failure.
+        assert result["source_id"] == "src-4"
+        # Title matches what's actually in NotebookLM — the filename, not the
+        # caller's intended title.
+        assert result["title"] == "doc.pdf"
+
     def test_invalid_source_type(self, mock_client):
         with pytest.raises(ValidationError, match="Unknown source type"):
             add_source(mock_client, "nb-1", "podcast")
