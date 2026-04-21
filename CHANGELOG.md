@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.27] - 2026-04-21
+
+### Added
+- **Restore skill targets for codex and gemini-cli (Issue #163)** — Restored the missing target configurations for `codex` and `gemini-cli` agent skills and added Alef Agent specific frontmatter logic. Thanks to the user who reported this issue (#163)!
+
+### Fixed
+- **Source: Honour `--title` when adding a file source (PR #162)** — Fixed an issue where adding a file source via CLI ignored the user's custom title. The source upload is now fully awaited before the follow-up rename is fired to guarantee precision. Huge thanks to **@CryptoWombat** for this excellent contribution and thorough fix!
+
 ## [0.5.26] - 2026-04-17
 
 ### Added
