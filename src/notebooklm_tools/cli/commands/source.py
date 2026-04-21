@@ -193,6 +193,7 @@ def add_source(
                     notebook_id,
                     "file",
                     file_path=str(file_path),
+                    title=title or None,
                     wait=wait,
                     wait_timeout=wait_timeout,
                 )

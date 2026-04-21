@@ -186,9 +186,34 @@ def add_source(
         elif source_type == "file":
             if not file_path:
                 raise ValidationError("file_path is required for source_type='file'")
-            result = client.add_file(notebook_id, file_path, wait=wait, wait_timeout=wait_timeout)
+            # If a custom title was supplied we must wait for the source to be
+            # registered server-side before renaming — the NotebookLM rename
+            # RPC accepts the call and returns success data for a source that
+            # isn't yet fully registered, but the change silently never
+            # propagates. Force wait=True in that case so the source is ready
+            # when rename fires.
+            effective_wait = wait or bool(title)
+            result = client.add_file(
+                notebook_id, file_path, wait=effective_wait, wait_timeout=wait_timeout
+            )
             fallback_title = str(file_path).split("/")[-1]
-            return _extract_result(result, "file", fallback_title)
+            # `client.add_file` doesn't accept a title parameter (the NotebookLM
+            # upload RPC uses the filename), so we apply the caller's title via
+            # a follow-up rename_source call. Without this, --title was silently
+            # dropped for file uploads.
+            if title and result:
+                source_id = result.get("id") or result.get("source_id")
+                if source_id:
+                    try:
+                        renamed = client.rename_source(notebook_id, source_id, title)
+                        if renamed:
+                            result = {**result, "title": renamed.get("title", title)}
+                    except Exception:
+                        # Rename is best-effort: if it fails the source still
+                        # exists with the filename title. Don't mask the upload
+                        # success by raising here.
+                        pass
+            return _extract_result(result, "file", title or fallback_title)
 
     except (ValidationError, ServiceError):
         raise

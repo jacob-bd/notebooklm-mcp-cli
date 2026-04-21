@@ -280,3 +280,80 @@ class TestYoutubeValidation:
 
         assert result.exit_code != 0
         assert "one source type" in result.output
+
+
+class TestFileWithTitle:
+    """Regression: `nlm source add --file <path> --title <t>` must forward title.
+
+    Prior to the fix, the CLI's `--file` branch called
+    `sources_service.add_source("file", ...)` without the `title=` kwarg, so
+    the source was uploaded with the filename as its title regardless of what
+    the user passed to `--title`. Every caller had to follow up with a
+    `nlm source rename` to recover.
+    """
+
+    def test_file_with_title_forwards_title_kwarg(self, runner, mock_client, tmp_path):
+        fake_file = tmp_path / "my-doc.md"
+        fake_file.write_text("hello")
+
+        with (
+            patch("notebooklm_tools.cli.commands.source.get_alias_manager") as m_alias,
+            patch("notebooklm_tools.cli.commands.source.get_client") as m_client,
+            patch("notebooklm_tools.cli.commands.source.sources_service.add_source") as m_add,
+        ):
+            m_alias.return_value.resolve.side_effect = lambda x: x
+            m_client.return_value = mock_client
+            m_add.return_value = {
+                "source_type": "file",
+                "source_id": "src-file-1",
+                "title": "My Intended Title",
+            }
+
+            result = runner.invoke(
+                app,
+                [
+                    "add",
+                    "nb-123",
+                    "--file",
+                    str(fake_file),
+                    "--title",
+                    "My Intended Title",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        m_add.assert_called_once()
+        call_kwargs = m_add.call_args.kwargs
+        assert call_kwargs.get("title") == "My Intended Title", (
+            f"expected title='My Intended Title' to be forwarded to "
+            f"sources_service.add_source, got kwargs={call_kwargs}"
+        )
+
+    def test_file_without_title_passes_none(self, runner, mock_client, tmp_path):
+        """Omitting --title must not send an empty string to the service layer."""
+        fake_file = tmp_path / "my-doc.md"
+        fake_file.write_text("hello")
+
+        with (
+            patch("notebooklm_tools.cli.commands.source.get_alias_manager") as m_alias,
+            patch("notebooklm_tools.cli.commands.source.get_client") as m_client,
+            patch("notebooklm_tools.cli.commands.source.sources_service.add_source") as m_add,
+        ):
+            m_alias.return_value.resolve.side_effect = lambda x: x
+            m_client.return_value = mock_client
+            m_add.return_value = {
+                "source_type": "file",
+                "source_id": "src-file-2",
+                "title": "my-doc.md",
+            }
+
+            result = runner.invoke(
+                app,
+                ["add", "nb-123", "--file", str(fake_file)],
+            )
+
+        assert result.exit_code == 0, result.output
+        m_add.assert_called_once()
+        # Empty --title default ("") must be coerced to None so the service
+        # layer falls back to its usual filename-as-title behaviour.
+        assert m_add.call_args.kwargs.get("title") is None
