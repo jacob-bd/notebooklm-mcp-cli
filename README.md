@@ -338,7 +338,7 @@ Install the NotebookLM expert guide for your AI assistant to help it use the too
 # Install skill files
 nlm skill install cline
 nlm skill install openclaw
-nlm skill install codex
+nlm skill install agents    # covers Codex and any tool reading .agents/skills/
 nlm skill install antigravity
 
 # Update skills
