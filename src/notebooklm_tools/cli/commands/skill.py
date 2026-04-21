@@ -38,6 +38,18 @@ TOOL_CONFIGS = {
         "format": "skill.md",
         "description": "Generic agent skill (Gemini CLI, Codex, and others)",
     },
+    "gemini-cli": {
+        "user": Path.home() / ".agents/skills/nlm-skill",
+        "project": Path(".agents/skills/nlm-skill"),
+        "format": "skill.md",
+        "description": "Google Gemini CLI",
+    },
+    "codex": {
+        "user": Path.home() / ".agents/skills/nlm-skill",
+        "project": Path(".agents/skills/nlm-skill"),
+        "format": "skill.md",
+        "description": "OpenAI Codex CLI",
+    },
     "opencode": {
         "user": Path.home() / ".config/opencode/skills/nlm-skill",
         "project": Path(".opencode/skills/nlm-skill"),
@@ -67,6 +79,7 @@ TOOL_CONFIGS = {
         "project": Path(".alef-agent/workspace/skills/nlm-skill"),
         "format": "skill.md",
         "description": "Alef Agent AI agent framework",
+        "frontmatter_extras": {"type": "tool", "status": "approved"},
     },
     "other": {
         "project": Path("./nlm-skill-export"),
@@ -150,6 +163,28 @@ def _inject_version_to_frontmatter(skill_path: Path) -> None:
     skill_path.write_text(content, encoding="utf-8")
 
 
+def _inject_frontmatter_extras(skill_path: Path, extras: dict[str, str]) -> None:
+    """Inject extra frontmatter fields into SKILL.md for tool-specific compatibility.
+
+    Used to add fields like `type: tool` and `status: approved` for Alef Agent.
+    """
+    content = skill_path.read_text(encoding="utf-8")
+    if not content.startswith("---"):
+        return
+
+    end_idx = content.index("---", 3)
+    frontmatter = content[3:end_idx]
+
+    for key, value in extras.items():
+        # Remove any existing line for this key
+        frontmatter = re.sub(rf"\n{re.escape(key)}:.*", "", frontmatter)
+        # Add the field
+        frontmatter = frontmatter.rstrip() + f"\n{key}: {value}\n"
+
+    content = "---" + frontmatter + "---" + content[end_idx + 3 :]
+    skill_path.write_text(content, encoding="utf-8")
+
+
 def _get_installed_version(tool: str, level: str) -> str | None:
     """Read the version from an installed skill. Returns None if not found."""
     config = TOOL_CONFIGS[tool]
@@ -207,8 +242,15 @@ def _inject_version_to_agents_md(agents_path: Path) -> None:
         pass
 
 
-def install_skill_md(install_path: Path) -> None:
-    """Install SKILL.md format to a directory."""
+def install_skill_md(
+    install_path: Path, frontmatter_extras: dict[str, str] | None = None
+) -> None:
+    """Install SKILL.md format to a directory.
+
+    Args:
+        install_path: Target directory for the skill files.
+        frontmatter_extras: Optional extra frontmatter fields to inject (e.g. for Alef Agent).
+    """
     data_dir = get_data_dir()
 
     # Create directory
@@ -221,6 +263,10 @@ def install_skill_md(install_path: Path) -> None:
 
     # Inject current version into frontmatter
     _inject_version_to_frontmatter(skill_dst)
+
+    # Inject tool-specific frontmatter fields (e.g. type/status for Alef Agent)
+    if frontmatter_extras:
+        _inject_frontmatter_extras(skill_dst, frontmatter_extras)
 
     # Copy references directory
     ref_src = data_dir / "references"
@@ -478,7 +524,7 @@ def install(
 
     try:
         if format_type == "skill.md":
-            install_skill_md(install_path)
+            install_skill_md(install_path, config.get("frontmatter_extras"))
         elif format_type == "agents.md":
             install_agents_md(install_path)
         elif format_type == "all":
@@ -667,7 +713,7 @@ def _update_single_tool(tool: str, level: str) -> bool:
 
     try:
         if format_type == "skill.md":
-            install_skill_md(install_path)
+            install_skill_md(install_path, config.get("frontmatter_extras"))
         elif format_type == "agents.md":
             install_agents_md(install_path)
         elif format_type == "all":
