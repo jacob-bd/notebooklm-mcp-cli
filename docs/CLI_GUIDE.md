@@ -246,7 +246,6 @@ nlm source list myproject
 nlm skill list                           # Show installation status
 nlm skill install claude-code            # Install for Claude Code
 nlm skill install cursor                 # Install for Cursor AI
-nlm skill install agents               # Install for Gemini CLI / Codex
 nlm skill install <tool> --level project # Install at project level
 nlm skill uninstall <tool>               # Remove skill
 nlm skill show                           # View skill content
@@ -256,7 +255,21 @@ nlm install skill claude-code
 nlm list skills
 ```
 
-**Supported Tools:** `claude-code`, `cursor`, `agents`, `opencode`, `antigravity`, `cline`, `openclaw`, `other`
+**Gemini CLI, Codex, and other agent CLIs** all install to `~/.agents/skills/nlm-skill/` (`.agents/skills/` at project level). These three targets are interchangeable aliases:
+
+```bash
+nlm skill install agents      # Generic name
+nlm skill install codex       # Alias for OpenAI Codex CLI
+nlm skill install gemini-cli  # Alias for Google Gemini CLI
+```
+
+**Alef Agent** (CLI target `alef-agent`) is separate: it installs under `~/.alef-agent/workspace/skills/nlm-skill/` with tool-specific skill frontmatter, not under `.agents/skills/`.
+
+```bash
+nlm skill install alef-agent
+```
+
+**Supported Tools:** `claude-code`, `cursor`, `agents`, `gemini-cli`, `codex`, `opencode`, `antigravity`, `cline`, `openclaw`, `alef-agent`, `other`
 
 ### Setup (MCP Server Configuration)
 
@@ -274,7 +287,7 @@ nlm setup remove gemini         # Remove from Gemini CLI
 nlm setup list                  # Show all clients and config status
 ```
 
-**Supported Clients:** `claude-code`, `gemini`, `cursor`, `windsurf`, `cline`, `antigravity`, `codex`
+**Supported Clients:** `claude-code`, `gemini`, `cursor`, `windsurf`, `cline`, `antigravity`, `codex`, `opencode`
 
 **For unsupported tools:** Use `nlm setup add json` to interactively generate a JSON config snippet. Choose between uvx or regular mode, full path or command name, and whether to include the `mcpServers` wrapper. The result is printed and can be copied to clipboard.
 

@@ -27,6 +27,17 @@ from starlette.responses import JSONResponse
 
 from notebooklm_tools import __version__
 
+_FALSY = frozenset({"false", "0", "no", "off"})
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean from an environment variable. Unset/empty → *default*; otherwise ``false|0|no|off`` (case-insensitive) → False, anything else → True."""
+    raw = os.environ.get(name, "")
+    if not raw:
+        return default
+    return raw.lower() not in _FALSY
+
+
 # Initialize MCP server
 mcp = FastMCP(
     name="notebooklm",
@@ -113,8 +124,8 @@ Environment Variables:
   NOTEBOOKLM_MCP_HOST          Host to bind (default: 127.0.0.1)
   NOTEBOOKLM_MCP_PORT          Port to listen on (default: 8000)
   NOTEBOOKLM_MCP_PATH          MCP endpoint path (default: /mcp)
-  NOTEBOOKLM_MCP_STATELESS     Enable stateless mode for scaling (true/false)
-  NOTEBOOKLM_MCP_DEBUG         Enable debug logging (true/false)
+  NOTEBOOKLM_MCP_STATELESS     Stateless HTTP sessions (default: true, set false to disable)
+  NOTEBOOKLM_MCP_DEBUG         Debug logging (default: false)
   NOTEBOOKLM_HL                Interface language and default artifact language (default: en)
   NOTEBOOKLM_QUERY_TIMEOUT     Query timeout in seconds (default: 120.0)
 
@@ -153,14 +164,14 @@ Examples:
     )
     parser.add_argument(
         "--stateless",
-        action="store_true",
-        default=os.environ.get("NOTEBOOKLM_MCP_STATELESS", "").lower() == "true",
-        help="Enable stateless mode for horizontal scaling",
+        action=argparse.BooleanOptionalAction,
+        default=_env_bool("NOTEBOOKLM_MCP_STATELESS", default=True),
+        help="Stateless HTTP sessions (default: true). Avoids MCP SDK double-response crash (python-sdk#2416)",
     )
     parser.add_argument(
         "--debug",
-        action="store_true",
-        default=os.environ.get("NOTEBOOKLM_MCP_DEBUG", "").lower() == "true",
+        action=argparse.BooleanOptionalAction,
+        default=_env_bool("NOTEBOOKLM_MCP_DEBUG"),
         help="Enable debug logging",
     )
     parser.add_argument(

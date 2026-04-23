@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.28] - 2026-04-23
+
+### Fixed
+- **HTTP transport: default to stateless mode (Issue #165)** — HTTP transport (`--transport http`) now defaults to stateless sessions, preventing the MCP SDK double-response crash (`AssertionError: Request already responded to`) that killed entire sessions on slow Google API calls. Use `--no-stateless` to opt out. Thanks to **@mylaser215** for the thorough root cause analysis (#165)!
+
+### Changed
+- **CLI flags use `BooleanOptionalAction`** — `--stateless` / `--no-stateless` and `--debug` / `--no-debug` are now proper toggle pairs. Environment variables (`NOTEBOOKLM_MCP_STATELESS`, `NOTEBOOKLM_MCP_DEBUG`) accept `true/false/0/1/yes/no/on/off` (case-insensitive).
+
+### Documentation
+- **CLI Guide: document all skill install targets (Issue #163)** — Added `agents`, `codex`, `gemini-cli`, and `alef-agent` with install path details. Fixed missing `opencode` in setup clients list.
+
 ## [0.5.27] - 2026-04-21
 
 ### Added
