@@ -4,11 +4,12 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from ..core.client import NotebookLMClient
 from ..core.conversation import QueryRejectedError
 from . import notebooks as notebook_service
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 logger = logging.getLogger(__name__)

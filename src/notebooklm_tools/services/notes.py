@@ -1,8 +1,7 @@
 """Notes service — shared business logic for note CRUD operations."""
 
-from typing import TypedDict
-
 from ..core.client import NotebookLMClient
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 

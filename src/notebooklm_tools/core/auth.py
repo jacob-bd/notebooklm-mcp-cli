@@ -131,7 +131,11 @@ def load_cached_tokens() -> AuthTokens | None:
 
 
 def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
-    """Save tokens to cache.
+    """Save tokens to both the legacy auth.json and the active profile.
+
+    Writing to both locations ensures the MCP server and CLI always read
+    the same credentials regardless of which code path loads them.
+    See: https://github.com/jacob-bd/notebooklm-mcp-cli/issues/169
 
     Args:
         tokens: AuthTokens to save
@@ -140,9 +144,24 @@ def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
     cache_path = get_cache_path()
     with open(cache_path, "w", encoding="utf-8") as f:
         json.dump(tokens.to_dict(), f, indent=2)
-    # Restrict permissions so only the owner can read/write auth tokens
     with contextlib.suppress(OSError):
         os.chmod(cache_path, 0o600)
+
+    # Also update the default profile so load_cached_tokens() (which
+    # checks profiles first) picks up the same tokens.
+    try:
+        manager = get_auth_manager()
+        if manager.profile_exists():
+            manager.save_profile(
+                cookies=tokens.cookies,
+                csrf_token=tokens.csrf_token or None,
+                session_id=tokens.session_id or None,
+                build_label=tokens.build_label or None,
+                force=True,
+            )
+    except Exception as e:
+        logger.debug(f"Failed to sync tokens to profile: {e}")
+
     if not silent:
         logger.info(f"Auth tokens cached to {cache_path}")
 
@@ -410,7 +429,9 @@ class AuthManager:
             except (json.JSONDecodeError, KeyError):
                 pass  # Corrupted metadata, allow overwrite
 
-        self.profile_dir.mkdir(parents=True, exist_ok=True)
+        from notebooklm_tools.utils.config import safe_mkdir
+
+        safe_mkdir(self.profile_dir, parents=True)
 
         # Set restrictive permissions on the directory
         self.profile_dir.chmod(0o700)

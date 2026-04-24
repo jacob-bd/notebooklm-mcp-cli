@@ -1,12 +1,12 @@
 """Cross-notebook query service — query multiple notebooks and aggregate results."""
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TypedDict
 
 from ..core.client import NotebookLMClient
 from . import chat as chat_service
 from . import notebooks as notebooks_service
 from . import smart_select as smart_select_service
+from ._compat import TypedDict
 from .errors import ValidationError
 
 

@@ -3,9 +3,10 @@
 import inspect
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from ..core.client import NotebookLMClient
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 VALID_ARTIFACT_TYPES = (

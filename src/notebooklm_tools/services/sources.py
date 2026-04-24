@@ -1,9 +1,10 @@
 """Sources service — shared validation and logic for source management."""
 
 import urllib.parse
-from typing import Any, TypedDict
+from typing import Any
 
 from ..core.client import NotebookLMClient
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 VALID_SOURCE_TYPES = ("url", "text", "drive", "file")

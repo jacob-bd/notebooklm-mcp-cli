@@ -1,13 +1,14 @@
 """Batch operations service — perform operations across multiple notebooks."""
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, TypedDict
+from typing import Any
 
 from ..core.client import NotebookLMClient
 from . import chat as chat_service
 from . import notebooks as notebooks_service
 from . import sources as sources_service
 from . import studio as studio_service
+from ._compat import TypedDict
 from .errors import ValidationError
 
 

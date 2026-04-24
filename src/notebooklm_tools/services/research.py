@@ -1,10 +1,10 @@
 """Research service — shared business logic for research start, poll, and import."""
 
 import time
-from typing import TypedDict
 
 from ..core.client import NotebookLMClient
 from ..core.errors import RPCError
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 VALID_SOURCES = ("web", "drive")

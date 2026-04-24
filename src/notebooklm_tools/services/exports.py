@@ -1,8 +1,9 @@
 """Export service — shared business logic for Google Docs/Sheets exports."""
 
-from typing import Literal, TypedDict, cast
+from typing import Literal, cast
 
 from ..core.client import NotebookLMClient
+from ._compat import TypedDict
 from .errors import ExportError, ValidationError
 
 ExportType = Literal["docs", "sheets"]

@@ -2,7 +2,7 @@
 
 import time
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 import yaml
 
@@ -12,6 +12,7 @@ from . import chat as chat_service
 from . import notebooks as notebooks_service
 from . import sources as sources_service
 from . import studio as studio_service
+from ._compat import TypedDict
 from .errors import ValidationError
 
 PIPELINES_DIR = "pipelines"

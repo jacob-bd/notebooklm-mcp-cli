@@ -13,11 +13,12 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any
 
 from notebooklm_tools.core import constants
 from notebooklm_tools.core.errors import RPCError
 
+from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
 if TYPE_CHECKING:

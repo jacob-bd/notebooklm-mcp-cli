@@ -20,6 +20,22 @@ from pydantic import BaseModel, Field
 STORAGE_DIR_NAME = ".notebooklm-mcp-cli"
 
 
+def safe_mkdir(path: Path, *, parents: bool = False, exist_ok: bool = True, mode: int = 0o777) -> None:
+    """Create a directory, working around Python 3.14 Windows regression.
+
+    On Python 3.14 + Windows, ``pathlib.mkdir(parents=True, exist_ok=True)``
+    can raise ``FileExistsError`` (WinError 183) even when the directory
+    already exists.  This wrapper catches that specific failure.
+    See: https://github.com/jacob-bd/notebooklm-mcp-cli/issues/169
+    """
+    try:
+        path.mkdir(parents=parents, exist_ok=exist_ok, mode=mode)
+    except FileExistsError:
+        if path.is_dir():
+            return
+        raise
+
+
 _ALLOWED_BASE_HOSTS = {
     "notebooklm.google.com",
     "notebooklm.cloud.google.com",
@@ -64,7 +80,7 @@ def get_storage_dir() -> Path:
     else:
         storage_dir = Path.home() / STORAGE_DIR_NAME
 
-    storage_dir.mkdir(exist_ok=True, mode=0o700)
+    safe_mkdir(storage_dir, mode=0o700)
     return storage_dir
 
 
@@ -81,14 +97,14 @@ def get_data_dir() -> Path:
 def get_profiles_dir() -> Path:
     """Get the profiles directory path."""
     profiles_dir = get_storage_dir() / "profiles"
-    profiles_dir.mkdir(exist_ok=True)
+    safe_mkdir(profiles_dir)
     return profiles_dir
 
 
 def get_profile_dir(profile_name: str = "default") -> Path:
     """Get directory for a specific profile."""
     profile_dir = get_profiles_dir() / profile_name
-    profile_dir.mkdir(parents=True, exist_ok=True)
+    safe_mkdir(profile_dir, parents=True)
     return profile_dir
 
 
@@ -112,14 +128,14 @@ def get_chrome_profile_dir(profile_name: str = "default") -> Path:
 
     # New multi-profile structure
     chrome_dir = storage / "chrome-profiles" / profile_name
-    chrome_dir.mkdir(parents=True, exist_ok=True)
+    safe_mkdir(chrome_dir, parents=True)
     return chrome_dir
 
 
 def get_firefox_profile_dir(profile_name: str = "default") -> Path:
     """Get Firefox profile directory kept for backwards compatibility."""
     firefox_dir = get_storage_dir() / "firefox-profiles" / profile_name
-    firefox_dir.mkdir(parents=True, exist_ok=True)
+    safe_mkdir(firefox_dir, parents=True)
     return firefox_dir
 
 
@@ -392,7 +408,7 @@ def load_config() -> Config:
 def save_config(config: Config) -> None:
     """Save configuration to file."""
     config_file = get_config_file()
-    config_file.parent.mkdir(parents=True, exist_ok=True)
+    safe_mkdir(config_file.parent, parents=True)
 
     # Convert to TOML format
     toml_content = _config_to_toml(config)

@@ -25,10 +25,11 @@ from httpx import Client, HTTPTransport
 # can intercept localhost requests and break Chrome DevTools Protocol connections.
 # See: https://github.com/jacob-bd/notebooklm-mcp-cli/issues/119
 httpx_client = Client(
+    trust_env=False,
     mounts={
         "http://": HTTPTransport(proxy=None),
         "https://": HTTPTransport(proxy=None),
-    }
+    },
 )
 import websocket  # noqa: E402
 
@@ -506,7 +507,6 @@ def launch_chrome_process(
         return None
 
     profile_dir = get_chrome_profile_dir(profile_name)
-    profile_dir.mkdir(parents=True, exist_ok=True)
 
     args = [
         chrome_path,

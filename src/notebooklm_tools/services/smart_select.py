@@ -2,9 +2,9 @@
 
 import json
 from pathlib import Path
-from typing import TypedDict
 
 from ..utils.config import get_storage_dir
+from ._compat import TypedDict
 from .errors import NotFoundError, ValidationError
 
 TAGS_FILE = "tags.json"

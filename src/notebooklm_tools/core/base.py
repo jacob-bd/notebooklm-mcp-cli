@@ -763,7 +763,6 @@ class BaseClient:
                 from notebooklm_tools.utils.config import get_storage_dir
 
                 debug_dir = get_storage_dir()
-                debug_dir.mkdir(parents=True, exist_ok=True)
                 debug_path = debug_dir / "debug_page.html"
                 debug_path.write_text(html, encoding="utf-8")
                 import contextlib as _ctxlib
