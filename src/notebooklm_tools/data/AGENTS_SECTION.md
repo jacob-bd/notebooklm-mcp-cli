@@ -1,5 +1,5 @@
 <!-- nlm-skill-start -->
-<!-- nlm-version: 0.5.31 -->
+<!-- nlm-version: 0.6.0 -->
 ## NLM - NotebookLM CLI Expert
 
 **Triggers:** "nlm", "notebooklm", "notebook lm", "podcast", "audio overview", "research"

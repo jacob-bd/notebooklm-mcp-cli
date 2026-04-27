@@ -40,6 +40,9 @@ RPC_NAMES = {
     "QDyure": "share_notebook",
     "JFMDGd": "get_share_status",
     "KmcKPe": "revise_slide_deck",
+    "agX4Bc": "label_manage",
+    "le8sX": "label_mutate",
+    "GyzE7e": "label_delete",
 }
 
 

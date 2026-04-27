@@ -14,6 +14,7 @@ from notebooklm_tools.cli.commands.cross import app as cross_app
 from notebooklm_tools.cli.commands.doctor import app as doctor_app
 from notebooklm_tools.cli.commands.download import app as download_app
 from notebooklm_tools.cli.commands.export import app as export_app
+from notebooklm_tools.cli.commands.label import app as label_app
 from notebooklm_tools.cli.commands.note import app as note_app
 from notebooklm_tools.cli.commands.notebook import app as notebook_app
 from notebooklm_tools.cli.commands.pipeline import app as pipeline_app
@@ -664,6 +665,7 @@ app.add_typer(login_app, name="login")
 
 # Register noun-first subcommands (existing structure)
 app.add_typer(notebook_app, name="notebook", help="Manage notebooks")
+app.add_typer(label_app, name="label", help="Manage source labels")
 app.add_typer(note_app, name="note", help="Manage notes")
 app.add_typer(source_app, name="source", help="Manage sources")
 app.add_typer(chat_app, name="chat", help="Configure chat settings")

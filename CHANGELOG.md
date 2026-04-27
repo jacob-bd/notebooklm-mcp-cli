@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-04-27
+
+### Added
+
+- **Source Label Management** — Organize notebook sources into thematic categories with the new `label` MCP tool and `nlm label` CLI commands. Full action set: `auto` (AI-generated labels), `list`, `create`, `rename`, `set_emoji`, `move_source`, and `delete`. Multi-label assignment supported — sources can belong to more than one label. Requires 5+ sources for auto-labeling.
+
+### Fixed
+
+- **WSL Firewall check encoding (#172)** — PowerShell on Windows commonly returns output in UTF-16-LE, causing a `UnicodeDecodeError` in `check_firewall_rule()` that made `nlm login --wsl` show a false firewall warning even when the rule already existed. Fixed by adding `errors="replace"` to the subprocess call. Thanks to **@andrepreira** for the diagnosis and clean fix!
+
+---
+
 ## [0.5.31] - 2026-04-26
 
 ### Fixed

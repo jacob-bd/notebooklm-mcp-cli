@@ -83,6 +83,7 @@ def _register_tools() -> None:
         cross_notebook,
         downloads,
         exports,
+        labels,
         notebooks,
         notes,
         pipeline,
@@ -205,21 +206,22 @@ Examples:
 
         class _StdoutToStderrWrapper:
             """Redirects sys.stdout.write to sys.stderr, but preserves original buffer.
-            
+
             This ensures that stray print() statements and logs go to stderr and do not
             corrupt the MCP JSON-RPC protocol on stdout, while allowing the MCP SDK to
             write the JSON-RPC messages to the original stdout buffer.
             """
+
             def __init__(self, original_stdout):
                 self._original_stdout = original_stdout
                 self.buffer = getattr(original_stdout, "buffer", original_stdout)
-                
+
             def write(self, s):
                 return sys.stderr.write(s)
-                
+
             def flush(self):
                 sys.stderr.flush()
-                
+
             def __getattr__(self, name):
                 return getattr(self._original_stdout, name)
 

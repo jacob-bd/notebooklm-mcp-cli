@@ -130,6 +130,11 @@ class BaseClient:
     RPC_UPDATE_NOTE = "cYAfTb"  # Update note content/title
     RPC_DELETE_NOTE = "AH0mwd"  # Delete note permanently (same as DELETE_MIND_MAP)
 
+    # Label RPCs (source organization)
+    RPC_LABEL_MANAGE = "agX4Bc"  # Auto-label sources / create label / list labels
+    RPC_LABEL_MUTATE = "le8sX"  # Rename label / set emoji / move source to label
+    RPC_LABEL_DELETE = "GyzE7e"  # Delete one or more labels
+
     # Sharing RPCs
     RPC_SHARE_NOTEBOOK = "QDyure"  # Set sharing settings (visibility, collaborators)
     RPC_GET_SHARE_STATUS = "JFMDGd"  # Get current share status

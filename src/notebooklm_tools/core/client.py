@@ -22,6 +22,7 @@ from .errors import (
     ClientAuthenticationError,
 )
 from .exports import ExportMixin
+from .labels import LabelsMixin
 from .notebooks import NotebookMixin
 from .notes import NotesMixin
 from .research import ResearchMixin
@@ -49,6 +50,7 @@ class NotebookLMClient(
     SharingMixin,
     NotebookMixin,
     NotesMixin,
+    LabelsMixin,
 ):
     """Client for NotebookLM MCP internal API.
 

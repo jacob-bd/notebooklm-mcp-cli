@@ -1488,3 +1488,200 @@ The MCP needs these cookies (automatically filtered from the full cookie header)
    - Subsequent requests reuse cached tokens
    - No fetching needed
    - Cache updates automatically when tokens are refreshed
+
+---
+
+## Label Management RPCs
+
+Labels allow users to organize sources into thematic categories. Available when a notebook has 5+ sources. Sources can belong to multiple labels.
+
+**UI operations available:**
+- Auto-label (AI generates categories from sources)
+- Create a new empty label
+- Rename a label
+- Set/change an emoji on a label
+- Remove a label (sources are preserved, not deleted)
+- Move a source to a different label (multi-label assignment via checkboxes)
+- Return to flat list view
+
+### `agX4Bc` — Auto-Label / Create Label / List Labels
+
+This RPC handles both auto-labeling (AI-generated) and manual label creation.
+
+#### Auto-label all sources
+
+```python
+# Request params
+[[2], notebook_id, null, null, []]
+
+# Example
+[[2], "180cfc20-9d9f-4ebf-a5d3-1b50d5593b8b", null, null, []]
+
+# Response: [null, [[label_name, [[src_id], ...], label_id, emoji], ...]]
+[null, [
+    ["User Tutorials",
+     [["0baf49b7-..."], ["86132bc5-..."], ["acd49c62-..."]],
+     "0245af0d-2663-40df-96b9-567f7ed1ce6f",
+     ""],  # emoji (empty string = no emoji)
+    ["Enterprise Use Cases",
+     [["845deae5-..."], ["86132bc5-..."], ["98881af4-..."]],
+     "286c7cc0-39f3-4349-940f-ea50e34169eb",
+     ""],
+    # ...
+]]
+```
+
+#### Create a new empty label
+
+```python
+# Request params — note position 5 contains [[label_name, emoji]]
+[[2], notebook_id, null, null, null, [[label_name, ""]]]
+
+# Example: create "My New Label" with no emoji
+[[2], "180cfc20-...", null, null, null, [["My New Label", ""]]]
+
+# Response: same as auto-label — returns full updated label list with new label
+# The new label has null sources and a freshly generated label_id:
+[null, [
+    # ... existing labels ...
+    ["My New Label", null, "a0e1a3d0-bcc4-4619-bcd2-f152c64fe7d8", ""]
+]]
+```
+
+### `le8sX` — Label Mutation (Rename / Set Emoji / Move Source)
+
+This single RPC handles all label content mutations. The 4th parameter determines the operation type.
+
+#### Rename a label
+
+```python
+# Request params
+[[2], notebook_id, label_id, [[[new_name]]]]
+
+# Example: rename to "Enterprise Use Cases"
+[[2], "180cfc20-...", "286c7cc0-...", [[["Enterprise Use Cases"]]]]
+
+# Response: [] (empty = success)
+```
+
+#### Set (or change) an emoji on a label
+
+```python
+# Request params — null name + emoji string at position 1
+[[2], notebook_id, label_id, [[[null, "🏷️"]]]]
+
+# Example
+[[2], "180cfc20-...", "6d7564e6-...", [[[null, "📊"]]]]
+
+# Response: [] (empty = success)
+```
+
+#### Move / assign a source to a label
+
+Adds the source to the target label (multi-label — sources can be in multiple labels).
+
+```python
+# Request params — null at position 0, source_id list at position 1
+[[2], notebook_id, target_label_id, [[null, [[source_id]]]]]
+
+# Example: move source to "Marketing Applications"
+[[2], "180cfc20-...", "6d7564e6-...", [[null, [["845deae5-df8a-4c9a-9d11-53b0761823af"]]]]]
+
+# Response: [] (empty = success)
+```
+
+### `GyzE7e` — Delete Label(s)
+
+Deletes one or more labels. Sources belonging to the deleted labels are NOT deleted.
+If removing a label that contains sources exclusively, reassign them first via `le8sX`.
+
+```python
+# Request params — array of label_ids to delete
+[[2], notebook_id, [label_id, ...]]
+
+# Example: delete one label
+[[2], "180cfc20-...", ["286c7cc0-39f3-4349-940f-ea50e34169eb"]]
+
+# Example: delete multiple labels at once
+[[2], "180cfc20-...", ["label-id-1", "label-id-2"]]
+
+# Response: [] (empty = success)
+```
+
+### `LQhfEb` — Toggle Source Panel View
+
+Saves the user's preference for label view vs flat list view. Not needed for label management itself, but fired when switching between views.
+
+```python
+# Label view (view=1)
+[null, notebook_id, [null, [null, 1]], [["notebook_lm_state.saved_source_panel_view"]]]
+
+# List view (view=2)
+[null, notebook_id, [null, [null, 2]], [["notebook_lm_state.saved_source_panel_view"]]]
+
+# Response: [] (empty = success)
+```
+
+### Remove Label — Two-step Process
+
+The "Remove" operation in the UI (which preserves sources) is a two-step sequence:
+1. `le8sX` — Move any sources that would become orphaned to another label
+2. `GyzE7e` — Delete the now-empty label
+
+```python
+# Step 1: reassign orphaned sources to a different label
+le8sX([[2], notebook_id, target_label_id, [[null, [[orphaned_source_id]]]]])
+
+# Step 2: delete the label
+GyzE7e([[2], notebook_id, [label_id_to_remove]])
+```
+
+---
+
+## User Tier and Usage Limits
+
+### `ozz5Z` — Get User Subscription Tier
+
+Returns the user's current NotebookLM subscription tier. Fires on notebook page load.
+
+```python
+# Request params — fires automatically with session context (no explicit params needed)
+# Response (decoded) contains:
+"NOTEBOOKLM_TIER_PRO_DASHER_END_USER"  # Example for Google Workspace Pro user
+```
+
+**Known tier strings:**
+| Tier String | Plan |
+|-------------|------|
+| `NOTEBOOKLM_TIER_STANDARD` | Free / Standard |
+| `NOTEBOOKLM_TIER_PLUS` | Google AI Plus |
+| `NOTEBOOKLM_TIER_PRO` | Google AI Pro |
+| `NOTEBOOKLM_TIER_PRO_DASHER_END_USER` | Google Workspace Pro user |
+| `NOTEBOOKLM_TIER_ULTRA` | Google AI Ultra |
+
+The response also contains a link to the limits support page:
+`https://support.google.com/notebooklm/answer/16213268`
+
+### Usage Limits by Tier (from official docs, subject to change)
+
+| Feature | Standard | Plus | Pro | Ultra |
+|---------|----------|------|-----|-------|
+| Notebooks | 100/user | 200/user | 500/user | 500/user |
+| Sources | 50/notebook | 100/notebook | 300/notebook | 600/notebook |
+| Chats | 50/day | 200/day | 500/day | 5,000/day |
+| Audio Overviews | 3/day | 6/day | 20/day | 200/day |
+| Video Overviews | 3/day | 6/day | 20/day | 200/day |
+| Cinematic Videos | — | — | 2/day | 20/day |
+| Reports | 10/day | 20/day | 100/day | 1,000/day |
+| Flashcards | 10/day | 20/day | 100/day | 1,000/day |
+| Quizzes | 10/day | 20/day | 100/day | 1,000/day |
+| Mind Maps | Unlimited | Unlimited | Unlimited | Unlimited |
+| Deep Research | 10/month | 3/day | 20/day | 200/day |
+| Data Tables | Limited | More | Higher | Highest |
+| Infographics | Limited | More | Higher | Highest |
+| Slide Decks | Limited | More | Higher | Highest |
+
+**Notes:**
+- Daily quotas reset after 24 hours; monthly quotas reset after 30 days
+- Auto-generated artifacts (on first source add) do NOT count toward limits
+- There is no API endpoint to query current usage counts — limits are enforced server-side
