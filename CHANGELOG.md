@@ -5,8 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.30] - 2026-04-25
+## [0.5.31] - 2026-04-26
 
+### Fixed
+- **EOF on Initialization (Issue #171)** — The MCP `stdio` transport strictly requires `stdout` to be used *only* for JSON-RPC messages. `fastmcp` initialization logs (and any other stray `print()` calls) were corrupting the `stdout` stream, causing MCP clients to crash with an EOF error on Windows and macOS. Added a dedicated `_StdoutToStderrWrapper` in `server.py` that intercepts all standard text output and safely redirects it to `stderr`, while preserving the underlying binary `.buffer` for valid JSON-RPC payloads. Thanks to **@swiezaczek** for the thorough analysis in the issue report!
+
+## [0.5.30] - 2026-04-25
 ### Fixed
 - **Auth loop when `NOTEBOOKLM_COOKIES` env var is stale (Issue #170)** — `refresh_auth` now detects when `NOTEBOOKLM_COOKIES` is set in the environment and returns a clear, actionable error instead of falsely reporting "success" while silently reloading the same stale cookies. Auth failure messages now include a note pointing to the env var when it's the likely cause. Thanks to **@nobolso** for the thorough root cause analysis!
 - **Deprecated `NOTEBOOKLM_CSRF_TOKEN` / `NOTEBOOKLM_SESSION_ID` env vars removed** — These were still being read and passed to the client constructor, which caused them to bypass auto-refresh when stale. Both are now always auto-extracted; the deprecated env vars are ignored.

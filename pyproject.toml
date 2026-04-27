@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "notebooklm-mcp-cli"
-version = "0.5.30"
+version = "0.5.31"
 description = "Unified CLI and MCP server for Google NotebookLM"
 readme = "README.md"
 license = "MIT"

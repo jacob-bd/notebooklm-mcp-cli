@@ -201,6 +201,30 @@ Examples:
     # show_banner=False prevents Rich box-drawing output that can corrupt
     # the JSON-RPC protocol on Windows (especially with non-English locales)
     if args.transport == "stdio":
+        import sys
+
+        class _StdoutToStderrWrapper:
+            """Redirects sys.stdout.write to sys.stderr, but preserves original buffer.
+            
+            This ensures that stray print() statements and logs go to stderr and do not
+            corrupt the MCP JSON-RPC protocol on stdout, while allowing the MCP SDK to
+            write the JSON-RPC messages to the original stdout buffer.
+            """
+            def __init__(self, original_stdout):
+                self._original_stdout = original_stdout
+                self.buffer = getattr(original_stdout, "buffer", original_stdout)
+                
+            def write(self, s):
+                return sys.stderr.write(s)
+                
+            def flush(self):
+                sys.stderr.flush()
+                
+            def __getattr__(self, name):
+                return getattr(self._original_stdout, name)
+
+        sys.stdout = _StdoutToStderrWrapper(sys.stdout)
+
         mcp.run(show_banner=False)
     elif args.transport == "http":
         _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
