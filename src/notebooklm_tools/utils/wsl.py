@@ -425,6 +425,7 @@ def check_firewall_rule(port: int = DEFAULT_WSL_CDP_PORT) -> bool:
             [str(ps_path), "-Command", check_cmd],
             capture_output=True,
             text=True,
+            errors="replace",
         )
         exists = result.returncode == 0 and result.stdout.strip()
         logger.debug(f"Firewall rule check for port {port}: {exists}")
