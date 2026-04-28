@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/jacob-bd-notebooklm-mcp-cli-badge.png)](https://mseep.ai/app/jacob-bd-notebooklm-mcp-cli)
+
 # NotebookLM CLI & MCP Server
 
 ![NotebookLM MCP Header](docs/media/header.jpg)
