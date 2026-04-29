@@ -813,11 +813,18 @@ def _is_notebooklm_url(url: str) -> bool:
 
 
 def is_logged_in(url: str) -> bool:
-    """Check login status by URL.
+    """Check login status by parsed URL hostname.
 
-    If NotebookLM redirects to accounts.google.com, user is not logged in.
+    Inspect the parsed hostname so query strings such as
+    ``?original_referer=https://accounts.google.com#`` (which NotebookLM
+    appends to the redirect target right after Google sign-in) are not
+    mistaken for an accounts.google.com redirect.
     """
-    if "accounts.google.com" in url:
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        return False
+    if host == "accounts.google.com" or host.endswith(".accounts.google.com"):
         return False
     return _is_notebooklm_url(url)
 
