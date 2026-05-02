@@ -305,6 +305,7 @@ The easiest way to configure any tool is with `nlm setup`:
 ```bash
 nlm setup add claude-code       # Claude Code
 nlm setup add gemini            # Gemini CLI
+nlm setup add github-copilot    # GitHub Copilot
 nlm setup add cursor            # Cursor
 nlm setup add windsurf          # Windsurf
 nlm setup add json              # Any other tool (interactive JSON generator)
@@ -318,13 +319,26 @@ nlm setup add json              # Any other tool (interactive JSON generator)
 claude mcp add --scope user notebooklm-mcp notebooklm-mcp
 ```
 
-### Cursor / VS Code
-Add to `~/.cursor/mcp.json` or `~/.vscode/mcp.json`:
+### Cursor
+Add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
     "notebooklm-mcp": {
       "command": "/path/to/notebooklm-mcp"
+    }
+  }
+}
+```
+
+### GitHub Copilot / VS Code
+Add to `.vscode/mcp.json`:
+```json
+{
+  "servers": {
+    "notebooklm-mcp": {
+      "command": "notebooklm-mcp",
+      "args": []
     }
   }
 }

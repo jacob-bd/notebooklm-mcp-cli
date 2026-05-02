@@ -278,6 +278,7 @@ Configure the NotebookLM MCP server for AI tools in one command:
 ```bash
 nlm setup add claude-code       # Configure via `claude mcp add`
 nlm setup add gemini            # Write ~/.gemini/settings.json
+nlm setup add github-copilot    # Write .vscode/mcp.json
 nlm setup add cursor            # Write ~/.cursor/mcp.json
 nlm setup add windsurf          # Write mcp_config.json
 nlm setup add json              # Generate JSON config for any tool
@@ -287,7 +288,7 @@ nlm setup remove gemini         # Remove from Gemini CLI
 nlm setup list                  # Show all clients and config status
 ```
 
-**Supported Clients:** `claude-code`, `gemini`, `cursor`, `windsurf`, `cline`, `antigravity`, `codex`, `opencode`
+**Supported Clients:** `claude-code`, `gemini`, `github-copilot`, `cursor`, `windsurf`, `cline`, `antigravity`, `codex`, `opencode`
 
 **For unsupported tools:** Use `nlm setup add json` to interactively generate a JSON config snippet. Choose between uvx or regular mode, full path or command name, and whether to include the `mcpServers` wrapper. The result is printed and can be copied to clipboard.
 

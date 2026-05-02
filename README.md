@@ -60,6 +60,7 @@ Connect AI assistants (Claude, Gemini, Cursor, etc.) to NotebookLM:
 # Automatic setup — picks the right config for each tool
 nlm setup add claude-code
 nlm setup add gemini
+nlm setup add github-copilot
 nlm setup add cursor
 nlm setup add cline
 nlm setup add antigravity
@@ -317,6 +318,7 @@ Use `nlm setup` to automatically configure the MCP server for your AI tools — 
 nlm setup add claude-code
 nlm setup add claude-desktop
 nlm setup add gemini
+nlm setup add github-copilot
 nlm setup add cursor
 nlm setup add windsurf
 
@@ -400,7 +402,19 @@ gemini mcp add --scope user notebooklm-mcp notebooklm-mcp
 | Cursor | `~/.cursor/mcp.json` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
 
-**Claude Desktop / VS Code** may not resolve `PATH` — use the full path to the binary:
+**GitHub Copilot (VS Code workspace)** uses `.vscode/mcp.json` with a top-level `servers` key:
+```json
+{
+  "servers": {
+    "notebooklm-mcp": {
+      "command": "notebooklm-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+**Claude Desktop** may not resolve `PATH` — use the full path to the binary:
 ```json
 {
   "mcpServers": {
@@ -416,7 +430,7 @@ Find your path with: `which notebooklm-mcp`
 | Tool | Config Location |
 |------|-----------------|
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| VS Code | `~/.vscode/mcp.json` |
+| GitHub Copilot | `.vscode/mcp.json` |
 
 </details>
 

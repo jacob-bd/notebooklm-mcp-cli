@@ -75,6 +75,24 @@ def _add_mcp_server(config: dict, key: str = "notebooklm-mcp", extra: dict | Non
     return config
 
 
+def _is_vscode_mcp_configured(config: dict, key: str = "notebooklm-mcp") -> bool:
+    """Check if notebooklm-mcp is already in a VS Code/Copilot ``servers`` config."""
+    servers = config.get("servers", {})
+    return key in servers or "notebooklm" in servers
+
+
+def _add_vscode_mcp_server(
+    config: dict, key: str = "notebooklm-mcp", extra: dict | None = None
+) -> dict:
+    """Add notebooklm-mcp to a VS Code/Copilot ``servers`` config dict."""
+    config.setdefault("servers", {})
+    entry = {"command": MCP_SERVER_CMD, "args": []}
+    if extra:
+        entry.update(extra)
+    config["servers"][key] = entry
+    return config
+
+
 # =============================================================================
 # Client-specific config paths
 # =============================================================================
@@ -135,6 +153,11 @@ def _opencode_config_path() -> Path:
     return Path.home() / ".config" / "opencode" / "opencode.json"
 
 
+def _github_copilot_config_path() -> Path:
+    """Get GitHub Copilot workspace MCP config path."""
+    return Path(".vscode") / "mcp.json"
+
+
 # =============================================================================
 # Client definitions
 # =============================================================================
@@ -153,6 +176,11 @@ CLIENT_REGISTRY = {
     "cursor": {
         "name": "Cursor",
         "description": "Cursor AI editor",
+        "has_auto_setup": True,
+    },
+    "github-copilot": {
+        "name": "GitHub Copilot",
+        "description": "GitHub Copilot in VS Code (workspace)",
         "has_auto_setup": True,
     },
     "windsurf": {
@@ -182,10 +210,14 @@ CLIENT_REGISTRY = {
     },
 }
 
+CLIENT_ALIASES = {
+    "copilot": "github-copilot",
+}
+
 
 def _complete_client(ctx, param, incomplete: str) -> list[str]:
     """Shell completion for client names."""
-    all_clients = list(CLIENT_REGISTRY.keys()) + ["json", "all"]
+    all_clients = list(CLIENT_REGISTRY.keys()) + list(CLIENT_ALIASES.keys()) + ["json", "all"]
     return [name for name in all_clients if name.startswith(incomplete)]
 
 
@@ -249,6 +281,22 @@ def _setup_gemini() -> bool:
     _add_mcp_server(config, key="notebooklm", extra={"trust": True})
     _write_json_config(config_path, config)
     console.print("[green]✓[/green] Added to Gemini CLI")
+    console.print(f"  [dim]{config_path}[/dim]")
+    return True
+
+
+def _setup_github_copilot() -> bool:
+    """Add MCP to GitHub Copilot's workspace MCP config."""
+    config_path = _github_copilot_config_path()
+    config = _read_json_config(config_path)
+
+    if _is_vscode_mcp_configured(config):
+        console.print("[green]✓[/green] Already configured in GitHub Copilot")
+        return True
+
+    _add_vscode_mcp_server(config)
+    _write_json_config(config_path, config)
+    console.print("[green]✓[/green] Added to GitHub Copilot (workspace)")
     console.print(f"  [dim]{config_path}[/dim]")
     return True
 
@@ -434,6 +482,9 @@ def _detect_tool(client_id: str) -> bool:
             shutil.which("gemini") is not None or _gemini_config_path().parent.exists()
         ),
         "cursor": lambda: (Path.home() / ".cursor").exists(),
+        "github-copilot": lambda: (
+            shutil.which("code") is not None or _github_copilot_config_path().parent.exists()
+        ),
         "windsurf": lambda: _windsurf_config_path().parent.exists(),
         "cline": lambda: (Path.home() / ".cline").exists(),
         "antigravity": lambda: _antigravity_config_path().parent.exists(),
@@ -469,6 +520,9 @@ def _is_already_configured(client_id: str) -> bool:
         elif client_id == "gemini":
             config = _read_json_config(_gemini_config_path())
             return _is_configured(config, "notebooklm")
+        elif client_id == "github-copilot":
+            config = _read_json_config(_github_copilot_config_path())
+            return _is_vscode_mcp_configured(config)
         elif client_id == "cursor":
             config = _read_json_config(_cursor_config_path())
             return _is_configured(config)
@@ -739,6 +793,7 @@ def setup_add(
     Examples:
         nlm setup add claude-code
         nlm setup add gemini
+        nlm setup add github-copilot
         nlm setup add cursor
         nlm setup add windsurf
         nlm setup add cline
@@ -747,6 +802,8 @@ def setup_add(
         nlm setup add json
         nlm setup add all         # Interactive — detect and configure all
     """
+    client = CLIENT_ALIASES.get(client, client)
+
     if client == "json":
         _setup_json()
         return
@@ -774,6 +831,7 @@ def setup_add(
     setup_fn = {
         "claude-code": _setup_claude_code,
         "gemini": _setup_gemini,
+        "github-copilot": _setup_github_copilot,
         "cursor": _setup_cursor,
         "windsurf": _setup_windsurf,
         "cline": _setup_cline,
@@ -800,8 +858,11 @@ def setup_remove(
 
     Examples:
         nlm setup remove gemini
+        nlm setup remove github-copilot
         nlm setup remove all
     """
+    client = CLIENT_ALIASES.get(client, client)
+
     if client == "all":
         _remove_all()
         return
@@ -894,6 +955,30 @@ def _remove_single(client: str) -> bool:
         else:
             console.print("[dim]NotebookLM MCP was not configured in OpenCode.[/dim]")
             return False
+
+    # GitHub Copilot uses VS Code's ``servers`` key in .vscode/mcp.json
+    if client == "github-copilot":
+        config_path = _github_copilot_config_path()
+        if not config_path.exists():
+            console.print("[dim]No config file found for GitHub Copilot.[/dim]")
+            return False
+        config = _read_json_config(config_path)
+        servers = config.get("servers", {})
+
+        removed = False
+        for key in ["notebooklm-mcp", "notebooklm"]:
+            if key in servers:
+                del servers[key]
+                removed = True
+
+        if removed:
+            config["servers"] = servers
+            _write_json_config(config_path, config)
+            console.print("[green]✓[/green] Removed from GitHub Copilot")
+            return True
+
+        console.print("[dim]NotebookLM MCP was not configured in GitHub Copilot.[/dim]")
+        return False
 
     # JSON config-based clients
     config_paths = {
@@ -1020,6 +1105,13 @@ def setup_list() -> None:
             if _is_configured(config, "notebooklm"):
                 status = "[green]✓[/green]"
             config_path = str(path).replace(str(Path.home()), "~")
+
+        elif client_id == "github-copilot":
+            path = _github_copilot_config_path()
+            config = _read_json_config(path)
+            if _is_vscode_mcp_configured(config):
+                status = "[green]✓[/green]"
+            config_path = str(path)
 
         elif client_id == "cursor":
             path = _cursor_config_path()
