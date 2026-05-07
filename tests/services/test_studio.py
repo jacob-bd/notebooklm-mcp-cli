@@ -155,7 +155,7 @@ class TestCreateArtifact:
             )
 
     def test_create_video_cinematic_rejects_style_prompt(self, mock_client):
-        with pytest.raises(ValidationError, match="does not support --style-prompt"):
+        with pytest.raises(ValidationError, match="does not support --style-prompt") as exc_info:
             create_artifact(
                 mock_client,
                 "nb-1",
@@ -163,6 +163,18 @@ class TestCreateArtifact:
                 video_format="cinematic",
                 video_style_prompt="storybook",
             )
+        assert "--focus" in str(exc_info.value)
+
+    def test_create_video_cinematic_rejects_style(self, mock_client):
+        with pytest.raises(ValidationError, match="does not support --style") as exc_info:
+            create_artifact(
+                mock_client,
+                "nb-1",
+                "video",
+                video_format="cinematic",
+                visual_style="classic",
+            )
+        assert "--focus" in str(exc_info.value)
 
     def test_resource_exhausted_gives_retry_hint(self, mock_client):
         """ResourceExhaustedError wraps with user-friendly retry message."""

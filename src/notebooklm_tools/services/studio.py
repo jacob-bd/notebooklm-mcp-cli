@@ -220,9 +220,15 @@ def _normalize_video_style(
 
     if video_format == "cinematic":
         if style != "auto_select":
-            raise ValidationError("video format 'cinematic' does not support --style")
+            raise ValidationError(
+                "video format 'cinematic' does not support --style. "
+                "Use --focus to pass creative direction (visual style, narrative, audience)."
+            )
         if prompt:
-            raise ValidationError("video format 'cinematic' does not support --style-prompt")
+            raise ValidationError(
+                "video format 'cinematic' does not support --style-prompt. "
+                "Use --focus to pass creative direction (visual style, narrative, audience)."
+            )
         return style, ""
 
     if prompt:
