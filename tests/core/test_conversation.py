@@ -2,7 +2,7 @@
 """Tests for ConversationMixin."""
 
 import json
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 
@@ -169,6 +169,11 @@ class TestQueryUsesServerConversationId:
 
             result = mixin.query("nb-123", "Hello?", source_ids=["src-1"])
 
+        mock_client_class.assert_called_once_with(
+            timeout=120.0,
+            cookies=ANY,
+            headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+        )
         assert result["conversation_id"] == "server-conv-id"
 
     def test_falls_back_to_uuid_when_no_server_id(self):

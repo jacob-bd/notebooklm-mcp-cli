@@ -292,7 +292,10 @@ class ConversationMixin(BaseClient):
         url = f"{self._get_base_url()}{self.QUERY_ENDPOINT}?{query_string}"
 
         cookies = self._get_httpx_cookies()
-        with _httpx.Client(timeout=timeout, cookies=cookies) as client:
+        # The streamed query endpoint is stricter than batchexecute and rejects
+        # form-encoded payloads without an explicit Content-Type header.
+        headers = {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"}
+        with _httpx.Client(timeout=timeout, cookies=cookies, headers=headers) as client:
             response = client.post(url, content=body)
             response.raise_for_status()
 
