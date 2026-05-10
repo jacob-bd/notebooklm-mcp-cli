@@ -384,6 +384,7 @@ nlm research import <notebook-id> <task-id> [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--indices` | Comma-separated indices of sources to import (default: all) |
+| `--cited-only` | Import only sources cited by the research report (overrides `--indices`) |
 | `--profile` | Use specific profile |
 
 ---

@@ -161,6 +161,14 @@ research_import(
     source_indices=[0, 2, 5],  # Import only sources at indices 0, 2, and 5
     timeout=600  # Optional: increase for large notebooks (default: 300s)
 )
+
+# Or import only sources cited by the deep research report
+research_import(
+    notebook_id=notebook_id,
+    task_id=status["research"]["task_id"],
+    cited_only=True,  # Overrides source_indices when enabled
+    timeout=600
+)
 ```
 
 **Research Modes:**

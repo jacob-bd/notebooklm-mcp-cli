@@ -867,11 +867,21 @@ def research_import_verb(
     timeout: float = typer.Option(
         300.0, "--timeout", "-t", help="Import timeout in seconds (default: 300)"
     ),
+    cited_only: bool = typer.Option(
+        False,
+        "--cited-only",
+        help="Import only sources cited by the research report (overrides --indices)",
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Import discovered sources into notebook."""
     import_research(
-        notebook_id=notebook, task_id=task_id, indices=indices, timeout=timeout, profile=profile
+        notebook_id=notebook,
+        task_id=task_id,
+        indices=indices,
+        timeout=timeout,
+        cited_only=cited_only,
+        profile=profile,
     )
 
 

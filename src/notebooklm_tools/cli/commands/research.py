@@ -325,6 +325,11 @@ def import_research(
         "-t",
         help="Import timeout in seconds (default: 300)",
     ),
+    cited_only: bool = typer.Option(
+        False,
+        "--cited-only",
+        help="Import only sources cited by the research report (overrides --indices)",
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """
@@ -371,6 +376,7 @@ def import_research(
                 task_id,
                 source_indices=source_indices,
                 timeout=timeout,
+                cited_only=cited_only,
             )
 
         console.print(f"[green]✓[/green] {result['message']}")

@@ -97,6 +97,7 @@ def research_import(
     task_id: str,
     source_indices: list[int] | None = None,
     timeout: float = 300.0,
+    cited_only: bool = False,
 ) -> ResultDict:
     """Import discovered sources into notebook.
 
@@ -107,6 +108,8 @@ def research_import(
         task_id: Research task ID
         source_indices: Source indices to import (default: all)
         timeout: Import timeout in seconds (default: 300, increase for large notebooks)
+        cited_only: Import only sources cited by the research report.
+            Overrides source_indices when enabled.
     """
     try:
         client = get_client()
@@ -118,6 +121,7 @@ def research_import(
             task_id,
             source_indices=source_indices,
             timeout=timeout,
+            cited_only=cited_only,
         )
         return {"status": "success", **result}
     except ServiceError as e:

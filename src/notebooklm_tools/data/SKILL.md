@@ -236,6 +236,7 @@ nlm research status <nb-id> --full            # Full details
 # Import discovered sources
 nlm research import <nb-id> <task-id>            # Import all
 nlm research import <nb-id> <task-id> --indices 0,2,5  # Import specific
+nlm research import <nb-id> <task-id> --cited-only      # Import cited sources
 nlm research import <nb-id> <task-id> --timeout 600    # Custom timeout (default: 300s)
 ```
 

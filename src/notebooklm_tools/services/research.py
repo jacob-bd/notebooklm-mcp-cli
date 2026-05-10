@@ -1,6 +1,8 @@
 """Research service — shared business logic for research start, poll, and import."""
 
+import re
 import time
+from collections import defaultdict
 
 from ..core.client import NotebookLMClient
 from ..core.errors import RPCError
@@ -9,6 +11,11 @@ from .errors import ServiceError, ValidationError
 
 VALID_SOURCES = ("web", "drive")
 VALID_MODES = ("fast", "deep")
+
+_CITATION_MARKER_RE = re.compile(r"\[([0-9][0-9\s,;\-\u2013\u2014]*)\]")
+_BIBLIOGRAPHY_LINE_RE = re.compile(r"^\s*(\d+)\.\s+(.+)$", re.MULTILINE)
+_URL_RE = re.compile(r"https?://[^\s<>\])]+")
+_TRAILING_URL_CHARS = ".,;:!?)]}"
 
 
 class ResearchStartResult(TypedDict):
@@ -29,7 +36,7 @@ class ResearchStatusResult(TypedDict):
     notebook_id: str
     task_id: str | None
     sources_found: int
-    sources: list
+    sources: list[object]
     report: str
     message: str | None
 
@@ -39,8 +46,141 @@ class ResearchImportResult(TypedDict):
 
     notebook_id: str
     imported_count: int
-    imported_sources: list
+    imported_sources: list[dict[str, object]]
     message: str
+
+
+def _normalize_url(value: str) -> str:
+    """Normalize URLs enough for matching report bibliography links to sources."""
+    url = value.strip().strip("<>")
+    while url and url[-1] in _TRAILING_URL_CHARS:
+        url = url[:-1]
+    return url.rstrip("/")
+
+
+def _extract_urls(text: str) -> list[str]:
+    """Extract normalized HTTP(S) URLs while preserving encounter order."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in _URL_RE.finditer(text):
+        url = _normalize_url(match.group(0))
+        if url and url not in seen:
+            urls.append(url)
+            seen.add(url)
+    return urls
+
+
+def _expand_citation_numbers(raw: str) -> set[int]:
+    """Expand citation expressions such as "1, 3-5" into integer IDs."""
+    numbers: set[int] = set()
+    for part in re.split(r"\s*[,;]\s*", raw):
+        part = part.strip()
+        if not part:
+            continue
+
+        range_match = re.fullmatch(r"(\d+)\s*[-\u2013\u2014]\s*(\d+)", part)
+        if range_match:
+            start = int(range_match.group(1))
+            end = int(range_match.group(2))
+            if start <= end and end - start <= 100:
+                numbers.update(range(start, end + 1))
+            continue
+
+        if part.isdigit():
+            numbers.add(int(part))
+    return numbers
+
+
+def _parse_citation_numbers(report: str) -> set[int]:
+    """Return bibliography numbers referenced by inline citation markers."""
+    numbers: set[int] = set()
+    for match in _CITATION_MARKER_RE.finditer(report):
+        numbers.update(_expand_citation_numbers(match.group(1)))
+    return numbers
+
+
+def _parse_bibliography_urls(report: str) -> dict[int, str]:
+    """Parse trailing numbered bibliography lines into citation-number URLs."""
+    bibliography: dict[int, str] = {}
+    for match in _BIBLIOGRAPHY_LINE_RE.finditer(report):
+        urls = _extract_urls(match.group(2))
+        if urls:
+            bibliography[int(match.group(1))] = urls[-1]
+    return bibliography
+
+
+def _source_url(source: object) -> str:
+    if not isinstance(source, dict):
+        return ""
+    return _normalize_url(str(source.get("url") or ""))
+
+
+def _source_title(source: object) -> str:
+    if not isinstance(source, dict):
+        return ""
+    return str(source.get("title") or "").strip()
+
+
+def _source_positions_by_url(sources: list[object]) -> dict[str, list[int]]:
+    positions: defaultdict[str, list[int]] = defaultdict(list)
+    for position, source in enumerate(sources):
+        url = _source_url(source)
+        if url:
+            positions[url].append(position)
+    return dict(positions)
+
+
+def _is_importable_source(source: object) -> bool:
+    """Return whether core import_research_sources can import this source."""
+    if not isinstance(source, dict):
+        return True
+    return bool(source.get("url")) and source.get("result_type") != 5
+
+
+def _derive_cited_source_positions(report: str, sources: list[object]) -> set[int]:
+    """Resolve report citations to source list positions."""
+    if not report or not sources:
+        return set()
+
+    url_to_positions = _source_positions_by_url(sources)
+    strong_positions: set[int] = set()
+    bibliography = _parse_bibliography_urls(report)
+
+    for citation_number in _parse_citation_numbers(report):
+        url = bibliography.get(citation_number)
+        if url:
+            strong_positions.update(url_to_positions.get(url, []))
+
+    for url in _extract_urls(report):
+        strong_positions.update(url_to_positions.get(url, []))
+
+    cited_positions = set(strong_positions)
+    report_lower = report.lower()
+    title_to_positions: defaultdict[str, list[int]] = defaultdict(list)
+    for position, source in enumerate(sources):
+        title = _source_title(source).lower()
+        if len(title) >= 8:
+            title_to_positions[title].append(position)
+
+    for title, positions in title_to_positions.items():
+        if title in report_lower and not any(position in strong_positions for position in positions):
+            cited_positions.update(positions)
+
+    return cited_positions
+
+
+def annotate_cited_sources(sources: list[object], report: str) -> list[object]:
+    """Return sources with a `cited` flag derived from the research report."""
+    cited_positions = _derive_cited_source_positions(report, sources)
+    annotated_sources: list[object] = []
+    for position, source in enumerate(sources):
+        if isinstance(source, dict):
+            annotated_source = dict(source)
+            annotated_source["cited"] = position in cited_positions
+            annotated_sources.append(annotated_source)
+        else:
+            annotated_sources.append(source)
+    return annotated_sources
 
 
 def start_research(
@@ -187,8 +327,8 @@ def poll_research(
             break
         time.sleep(min(poll_interval, remaining))
 
-    sources = result.get("sources", [])
     report = result.get("report", "")
+    sources = annotate_cited_sources(result.get("sources", []), report)
 
     if compact:
         if len(report) > 500:
@@ -217,6 +357,7 @@ def import_research(
     task_id: str,
     source_indices: list[int] | None = None,
     timeout: float = 300.0,
+    cited_only: bool = False,
 ) -> ResearchImportResult:
     """Import discovered sources from a completed research task.
 
@@ -226,6 +367,8 @@ def import_research(
         task_id: Research task ID
         source_indices: Indices of sources to import (default: all)
         timeout: HTTP timeout in seconds (default: 300s)
+        cited_only: Import only sources cited by the research report.
+            Overrides source_indices when enabled.
 
     Returns:
         ResearchImportResult
@@ -254,8 +397,20 @@ def import_research(
             user_message="No sources were found in the research results.",
         )
 
-    # Filter by indices if provided
-    if source_indices is not None:
+    if cited_only:
+        cited_positions = _derive_cited_source_positions(
+            research_result.get("report", ""),
+            all_sources,
+        )
+        cited_sources = [
+            source for position, source in enumerate(all_sources) if position in cited_positions
+        ]
+        sources_to_import = (
+            cited_sources
+            if cited_sources and any(_is_importable_source(source) for source in cited_sources)
+            else all_sources
+        )
+    elif source_indices is not None:
         sources_to_import = [
             all_sources[idx] for idx in source_indices if 0 <= idx < len(all_sources)
         ]

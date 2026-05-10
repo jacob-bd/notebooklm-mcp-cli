@@ -138,6 +138,7 @@ nlm research start "query" --notebook-id <id> --auto-import # Start, poll, and i
 nlm research status <notebook> --max-wait 300              # Poll until done
 nlm research import <notebook> <task-id>                   # Import sources
 nlm research import <notebook> <task-id> --timeout 600     # Custom timeout (default: 300s)
+nlm research import <notebook> <task-id> --cited-only      # Import cited deep research sources
 ```
 
 ### Studio Status
