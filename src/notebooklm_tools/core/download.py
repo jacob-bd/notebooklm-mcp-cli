@@ -122,7 +122,19 @@ class DownloadMixin(BaseClient):
             "_PAGE_FETCH_HEADERS",
             {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
         )
-        headers = {**base_headers, "Referer": f"{self._get_base_url()}/"}
+        # Mirror Chrome's window.open() from notebooklm.google.com to a cross-domain
+        # artifact host (lh3.googleusercontent.com / lh3.google.com). The audio CDN
+        # treats "Sec-Fetch-Site: none" as an address-bar navigation and returns 403;
+        # the UI's Download button succeeds because window.open() makes Chrome stamp
+        # the request with "Sec-Fetch-Site: cross-site" + Referer=notebooklm.google.com.
+        headers = {
+            **base_headers,
+            "Referer": f"{self._get_base_url()}/",
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-User": "?1",
+        }
 
         # Use httpx.Cookies for proper cross-domain redirect handling
         cookies = self._get_httpx_cookies()
