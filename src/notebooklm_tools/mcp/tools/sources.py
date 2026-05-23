@@ -36,7 +36,13 @@ def source_add(
             - url: Web page or YouTube URL
             - text: Pasted text content
             - drive: Google Drive document
-            - file: Local file upload (PDF, text, audio)
+            - file: Local file upload. Supported extensions:
+                PDF, TXT, MD, DOCX, CSV, EPUB, MP3, M4A, WAV, AAC, OGG,
+                OPUS, MP4, JPG, JPEG, PNG, GIF, WEBP. Image-bearing
+                sources (PDF / JPG / PNG / etc.) feed Studio video
+                generation's visual-crop pipeline — charts, photos, and
+                diagrams may be extracted as on-screen aids in Video
+                Overviews.
         url: URL to add (for source_type=url)
         urls: List of URLs to add in bulk (for source_type=url, alternative to url)
         text: Text content to add (for source_type=text)
@@ -52,6 +58,7 @@ def source_add(
         source_add(notebook_id="abc", source_type="url", urls=["https://a.com", "https://b.com"])
         source_add(notebook_id="abc", source_type="url", url="https://example.com", wait=True)
         source_add(notebook_id="abc", source_type="file", file_path="/path/to/doc.pdf", wait=True)
+        source_add(notebook_id="abc", source_type="file", file_path="/path/to/screenshot.png", wait=True)
     """
     try:
         client = get_client()
