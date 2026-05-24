@@ -20,6 +20,8 @@ def parse_cookies_from_file(file_path: str | Path) -> dict[str, str]:
     - Raw cookie header string (Cookie: name=value; name2=value2)
     - cURL command (copy as cURL from DevTools)
     - JSON object with cookies
+    - Netscape/Mozilla cookie file format (tab-separated, as exported by
+      browser extensions like "Get cookies.txt LOCALLY")
 
     Args:
         file_path: Path to the file containing cookies.
@@ -56,6 +58,13 @@ def parse_cookies_from_file(file_path: str | Path) -> dict[str, str]:
     except json.JSONDecodeError:
         pass
 
+    # Try Netscape/Mozilla cookie file format
+    # Format: domain  flag  path  secure  expires  name  value  (tab-separated)
+    # Lines starting with '#' are comments
+    netscape_cookies = _try_parse_netscape_cookies(content)
+    if netscape_cookies:
+        return netscape_cookies
+
     # Try to extract from cURL command
     curl_match = re.search(r"-H\s+['\"]Cookie:\s*([^'\"]+)['\"]", content, re.IGNORECASE)
     if curl_match:
@@ -83,6 +92,36 @@ def parse_cookies_from_file(file_path: str | Path) -> dict[str, str]:
         )
 
     return cookies
+
+
+def _try_parse_netscape_cookies(content: str) -> dict[str, str] | None:
+    """
+    Try to parse Netscape/Mozilla cookie file format.
+
+    Format is tab-separated:
+        domain  flag  path  secure  expires  name  value
+
+    Lines starting with '#' are comments. Returns None if
+    the content doesn't appear to be Netscape format.
+    """
+    cookies: dict[str, str] = {}
+    valid_lines = 0
+
+    for line in content.splitlines():
+        line = line.strip()
+        # Skip comments and blank lines
+        if not line or line.startswith("#"):
+            continue
+        # Netscape format: 7 tab-separated fields
+        parts = line.split("\t")
+        if len(parts) >= 7:
+            name = parts[5].strip()
+            value = parts[6].strip()
+            if name and value:
+                cookies[name] = value
+                valid_lines += 1
+
+    return cookies if valid_lines > 0 else None
 
 
 def cookies_to_header(cookies: dict[str, str]) -> str:
