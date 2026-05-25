@@ -1,0 +1,55 @@
+# NotebookLM MCP Server — production compose configuration
+#
+# Usage:
+#   podman-compose up -d
+#
+# Prerequisites:
+#   podman secret create notebooklm-cookies ~/.notebooklm-cookies
+#
+# Network egress is restricted to the notebooklm-net bridge.
+# Add host firewall rules to limit outbound to notebooklm.google.com:
+#   NLMIP=$(dig +short notebooklm.google.com | head -1)
+#   sudo iptables -I FORWARD -s 10.89.1.0/24 -d $NLMIP -j ACCEPT
+#   sudo iptables -I FORWARD -s 10.89.1.0/24 -j DROP
+
+services:
+  notebooklm-mcp:
+    image: localhost/notebooklm-mcp:latest
+    container_name: mcp-notebooklm
+    restart: unless-stopped
+    ports:
+      - "8009:8000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=seccomp/mcp-default.json
+    pids_limit: 100
+    mem_limit: 256m
+    cpus: 1
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    secrets:
+      - source: notebooklm-cookies
+        target: /run/secrets/cookies
+    environment:
+      - NOTEBOOKLM_COOKIES_FILE=/run/secrets/cookies
+    networks:
+      - notebooklm-net
+    healthcheck:
+      test: ["CMD", "python3.12", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+secrets:
+  notebooklm-cookies:
+    external: true
+
+networks:
+  notebooklm-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.89.1.0/24

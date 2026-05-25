@@ -4,17 +4,25 @@
 # Build:
 #   podman build -t notebooklm-mcp -f Containerfile .
 #
-# Run (HTTP transport):
+# Run (HTTP transport, fully hardened):
 #   podman run -d --name mcp-notebooklm \
 #     -p 8009:8000 \
 #     --read-only \
 #     --cap-drop=ALL \
 #     --security-opt=no-new-privileges:true \
+#     --security-opt=seccomp=seccomp/mcp-default.json \
 #     --pids-limit=100 \
+#     --memory=256m \
+#     --cpus=1 \
 #     --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+#     --network=notebooklm-net \
 #     --secret notebooklm-cookies,target=/run/secrets/cookies \
 #     -e NOTEBOOKLM_COOKIES_FILE=/run/secrets/cookies \
 #     notebooklm-mcp
+#
+# Network setup (restrict outbound to NotebookLM API only):
+#   podman network create notebooklm-net
+#   # Add firewall/iptables rules to restrict egress to notebooklm.google.com
 
 FROM registry.access.redhat.com/ubi10/ubi-minimal:latest AS base
 
