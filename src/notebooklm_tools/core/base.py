@@ -15,6 +15,7 @@ import random
 import re
 import threading
 import urllib.parse
+from collections import OrderedDict
 from typing import Any
 
 import httpx
@@ -78,6 +79,9 @@ class BaseClient:
     Domain-specific operations are provided by mixin classes that inherit
     from this base class.
     """
+
+    # Maximum number of cached conversations to prevent unbounded memory growth
+    _MAX_CACHED_CONVERSATIONS = 100
 
     @classmethod
     def _get_base_url(cls) -> str:
@@ -315,9 +319,12 @@ class BaseClient:
         self._bl = build_label
         self._created_at: float = _time.time()
 
-        # Conversation cache for follow-up queries
+        # Conversation cache for follow-up queries (LRU-style with size limit)
         # Key: conversation_id, Value: list of ConversationTurn objects
-        self._conversation_cache: dict[str, list[ConversationTurn]] = {}
+        self._conversation_cache: OrderedDict[str, list[ConversationTurn]] = OrderedDict()
+
+        # Cached httpx.Cookies object to avoid repeated duplication
+        self._cached_cookies: httpx.Cookies | None = None
 
         # Request counter for _reqid parameter (required for query endpoint)
         self._reqid_counter = random.randint(100000, 999999)
@@ -362,7 +369,13 @@ class BaseClient:
 
         Duplicates cookies for both .google.com and .googleusercontent.com
         to ensure authentication works across redirect domains.
+
+        Caches the result to avoid repeated cookie duplication overhead.
         """
+        # Return cached cookies if available
+        if self._cached_cookies is not None:
+            return self._cached_cookies
+
         cookies = httpx.Cookies()
 
         # Determine if we have raw list[dict] or simple dict[str, str]
@@ -387,6 +400,8 @@ class BaseClient:
                 cookies.set(name, value, domain=".google.com")
                 cookies.set(name, value, domain=".googleusercontent.com")
 
+        # Cache for future calls
+        self._cached_cookies = cookies
         return cookies
 
     def _get_cookie_header(self) -> str:
@@ -631,7 +646,14 @@ class BaseClient:
         1. Refresh CSRF/session tokens (fast, handles token expiry)
         2. Reload cookies from disk (handles external re-authentication)
         3. Run headless auth (auto-refresh if Chrome profile has saved login)
+
+        Rate limiting is applied to prevent API abuse.
         """
+        # Apply rate limiting before making the request
+        from .rate_limiter import rate_limit
+
+        rate_limit(tokens=1, timeout=30.0)
+
         client = self._get_client()
         body = self._build_request_body(rpc_id, params)
         url = self._build_url(rpc_id, path)

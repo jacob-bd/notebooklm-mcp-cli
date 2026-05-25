@@ -30,14 +30,23 @@ def parse_cookies_from_file(file_path: str | Path) -> dict[str, str]:
         Dictionary of cookie name -> value.
 
     Raises:
-        AuthenticationError: If file cannot be parsed.
+        AuthenticationError: If file cannot be parsed or is too large.
     """
-    path = Path(file_path).expanduser()
+    path = Path(file_path).expanduser().resolve()
 
     if not path.exists():
         raise AuthenticationError(
             message=f"Cookie file not found: {path}",
             hint="Create the file with cookies copied from browser DevTools.",
+        )
+
+    # Security: Limit cookie file size to 1MB to prevent DoS via large files
+    file_size = path.stat().st_size
+    max_size = 1_048_576  # 1MB
+    if file_size > max_size:
+        raise AuthenticationError(
+            message=f"Cookie file too large: {file_size:,} bytes (max: {max_size:,} bytes)",
+            hint="Cookie files should be < 1MB. Check that you're using the correct file.",
         )
 
     content = path.read_text(encoding="utf-8").strip("\r\n")

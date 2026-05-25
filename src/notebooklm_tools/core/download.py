@@ -8,6 +8,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -96,6 +97,7 @@ class DownloadMixin(BaseClient):
         - Per-chunk timeouts to detect stalled connections
         - Temp file usage to prevent corrupted partial downloads
         - Authentication error detection
+        - Domain validation to prevent downloads from untrusted hosts
 
         Args:
             url: The URL to download
@@ -109,7 +111,29 @@ class DownloadMixin(BaseClient):
         Raises:
             ArtifactDownloadError: If download fails
             AuthenticationError: If auth redirect detected
+            ValueError: If URL domain is not trusted
         """
+        # Validate download URL is from trusted Google domains
+        parsed_url = urlparse(url)
+        allowed_domains = {
+            "googleusercontent.com",
+            "google.com",
+            "lh3.googleusercontent.com",
+            "lh3.google.com",
+            "ggpht.com",  # Google Photos/usercontent CDN
+        }
+
+        domain_is_trusted = any(
+            parsed_url.netloc == domain or parsed_url.netloc.endswith(f".{domain}")
+            for domain in allowed_domains
+        )
+
+        if not domain_is_trusted:
+            raise ValueError(
+                f"Download rejected: untrusted domain '{parsed_url.netloc}'. "
+                f"Only Google domains are allowed for artifact downloads."
+            )
+
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 

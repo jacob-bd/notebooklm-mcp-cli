@@ -231,14 +231,37 @@ Examples:
     elif args.transport == "http":
         _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
         if args.host not in _LOOPBACK_HOSTS:
-            import warnings
+            import sys
 
-            warnings.warn(
-                "SECURITY WARNING: HTTP transport is bound to a non-loopback address "
-                f"('{args.host}'). There is no built-in authentication. "
-                "Do not expose this port to untrusted networks.",
-                stacklevel=2,
+            print(
+                "\n" + "=" * 70,
+                file=sys.stderr,
             )
+            print("⚠️  SECURITY WARNING", file=sys.stderr)
+            print("=" * 70, file=sys.stderr)
+            print(
+                f"\nHTTP transport is binding to non-loopback address: {args.host}",
+                file=sys.stderr,
+            )
+            print("\nThis server has NO BUILT-IN AUTHENTICATION.", file=sys.stderr)
+            print(
+                "Anyone who can reach this address can access NotebookLM credentials.",
+                file=sys.stderr,
+            )
+            print("\nDo NOT expose this port to untrusted networks!", file=sys.stderr)
+            print("=" * 70 + "\n", file=sys.stderr)
+
+            # Require explicit confirmation
+            if not os.environ.get("NOTEBOOKLM_ALLOW_EXTERNAL_BIND"):
+                print(
+                    "To proceed, set environment variable: NOTEBOOKLM_ALLOW_EXTERNAL_BIND=1",
+                    file=sys.stderr,
+                )
+                print("Or bind to localhost: --host 127.0.0.1\n", file=sys.stderr)
+                raise SystemExit(1)
+
+            print("Proceeding because NOTEBOOKLM_ALLOW_EXTERNAL_BIND is set.\n", file=sys.stderr)
+
         mcp.run(
             transport="streamable-http",
             host=args.host,

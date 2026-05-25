@@ -97,10 +97,23 @@ class ConversationMixin(BaseClient):
         return history if history else None
 
     def _cache_conversation_turn(self, conversation_id: str, query: str, answer: str) -> None:
-        """Cache a conversation turn for future follow-up queries."""
+        """Cache a conversation turn for future follow-up queries.
+
+        Uses LRU eviction: when the cache reaches max size, the oldest
+        conversation is removed to prevent unbounded memory growth.
+        """
         with self._state_lock:
+            # Enforce cache size limit (LRU eviction)
+            if len(self._conversation_cache) >= self._MAX_CACHED_CONVERSATIONS:
+                if conversation_id not in self._conversation_cache:
+                    # Remove oldest conversation to make room
+                    self._conversation_cache.popitem(last=False)
+
             if conversation_id not in self._conversation_cache:
                 self._conversation_cache[conversation_id] = []
+            else:
+                # Move to end (mark as recently used)
+                self._conversation_cache.move_to_end(conversation_id)
 
             turn_number = len(self._conversation_cache[conversation_id]) + 1
             turn = ConversationTurn(query=query, answer=answer, turn_number=turn_number)

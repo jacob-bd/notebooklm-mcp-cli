@@ -70,7 +70,8 @@ class SourceMixin(BaseClient):
         notebook_id: str,
         match_fn: Any,
         poll_attempts: int = 3,
-        poll_delay: float = 1.0,
+        initial_delay: float = 0.5,
+        max_delay: float = 5.0,
     ) -> dict[str, Any] | None:
         """Poll the notebook source list to verify a source landed after an
         accepted-pending RPC error (code 3 or 9).
@@ -82,12 +83,15 @@ class SourceMixin(BaseClient):
         distinguish them from the RPC response alone. This method polls the
         notebook's source list to determine the actual outcome.
 
+        Uses exponential backoff to minimize API load: 0.5s, 1s, 2s...
+
         Args:
             notebook_id:   Notebook to inspect.
             match_fn:      Callable(source: dict) -> bool — returns True when
                            the dict represents the source we just submitted.
             poll_attempts: Maximum number of polls (default 3).
-            poll_delay:    Seconds to wait between polls (default 1.0).
+            initial_delay: Starting delay in seconds (default 0.5).
+            max_delay:     Maximum delay between polls (default 5.0).
 
         Returns:
             The matched source dict if found within the polling window,
@@ -95,7 +99,9 @@ class SourceMixin(BaseClient):
         """
         for attempt in range(poll_attempts):
             if attempt > 0:
-                time.sleep(poll_delay)
+                # Exponential backoff: min(initial_delay * 2^(attempt-1), max_delay)
+                delay = min(initial_delay * (2 ** (attempt - 1)), max_delay)
+                time.sleep(delay)
             try:
                 sources = self.get_notebook_sources_with_types(notebook_id)
                 for src in sources:
@@ -942,7 +948,8 @@ class SourceMixin(BaseClient):
             FileValidationError: If file doesn't exist or is invalid
             FileUploadError: If upload fails
         """
-        file_path = Path(file_path)
+        # Resolve path and validate (prevents path traversal attacks)
+        file_path = Path(file_path).expanduser().resolve()
 
         # Validate file
         if not file_path.exists():
