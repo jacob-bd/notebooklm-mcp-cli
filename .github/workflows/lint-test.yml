@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e  # v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@94527f2e  # v7
 
       - name: Run ruff linting
         run: uv run --dev ruff check . --output-format=github
@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e  # v6
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@94527f2e  # v7
 
       - name: Run tests with pytest
         run: uv run --dev --with pytest-github-actions-annotate-failures --with pytest-asyncio pytest -v --tb=short -m "not e2e"

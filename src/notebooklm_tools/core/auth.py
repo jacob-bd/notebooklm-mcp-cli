@@ -142,10 +142,13 @@ def save_tokens_to_cache(tokens: AuthTokens, silent: bool = False) -> None:
         silent: If True, don't print confirmation message (for auto-updates)
     """
     cache_path = get_cache_path()
-    with open(cache_path, "w", encoding="utf-8") as f:
-        json.dump(tokens.to_dict(), f, indent=2)
-    with contextlib.suppress(OSError):
-        os.chmod(cache_path, 0o600)
+    fd = os.open(str(cache_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with open(fd, "w", encoding="utf-8") as f:
+            json.dump(tokens.to_dict(), f, indent=2)
+    except BaseException:
+        os.close(fd)
+        raise
 
     # Also update the default profile so load_cached_tokens() (which
     # checks profiles first) picks up the same tokens.
@@ -436,13 +439,16 @@ class AuthManager:
         # Set restrictive permissions on the directory
         self.profile_dir.chmod(0o700)
 
-        # Save cookies
-        self.cookies_file.write_text(
-            json.dumps(cookies, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        self.cookies_file.chmod(0o600)
+        # Save cookies (create file with restricted permissions from the start)
+        fd = os.open(str(self.cookies_file), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(cookies, f, indent=2, ensure_ascii=False)
+        except BaseException:
+            os.close(fd)
+            raise
 
-        # Save metadata
+        # Save metadata (create file with restricted permissions from the start)
         metadata = {
             "csrf_token": csrf_token,
             "session_id": session_id,
@@ -450,10 +456,13 @@ class AuthManager:
             "build_label": build_label,
             "last_validated": datetime.now().isoformat(),
         }
-        self.metadata_file.write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        self.metadata_file.chmod(0o600)
+        fd = os.open(str(self.metadata_file), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+        except BaseException:
+            os.close(fd)
+            raise
 
         self._profile = Profile(
             name=self.profile_name,

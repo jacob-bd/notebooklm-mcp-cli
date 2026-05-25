@@ -101,7 +101,7 @@ def save_auth_tokens(
         for part in cookies.split("; "):
             if "=" in part:
                 key, value = part.split("=", 1)
-                all_cookies[key] = value
+                all_cookies[key.strip()] = value
 
         # Validate required cookies
         required = ["SID", "HSID", "SSID", "APISID", "SAPISID"]

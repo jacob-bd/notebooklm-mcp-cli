@@ -156,11 +156,18 @@ def _read_port_map() -> dict[str, dict]:
 
 
 def _save_port_map(data: dict[str, dict]) -> None:
-    """Write port map to disk."""
+    """Write port map to disk with restrictive permissions from creation."""
+    import os as _os
+
     map_file = _get_port_map_file()
-    try:  # noqa: SIM105
-        map_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        map_file.chmod(0o600)
+    try:
+        fd = _os.open(str(map_file), _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC, 0o600)
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except BaseException:
+            _os.close(fd)
+            raise
     except OSError:
         pass  # Best-effort
 
@@ -621,6 +628,7 @@ def launch_chrome_process(
         "--no-default-browser-check",
         "--disable-extensions",
         f"--user-data-dir={profile_dir}",
+        # SECURITY: scoped to loopback+port; Chrome CDP requires this flag
         f"--remote-allow-origins=http://127.0.0.1:{port}",
     ]
 
@@ -684,12 +692,13 @@ def terminate_chrome(process: subprocess.Popen | None = None, port: int | None =
         return False
 
     # Attempt graceful shutdown via CDP to prevent "Restore Pages" warnings on next launch
+    ws_to_close = _cached_ws
     try:
         if port or _cached_ws_url:
             execute_cdp_command(_cached_ws_url or get_debugger_url(_chrome_port), "Browser.close")
-            _cached_ws.close()
+            if ws_to_close:
+                ws_to_close.close()
         else:
-            # No fast path, use slow path
             process.terminate()
     except Exception:
         pass  # Ignore connection drops or failures during close

@@ -14,26 +14,26 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@34e11487  # v4
+
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@e4db8464  # v4
         with:
           version: "latest"
-      
+
       - name: Set up Python
         run: uv python install 3.11
-      
+
       - name: Build package
         run: uv build
-      
+
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef22109  # release/v1
 
       - name: Build MCPB extension
         run: python3 scripts/build_mcpb.py
 
       - name: Upload MCPB to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739  # v2
         with:
           files: notebooklm-mcp-*.mcpb
