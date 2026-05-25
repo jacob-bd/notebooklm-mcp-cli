@@ -333,7 +333,7 @@ class ConversationMixin(BaseClient):
             "references": citation_data.get("references", []),
             "turn_number": turn_number,
             "is_follow_up": not is_new_conversation,
-            "raw_response": response.text[:1000] if response.text else "",
+            "raw_response": "",  # Removed: may contain sensitive session data
         }
 
     def _extract_source_ids_from_notebook(self, notebook_data: Any) -> list[str]:

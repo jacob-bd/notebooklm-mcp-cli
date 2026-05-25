@@ -670,10 +670,9 @@ class BaseClient:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("-" * 70)
                 logger.debug(f"Response Status: {response.status_code}")
-                logger.debug(
-                    "Raw response (first 2000 chars): %s",
-                    response.text[:2000] if response.text else "(empty)",
-                )
+                _raw = response.text[:2000] if response.text else "(empty)"
+                _raw = re.sub(r'"(SID|HSID|SSID|APISID|SAPISID|NID|__Secure-\w+)":\s*"[^"]*"', r'"\1":"[REDACTED]"', _raw)
+                logger.debug("Raw response (first 2000 chars): %s", _raw)
                 logger.debug("=" * 70)
 
             response.raise_for_status()
