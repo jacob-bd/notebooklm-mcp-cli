@@ -1,5 +1,5 @@
 # NotebookLM MCP Server — hardened container image
-# Based on UBI 10 with Chromium for CDP-based authentication
+# Based on UBI 10, auth injected via podman secrets (no browser needed)
 #
 # Build:
 #   podman build -t notebooklm-mcp -f Containerfile .
@@ -18,21 +18,22 @@
 
 FROM registry.access.redhat.com/ubi10/ubi-minimal:latest AS base
 
-# Install Python (Chromium not needed — auth injected via podman secrets)
+# Install Python + shadow-utils for useradd (Chromium not needed — auth via podman secrets)
 RUN microdnf install -y \
     python3.12 \
     python3.12-pip \
+    shadow-utils \
     && microdnf clean all \
     && rm -rf /var/cache/yum
 
 # Create non-root user
-RUN groupadd -r mcp && useradd -r -g mcp -d /home/mcp -s /sbin/nologin mcp
+RUN groupadd -r mcp && useradd -r -g mcp -m -d /home/mcp -s /sbin/nologin mcp
 
 # Set up app directory
 WORKDIR /app
 
 # Install package
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
 RUN python3.12 -m pip install --no-cache-dir . \
     && python3.12 -m pip cache purge 2>/dev/null || true
