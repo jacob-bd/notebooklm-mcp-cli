@@ -100,6 +100,7 @@ def get_client() -> NotebookLMClient:
             return _client
 
         cookie_header = os.environ.get("NOTEBOOKLM_COOKIES", "")
+        cookies_file = os.environ.get("NOTEBOOKLM_COOKIES_FILE", "")
 
         # NOTEBOOKLM_CSRF_TOKEN and NOTEBOOKLM_SESSION_ID env vars are deprecated
         # and no longer read. Both are auto-extracted on first API call. Passing
@@ -109,10 +110,22 @@ def get_client() -> NotebookLMClient:
         build_label = ""
 
         if cookie_header:
-            # Use environment variables
+            # Tier 1: Direct cookie string from environment
             cookies = extract_cookies_from_chrome_export(cookie_header)
+        elif cookies_file:
+            # Tier 2: Cookie file path (podman secrets, tmpfs bridge, etc.)
+            from pathlib import Path
+
+            cookies_path = Path(cookies_file)
+            if not cookies_path.exists():
+                raise ValueError(
+                    f"NOTEBOOKLM_COOKIES_FILE points to '{cookies_file}' but file does not exist."
+                )
+            cookies = extract_cookies_from_chrome_export(
+                cookies_path.read_text(encoding="utf-8").strip()
+            )
         else:
-            # Try cached tokens from auth CLI
+            # Tier 3: Cached tokens from auth CLI (profiles or legacy auth.json)
             cached = load_cached_tokens()
             if cached:
                 cookies = cached.cookies
@@ -123,7 +136,8 @@ def get_client() -> NotebookLMClient:
                 raise ValueError(
                     "No authentication found. Either:\n"
                     "1. Run 'nlm login' to authenticate via Chrome, or\n"
-                    "2. Set NOTEBOOKLM_COOKIES environment variable manually"
+                    "2. Set NOTEBOOKLM_COOKIES environment variable, or\n"
+                    "3. Set NOTEBOOKLM_COOKIES_FILE to a file containing cookies"
                 )
 
         _client = NotebookLMClient(

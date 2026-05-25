@@ -18,12 +18,10 @@
 
 FROM registry.access.redhat.com/ubi10/ubi-minimal:latest AS base
 
-# Install Python and Chromium dependencies
+# Install Python (Chromium not needed — auth injected via podman secrets)
 RUN microdnf install -y \
     python3.12 \
     python3.12-pip \
-    chromium-headless \
-    nss \
     && microdnf clean all \
     && rm -rf /var/cache/yum
 
@@ -39,9 +37,8 @@ COPY src/ ./src/
 RUN python3.12 -m pip install --no-cache-dir . \
     && python3.12 -m pip cache purge 2>/dev/null || true
 
-# Create writable directories for auth cache (tmpfs in production)
-RUN mkdir -p /home/mcp/.notebooklm-mcp-cli && \
-    chown -R mcp:mcp /home/mcp
+# Home dir for non-root user (auth cache not needed — secrets injected at runtime)
+RUN chown -R mcp:mcp /home/mcp
 
 # Switch to non-root
 USER mcp

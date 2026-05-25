@@ -80,12 +80,36 @@ def get_cache_path() -> Path:
 
 
 def load_cached_tokens() -> AuthTokens | None:
-    """Load tokens from cache (default profile or legacy file).
+    """Load tokens from cache (file, profile, or legacy).
+
+    Priority:
+    1. NOTEBOOKLM_COOKIES_FILE env var (podman secrets, tmpfs, etc.)
+    2. Default profile (Unified Auth)
+    3. Legacy auth.json
 
     Note: We no longer reject tokens based on age. The functional check
     (redirect to login during CSRF refresh) is the real validity test.
     Cookies often last much longer than any arbitrary time limit.
     """
+    # 0. Try file-based cookie loading (container/secret manager integration)
+    cookies_file = os.environ.get("NOTEBOOKLM_COOKIES_FILE", "")
+    if cookies_file:
+        from pathlib import Path
+
+        from notebooklm_tools.core.utils import extract_cookies_from_chrome_export
+
+        cookies_path = Path(cookies_file)
+        if cookies_path.exists():
+            try:
+                raw = cookies_path.read_text(encoding="utf-8").strip()
+                cookies = extract_cookies_from_chrome_export(raw)
+                return AuthTokens(
+                    cookies=cookies,
+                    extracted_at=cookies_path.stat().st_mtime,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load cookies from {cookies_file}: {e}")
+
     # 1. Try default profile first (Unified Auth)
     try:
         manager = get_auth_manager()

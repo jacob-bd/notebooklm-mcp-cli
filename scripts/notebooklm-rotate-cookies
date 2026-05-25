@@ -1,0 +1,82 @@
+#!/bin/bash
+# Rotate NotebookLM session cookies across all 4 tiers:
+#   flat file → GNOME Keyring → podman secret → tmpfs
+#
+# Usage:
+#   notebooklm-rotate-cookies                  # interactive paste
+#   notebooklm-rotate-cookies cookies.txt      # from file
+#   pbpaste | notebooklm-rotate-cookies -      # from stdin
+
+set -euo pipefail
+
+COOKIE_FILE="$HOME/.notebooklm-cookies"
+SECRET_NAME="notebooklm-cookies"
+
+# --- Input ---
+if [ "${1:-}" = "-" ]; then
+    NEW_COOKIES="$(cat)"
+elif [ -n "${1:-}" ] && [ -f "$1" ]; then
+    NEW_COOKIES="$(cat "$1")"
+else
+    echo "NotebookLM Cookie Rotation"
+    echo "=========================="
+    echo ""
+    echo "Extract cookies from Chrome DevTools:"
+    echo "  1. Open https://notebooklm.google.com"
+    echo "  2. DevTools > Network > any batchexecute request"
+    echo "  3. Copy the Cookie header value"
+    echo ""
+    read -sp "Paste cookie header: " NEW_COOKIES
+    echo ""
+fi
+
+if [ -z "$NEW_COOKIES" ]; then
+    echo "No cookies provided. Exiting." >&2
+    exit 1
+fi
+
+# --- Tier 4: Flat file (0o600) ---
+(umask 077 && echo "$NEW_COOKIES" > "$COOKIE_FILE")
+echo "  Wrote $COOKIE_FILE (600)" >&2
+
+# --- Tier 3: GNOME Keyring ---
+if command -v mcp-secrets &>/dev/null; then
+    echo "$NEW_COOKIES" | mcp-secrets set "$SECRET_NAME" 2>&1
+    echo "  Stored in GNOME Keyring" >&2
+fi
+
+# --- Tier 2: Podman secret ---
+if command -v podman &>/dev/null; then
+    if podman secret inspect "$SECRET_NAME" &>/dev/null; then
+        podman secret rm "$SECRET_NAME" &>/dev/null
+    fi
+    echo "$NEW_COOKIES" | podman secret create "$SECRET_NAME" - &>/dev/null
+    echo "  Updated podman secret" >&2
+fi
+
+# --- Tier 1: tmpfs bridge ---
+if command -v mcp-secrets-file &>/dev/null; then
+    mcp-secrets-file "$SECRET_NAME" 2>&1
+    echo "  Refreshed tmpfs" >&2
+fi
+
+# --- Verify ---
+echo "" >&2
+echo "Verifying..." >&2
+if command -v nlm &>/dev/null; then
+    if nlm list --limit 1 &>/dev/null; then
+        echo "Cookies valid — notebook list succeeded." >&2
+    else
+        echo "WARNING: nlm list failed. Cookies may be expired or malformed." >&2
+        exit 1
+    fi
+else
+    echo "nlm CLI not found — skipping verification." >&2
+fi
+
+echo "" >&2
+echo "Cookies rotated across all tiers:" >&2
+echo "  - $COOKIE_FILE" >&2
+echo "  - GNOME Keyring ($SECRET_NAME)" >&2
+echo "  - Podman secret ($SECRET_NAME)" >&2
+echo "  - tmpfs /run/user/$(id -u)/mcp-secrets/$SECRET_NAME" >&2
