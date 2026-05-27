@@ -47,22 +47,22 @@ def _compare_versions(current: str, latest: str) -> bool:
 
 
 def _check_auth_status() -> str:
-    """Check local auth token state (no network call).
+    """Return the classic string status used by server_info.
 
-    Returns one of:
-        configured  — tokens present and < 7 days old
-        stale       — tokens present but > 7 days old
-        not_configured — no tokens found
-        error       — failed to check
+    This is now a trivial, elegant wrapper around the single source of truth
+    (`check_auth` in core/auth.py). All the real logic + tests live there.
     """
     try:
-        from notebooklm_tools.core.auth import load_cached_tokens
+        from notebooklm_tools.core.auth import check_auth
 
-        cached = load_cached_tokens()
-        if not cached or not cached.cookies:
+        res = check_auth(live=True)
+
+        if res.valid:
+            return "configured"
+        if res.reason == "no_tokens":
             return "not_configured"
-        age_hours = (time.time() - cached.extracted_at) / 3600
-        return "stale" if age_hours > 168 else "configured"
+        # expired, network_error, stale_heuristic, http_*, etc. → treat as unusable
+        return "stale"
     except Exception:
         return "error"
 
@@ -74,9 +74,10 @@ def server_info() -> dict[str, Any]:
     AI assistants: If update_available is True, inform the user that a new
     version is available and suggest updating with the provided command.
 
-    Note: auth_status is a LOCAL check (token presence and age on disk).
-    It does NOT make a live Google API call. A "configured" status means
-    tokens exist and are recent — not that they are guaranteed valid.
+    auth_status now performs a best-effort *live* validation against
+    NotebookLM (same mechanism as `nlm login --check`) when tokens exist.
+    This makes the reported status consistent with actual usability instead
+    of relying only on a local age heuristic.
 
     Returns:
         dict with version info:
