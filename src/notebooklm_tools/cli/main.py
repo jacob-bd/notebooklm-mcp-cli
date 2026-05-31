@@ -184,6 +184,7 @@ def login_callback(
     To switch active accounts, run `nlm login switch <profile>`.
     """
     from notebooklm_tools.core.auth import AuthManager
+    from notebooklm_tools.core.errors import ClientAuthenticationError
     from notebooklm_tools.core.exceptions import AccountMismatchError, NLMError
     from notebooklm_tools.utils.config import get_config
 
@@ -248,7 +249,7 @@ def login_callback(
             p, notebook_count = _validate_saved_profile(auth)
             _print_auth_valid(p, notebook_count)
             return
-        except NLMError:
+        except (NLMError, ClientAuthenticationError):
             pass
 
     try:
