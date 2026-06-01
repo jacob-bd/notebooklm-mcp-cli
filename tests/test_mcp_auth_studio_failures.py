@@ -42,24 +42,24 @@ def test_refresh_auth_does_not_claim_success_when_tokens_are_expired(monkeypatch
     non-success status that tells the user to run `nlm login`.
     """
     # Tokens DO load from disk (file exists)...
-    monkeypatch.setattr(
-        auth_tools, "get_client", lambda: _FakeClient(), raising=True
-    )
+    monkeypatch.setattr(auth_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(auth_tools, "reset_client", lambda: None, raising=True)
     monkeypatch.setattr(
-        core_auth, "load_cached_tokens",
+        core_auth,
+        "load_cached_tokens",
         lambda: core_auth.AuthTokens(cookies={"SID": "x"}, extracted_at=0.0),
         raising=True,
     )
     # ...but a live check reports them expired.
-    monkeypatch.setattr(core_auth, "check_auth", lambda **kw: _auth_result(False, "expired"), raising=True)
+    monkeypatch.setattr(
+        core_auth, "check_auth", lambda **kw: _auth_result(False, "expired"), raising=True
+    )
     monkeypatch.delenv("NOTEBOOKLM_COOKIES", raising=False)
 
     result = auth_tools.refresh_auth()
 
     assert result.get("status") != "success", (
-        "refresh_auth lied: returned success while tokens are expired. "
-        f"Got: {result}"
+        f"refresh_auth lied: returned success while tokens are expired. Got: {result}"
     )
     # And it should point the user at the real fix.
     blob = (str(result.get("error", "")) + str(result.get("message", ""))).lower()
@@ -71,7 +71,8 @@ def test_refresh_auth_reports_success_when_tokens_are_valid(monkeypatch):
     monkeypatch.setattr(auth_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(auth_tools, "reset_client", lambda: None, raising=True)
     monkeypatch.setattr(
-        core_auth, "load_cached_tokens",
+        core_auth,
+        "load_cached_tokens",
         lambda: core_auth.AuthTokens(cookies={"SID": "x"}, extracted_at=0.0),
         raising=True,
     )
@@ -89,10 +90,14 @@ def test_studio_create_fails_loudly_on_stale_auth(monkeypatch):
     """When auth is stale/expired, studio_create() must return status:"error" BEFORE firing a doomed generation request
     — not status:"success" with an artifact_id that immediately fails.
     """
-    monkeypatch.setattr(studio_tools, "_check_studio_auth", lambda: _auth_result(False, "expired"), raising=False)
+    monkeypatch.setattr(
+        studio_tools, "_check_studio_auth", lambda: _auth_result(False, "expired"), raising=False
+    )
+
     # If the code wrongly proceeds, make the client call explode so the test can't pass by luck.
     def _boom():
         raise AssertionError("studio_create proceeded to get_client() despite stale auth")
+
     monkeypatch.setattr(studio_tools, "get_client", _boom, raising=True)
 
     result = studio_tools.studio_create(
@@ -112,10 +117,13 @@ def test_studio_create_fails_loudly_on_stale_auth(monkeypatch):
 
 def test_studio_create_proceeds_when_auth_valid(monkeypatch):
     """With valid auth, studio_create() must still create the artifact normally."""
-    monkeypatch.setattr(studio_tools, "_check_studio_auth", lambda: _auth_result(True), raising=False)
+    monkeypatch.setattr(
+        studio_tools, "_check_studio_auth", lambda: _auth_result(True), raising=False
+    )
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(
-        studio_tools.studio_service, "create_artifact",
+        studio_tools.studio_service,
+        "create_artifact",
         lambda *a, **k: {"artifact_id": "art-1", "status": "in_progress"},
         raising=True,
     )
@@ -196,7 +204,9 @@ def test_studio_status_no_reason_for_healthy_artifact(monkeypatch):
         studio_tools, "get_client", lambda: _client_returning([ok_artifact]), raising=True
     )
     art = studio_tools.studio_status(notebook_id="nb-123")["artifacts"][0]
-    assert art.get("error_reason") is None, f"Healthy artifact must have no error_reason, got: {art}"
+    assert art.get("error_reason") is None, (
+        f"Healthy artifact must have no error_reason, got: {art}"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -215,10 +225,13 @@ def test_studio_create_e2e_per_auth_state(monkeypatch, auth_state, valid, reason
     """Each auth state must yield a deterministic, actionable outcome: valid → success; any invalid state →
     status:"error" (never a fake success).
     """
-    monkeypatch.setattr(studio_tools, "_check_studio_auth", lambda: _auth_result(valid, reason), raising=False)
+    monkeypatch.setattr(
+        studio_tools, "_check_studio_auth", lambda: _auth_result(valid, reason), raising=False
+    )
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(
-        studio_tools.studio_service, "create_artifact",
+        studio_tools.studio_service,
+        "create_artifact",
         lambda *a, **k: {"artifact_id": "art-e2e", "status": "in_progress"},
         raising=True,
     )
