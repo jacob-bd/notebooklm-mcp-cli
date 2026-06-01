@@ -78,6 +78,7 @@ class ArtifactInfo(TypedDict, total=False):
     type: str
     title: str
     status: str
+    error_reason: str | None
     created_at: str | None
     url: str | None
     custom_instructions: str | None
@@ -566,6 +567,31 @@ def _create_mind_map(
 # ---------- Status ----------
 
 
+def _derive_error_reason(raw_artifact: dict[str, Any]) -> str | None:
+    """Best-effort failure reason for a studio artifact.
+
+    The raw NotebookLM gRPC payload does not include an error string, so:
+    1. Prefer a real key if a future API version provides one.
+    2. Otherwise, synthesize a reason for genuinely failed artifacts so callers
+       get a non-null signal instead of silence (the bug: failed artifacts
+       returned every field null, leaving agents to poll forever).
+    Non-failed artifacts return None.
+    """
+    for key in ("error_reason", "failure_reason", "failure_code", "error"):
+        value = raw_artifact.get(key)
+        if isinstance(value, str) and value:
+            return value
+
+    if raw_artifact.get("status") == "failed":
+        return (
+            "generation_failed: NotebookLM rejected or aborted this artifact "
+            "(no media produced). Common causes: expired auth, capacity/"
+            "rate-limit, or an unsupported prompt. Re-check auth (nlm login) "
+            "and retry."
+        )
+    return None
+
+
 def get_studio_status(
     client: NotebookLMClient,
     notebook_id: str,
@@ -598,6 +624,11 @@ def get_studio_status(
             "status": raw_artifact.get("status")
             if isinstance(raw_artifact.get("status"), str)
             else "unknown",
+            # Surface a failure signal so callers stop polling and act. The raw
+            # gRPC payload carries no error string, so prefer any real key if a
+            # future API exposes one, else synthesize a reason for failed
+            # artifacts (status 4 with no media URL = backend rejected the job).
+            "error_reason": _derive_error_reason(raw_artifact),
             "created_at": raw_artifact.get("created_at")
             if isinstance(raw_artifact.get("created_at"), str)
             or raw_artifact.get("created_at") is None

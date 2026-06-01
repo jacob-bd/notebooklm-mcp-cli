@@ -15,6 +15,17 @@ def _normalize_studio_validation_error(message: str) -> str:
     return message
 
 
+def _check_studio_auth():
+    """Live auth validity check used as a pre-flight gate for generation.
+
+    Returns an AuthCheckResult. Isolated in its own function so it is an easy
+    seam to mock in tests and so the import stays lazy (no network at import).
+    """
+    from notebooklm_tools.core.auth import check_auth
+
+    return check_auth(live=True)
+
+
 @logged_tool()
 def studio_create(
     notebook_id: str,
@@ -143,6 +154,20 @@ def studio_create(
             "settings": settings,
             "note": "Set confirm=True after user approves these settings.",
         }
+
+    # Pre-flight auth gate: fail loudly NOW rather than returning a fake
+    # success with an artifact_id that silently fails seconds later (the bug
+    # that sent agents into pointless polling loops). See bug report 2026-06-01.
+    auth = _check_studio_auth()
+    if not auth.valid:
+        return error_result(
+            f"Cannot create {artifact_type}: NotebookLM auth is not valid "
+            f"(reason: {auth.reason}). Run `nlm login` in a terminal to "
+            "re-authenticate, then retry. `refresh_auth()` will NOT help if the "
+            "tokens are expired — it only reloads them from disk.",
+            hint="nlm login",
+            reason=auth.reason,
+        )
 
     try:
         client = get_client()
