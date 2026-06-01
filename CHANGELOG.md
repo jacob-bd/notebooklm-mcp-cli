@@ -17,14 +17,17 @@ Version numbers in pyproject.toml (no git tags).
 - `doc-refresh` console script entrypoint for the doc-refresh runner.
 - Regression tests for sync safety, artifact completion polling, major-version detection, and cookie parsing.
 - `notebooklm-sync --all --apply --changed-only` mode for automated nightly updates (runs only changed repos by default).
+- Project-scoped `.mcp.json` declaring the `notebooklm-mcp` server (PATH-portable `command`), so the server is discoverable to contributors and scoped to this repo rather than relying on a global registration.
 
 ### Infrastructure
-- Tracked `.stignore` from canonical C010 template for Syncthing exclusion hygiene.
+- Tracked `.stignore` from canonical C010 template for Syncthing exclusion hygiene; re-aligned to the C010 Wave 1 canonical template.
 - Deployed cross-platform LF normalization via `.gitattributes` from C010 template.
+- Pinned local Python toolchain to 3.13 via `.python-version` (development convenience only; published `requires-python` remains `>=3.11`).
 
 ### Changed
 - **CLAUDE.md** — Trimmed from 323 to 202 lines (~936 token savings) by extracting auth section to `docs/AUTHENTICATION.md` pointer, compressing redundant blocks, and consolidating doc references.
 - **CLAUDE.md** — Further trimmed from 202 to 101 lines (~1,200 total token savings) via three optimization passes: architecture tree update, MCP tools table replaced with server.py pointer, sync CLI and ops sections replaced with docs/CLI.md pointer, redundant auth recovery collapsed, boilerplate removed.
+- **CLAUDE.md** — Trimmed from 101 to 97 lines: removed a generic "always show current state" instruction (the `confirm=True` tool mechanism already enforces it) and the redundant License section (the `LICENSE` file is the source of truth).
 
 - `PROJECT_PRIMER.md` operator auth and scheduled doc-sync guidance were refreshed.
 - Doc-refresh runtime notebook map now defaults to `~/.config/notebooklm-mcp/notebook_map.yaml`.
@@ -37,6 +40,9 @@ Version numbers in pyproject.toml (no git tags).
 - Cookie parsing now handles headers with optional whitespace after `;`.
 - Major version bump detection now compares stored `meta_version` with current `META.yaml` version.
 - `save_auth_tokens` now parses cookie headers with or without spaces after semicolons.
+
+### Security
+- Bumped `fastmcp` from 2.14.2 to 3.2.4 to pick up upstream security fixes.
 
 ## [0.1.0] - 2026-01-10
 
