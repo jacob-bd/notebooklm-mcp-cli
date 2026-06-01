@@ -65,7 +65,7 @@ src/notebooklm_mcp/
 
 ## MCP Tools Provided
 
-31 tools registered in `server.py`. Tools marked `confirm=True` require explicit user confirmation before execution. Always show current state before destructive/expensive operations. See tool docstrings in `server.py` for the full reference.
+31 tools registered in `server.py`. Tools marked `confirm=True` require explicit user confirmation before execution. See tool docstrings in `server.py` for the full reference.
 
 ## Troubleshooting
 
@@ -95,7 +95,3 @@ src/notebooklm_mcp/
 When adding new tools: capture the network request via Chrome DevTools, document the RPC ID in `docs/API_REFERENCE.md`, implement in `api_client.py` + `server.py`, and add a test case to `docs/MCP_TEST_PLAN.md`.
 
 **Gotcha:** `generate-project-primer` entry in `pyproject.toml` is deprecated (moved to C010_standards). Do not use — clean up when convenient.
-
-## License
-
-MIT License
