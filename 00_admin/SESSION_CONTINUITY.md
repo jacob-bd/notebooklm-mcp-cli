@@ -4,25 +4,28 @@
 
 ## Last Session
 
-- **Date**: 2026-04-10
+- **Date**: 2026-05-31
 - **Machine**: Mac-mini-2
 - **Agent**: Atlas (Claude Code)
 - **Branch**: main
-- **Receipt**: 20_receipts/2026-04-10_claude_md_optimization_and_claudit_audit.md
-- **Commit**: 08cef0d
+- **Receipt**: 20_receipts/2026-05-31_claudit_audit_doc_freshness_and_meta_refresh.md
+- **Commit**: 37608bc
 
 ## Summary
 
-Three-pass CLAUDE.md optimization (improver → claudit → claudit re-audit) reduced the file from 202 → 101 lines (50% reduction, ~1,200 token savings per session). Claudit score improved 84 → 91 (B → A). Documentation freshness audit confirmed all surfaces current; archived WEEKEND_ROADMAP.md, deleted orphaned rules_now.md. Settings.local.json pruned to 35 clean rules (31 MCP + 4 Bash).
+Ran a claudit config audit (91 → 94/100, Grade A, zero regressions) and applied fixes:
+project `.mcp.json` scoping `notebooklm-mcp`, CLAUDE.md trim (101→97), narrowed
+`claude mcp` permission, and global docker denies. Then a doc freshness pass updated
+CHANGELOG (incl. fastmcp 2.14.2→3.2.4 Security entry), regenerated PROJECT_PRIMER.md, and
+refreshed META.yaml. Verified clean: `make health` → 53 passed.
 
 ## Open Threads
 
-- [ ] MCP server sprawl (11 global servers) — main Claudit ceiling (MCP Config: 75/100)
-- [ ] Superpowers plugin SessionStart hook missing timeout (upstream issue)
-- [ ] `generate-project-primer` entry still in pyproject.toml (deprecated, clean up when convenient)
-- [ ] Consider project `.mcp.json` to scope notebooklm-mcp server to this repo
+- [ ] Remove deprecated `generate-project-primer` entry from `pyproject.toml` (cleanup when convenient).
 
 ## Known Hazards
 
-- Reverse-engineered NotebookLM APIs require fragile local auth (~25 calls before cookie rotation on free tier)
-- macOS-only hooks (afplay, osascript) in global settings.json will fail silently on Windows sync target
+- Reverse-engineered NotebookLM APIs require fragile local auth (~25 calls before cookie rotation on free tier).
+- `PROJECT_PRIMER.md` is a generated artifact — regenerate via `generate-project-primer`, never hand-edit; it embeds the repo SHA so a 1-commit drift after committing is expected (do NOT amend-loop to fix).
+- Repo syncs Mac↔Windows via Syncthing — honor cross-platform filename/symlink rules (no colons in timestamps, no symlinks in tree).
+- `make verify`/`make health` run `uv run pytest` without `PYTHONPATH=src`; both that and the CLAUDE.md-documented `PYTHONPATH=src uv run pytest` work (package is import-discoverable).
