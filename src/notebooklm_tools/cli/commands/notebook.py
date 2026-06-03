@@ -47,6 +47,7 @@ def list_notebooks(
 @app.command("create")
 def create_notebook(
     title: str = typer.Argument("", help="Notebook title"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
 ) -> None:
     """Create a new notebook."""
@@ -54,8 +55,9 @@ def create_notebook(
         with get_client(profile) as client:
             result = notebooks_service.create_notebook(client, title)
 
-        console.print(f"[green]✓[/green] {result['message']}")
-        console.print(f"  ID: {result['notebook_id']}")
+        fmt = detect_output_format(json_output)
+        formatter = get_formatter(fmt, console)
+        formatter.format_item(result, title="Notebook Created")
     except (ServiceError, NLMError) as e:
         handle_error(e, json_output=locals().get("json_output", False))
 

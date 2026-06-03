@@ -15,6 +15,16 @@ claude mcp add --scope user notebooklm-mcp notebooklm-mcp
 gemini mcp add --scope user notebooklm-mcp notebooklm-mcp
 ```
 
+> **Server naming:** Use `notebooklm-mcp` (the default) as the server
+> name when registering with your agent. If you have a legacy
+> browser-automation NotebookLM MCP installed under a different name
+> (e.g. `notebooklm`), remove that one first — agents like Hermes get
+> confused when two servers expose overlapping tool names
+> (`notebook_create`, `source_add`, `notebook_query`, …).
+>
+> See the [Migrating from another NotebookLM MCP](GETTING_STARTED.md#migrating-from-another-notebooklm-mcp)
+> section in the Getting Started guide for the full step-by-step.
+
 ## Authentication
 
 Before using MCP tools, authenticate:

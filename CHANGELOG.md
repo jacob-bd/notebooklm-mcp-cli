@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.16] - 2026-06-03
+
 ### Fixed
 
 - **Query returns thinking step instead of short answer (Issue #214)** — When the AI's final answer was under 20 characters, for example `ANSWER: C` from a multiple-choice prompt, `nlm` discarded it and returned the longest thinking chunk instead. The 20-char guard in `_extract_answer_from_chunk` (both the list-form and string-form branches) was redundant with the existing type indicator at `first_elem[4][-1]` (1 = answer, 2 = thinking), which is the authoritative discriminator. Removed both guards. The type indicator still routes short thinking chunks to the thinking bucket, so behavior for normal answers is unchanged. 4 new regression tests in `TestShortAnswerRegression` cover: short answer wins over a longer thinking chunk, single-character answers, short thinking chunks still filtered as thinking, and the string-form first_elem path.
+
+- **`nlm notebook create` missing `--json` (Issue #215)** — Every other notebook verb (`list`, `get`, `describe`, `query`) already supported `--json`, but `create` did not. This was a real friction point for agent workflows that need to capture the new notebook ID reliably. Added the flag; the output is the same `notebook_id` / `title` / `url` / `message` dict that other verbs return, so scripting just works. Thanks to **@SimonMallas** for the report and end-to-end test in the issue!
+
+- **`auth_status = "stale"` was misleading (Issue #215)** — The MCP `server_info` tool (and `nlm login --check`) reported `"stale"` for any non-`configured` / non-`not_configured` outcome, which silently grouped three very different conditions together: (a) credentials are actually expired and operations will fail, (b) the live check hit a network error/timeout/non-200 and cached creds may still work, and (c) the saved profile failed to load. The new state machine splits this into two distinct values: `"stale"` is reserved for cases (a) and (c) where the user genuinely needs to `nlm login`, and a new `"unverified"` reports case (b) so agents don't pester users to re-auth on transient network blips. Unknown future reasons stay conservative (`"stale"`). No raw `AuthCheckResult.reason` strings are exposed; only the 5 stable status values. The new `Understanding auth_status` section in `docs/AUTHENTICATION.md` documents each state and what to do.
+
+### Documentation
+
+- **New `docs/GETTING_STARTED.md` guide** — First-time setup, agent registration, and a full 5-step migration path from a browser-automation–based NotebookLM MCP (the kind of setup reported in Issue #215). The migration section explicitly calls out removing any legacy `notebooklm` server config as the #1 cause of "Hermes picked the wrong tool" symptoms. README is no longer carrying the migration content; the docs index now points at the new guide. (Issue #215, items 3 and 5)
+- **`MCP_GUIDE.md` server-naming note** — Recommends the default `notebooklm-mcp` server name and warns against generic names that collide with legacy MCPs. (Issue #215, item 5)
 
 ## [0.6.15] - 2026-06-01
 

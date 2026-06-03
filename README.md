@@ -94,6 +94,7 @@ Then use natural language: *"Create a notebook about quantum computing and gener
 | Diagnose issues | `nlm doctor` | — |
 
 📚 **More Documentation:**
+- **[Getting Started](docs/GETTING_STARTED.md)** — Install, login, agent setup, and migration from another NotebookLM MCP
 - **[CLI Guide](docs/CLI_GUIDE.md)** — Complete command reference
 - **[MCP Guide](docs/MCP_GUIDE.md)** — All 35 MCP tools with examples
 - **[Authentication](docs/AUTHENTICATION.md)** — Setup and troubleshooting
@@ -228,6 +229,14 @@ nlm login
 ```
 
 > **Note:** MCP server configuration (in Claude Code, Cursor, etc.) does not need to change — the executable name `notebooklm-mcp` is the same.
+
+## Getting Started
+
+If you are setting up the tool for the first time — or migrating from a
+browser-based NotebookLM MCP — see the
+[Getting Started Guide](docs/GETTING_STARTED.md). It covers install,
+login, agent registration, and a step-by-step migration path that avoids
+the "two NotebookLM servers registered" trap.
 
 ## Uninstalling
 
