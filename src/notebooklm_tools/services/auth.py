@@ -121,7 +121,7 @@ def get_active_auth_mtime() -> float:
         return 0.0
 
 
-_LAZY_CLASS_NAMES = frozenset({"AuthTokens", "AuthManager"})
+_LAZY_CLASS_NAMES = frozenset({"AuthTokens", "AuthManager", "AuthHealthChecker"})
 
 
 def __getattr__(name):
@@ -140,7 +140,15 @@ def __getattr__(name):
     AuthManager/AuthTokens usage.
     """
     if name in _LAZY_CLASS_NAMES:
-        from notebooklm_tools.core.auth import AuthManager, AuthTokens
+        from notebooklm_tools.core.auth import (
+            AuthHealthChecker,
+            AuthManager,
+            AuthTokens,
+        )
 
-        return {"AuthTokens": AuthTokens, "AuthManager": AuthManager}[name]
+        return {
+            "AuthTokens": AuthTokens,
+            "AuthManager": AuthManager,
+            "AuthHealthChecker": AuthHealthChecker,
+        }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

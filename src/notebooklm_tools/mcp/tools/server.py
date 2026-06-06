@@ -1,12 +1,31 @@
 """Server tools - Server info and version checking."""
 
 import json
+import threading
 import urllib.request
 from typing import Any, cast
 
 from notebooklm_tools import __version__
 
 from ._utils import logged_tool
+
+# Module-level AuthHealthChecker singleton (thread-safe).
+# Using a singleton avoids redundant cache state across sequential
+# server_info calls within the same MCP session.
+_checker: Any | None = None
+_checker_lock = threading.Lock()
+
+
+def _get_checker() -> Any:
+    """Get or create the AuthHealthChecker singleton."""
+    global _checker
+    if _checker is None:
+        with _checker_lock:
+            if _checker is None:
+                from notebooklm_tools.services.auth import AuthHealthChecker
+
+                _checker = AuthHealthChecker()
+    return _checker
 
 
 def _get_latest_pypi_version() -> str | None:
@@ -46,26 +65,16 @@ def _compare_versions(current: str, latest: str) -> bool:
 
 
 def _check_auth_status() -> str:
-    """Map AuthCheckResult.reason to the stable status strings documented in server_info."""
+    """Use AuthHealthChecker to determine the stable auth status string.
+
+    The AuthHealthChecker runs a multi-probe strategy (homepage + API
+    fallback) with TTL caching and mtime-based invalidation, providing
+    more reliable results than a single homepage fetch.
+    """
     try:
-        from notebooklm_tools.services.auth import check_auth
-
-        res = check_auth(live=True)
-
-        if res.valid:
-            return "configured"
-        if res.reason == "no_tokens":
-            return "not_configured"
-        reason = res.reason or ""
-        if reason in ("expired", "stale_heuristic") or reason.startswith("load_error"):
-            return "stale"
-        # 401/403 are definitive credential rejections, not transient network issues.
-        if reason in ("http_401", "http_403"):
-            return "stale"
-        if reason.startswith("network_error") or reason.startswith("http_"):
-            return "unverified"
-        # Unknown reason — be conservative.
-        return "stale"
+        checker = _get_checker()
+        report = checker.check()
+        return str(report.status)
     except Exception:
         return "error"
 

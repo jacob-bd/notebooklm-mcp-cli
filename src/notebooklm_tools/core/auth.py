@@ -11,7 +11,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -95,9 +95,9 @@ def load_cached_tokens() -> AuthTokens | None:
                 cookies=profile.cookies,
                 csrf_token=profile.csrf_token or "",
                 session_id=profile.session_id or "",
-                extracted_at=profile.last_validated.timestamp()
-                if profile.last_validated
-                else time.time(),
+                extracted_at=(
+                    profile.last_validated.timestamp() if profile.last_validated else time.time()
+                ),
             )
     except Exception as e:
         logger.debug(f"Failed to load default profile: {e}")
@@ -311,7 +311,7 @@ class Profile:
             "session_id": self.session_id,
             "email": self.email,
             "build_label": self.build_label,
-            "last_validated": self.last_validated.isoformat() if self.last_validated else None,
+            "last_validated": (self.last_validated.isoformat() if self.last_validated else None),
         }
 
     @classmethod
@@ -326,9 +326,11 @@ class Profile:
 
         return cls(
             name=data.get("name", "default"),
-            cookies=data.get("cookies", [])
-            if isinstance(data.get("cookies"), list)
-            else data.get("cookies", {}),
+            cookies=(
+                data.get("cookies", [])
+                if isinstance(data.get("cookies"), list)
+                else data.get("cookies", {})
+            ),
             csrf_token=data.get("csrf_token"),
             session_id=data.get("session_id"),
             email=data.get("email"),
@@ -368,7 +370,10 @@ class AuthManager:
         """Load the current profile from disk."""
         from datetime import datetime
 
-        from notebooklm_tools.core.exceptions import AuthenticationError, ProfileNotFoundError
+        from notebooklm_tools.core.exceptions import (
+            AuthenticationError,
+            ProfileNotFoundError,
+        )
 
         if self._profile is not None and not force_reload:
             return self._profile
@@ -388,9 +393,11 @@ class AuthManager:
                 csrf_token=metadata.get("csrf_token"),
                 session_id=metadata.get("session_id"),
                 email=metadata.get("email"),
-                last_validated=datetime.fromisoformat(metadata["last_validated"])
-                if metadata.get("last_validated")
-                else None,
+                last_validated=(
+                    datetime.fromisoformat(metadata["last_validated"])
+                    if metadata.get("last_validated")
+                    else None
+                ),
                 build_label=metadata.get("build_label"),
             )
             return self._profile
@@ -588,6 +595,21 @@ class AuthCheckResult:
     details: dict[str, Any] | None = None  # e.g. extracted csrf on success
 
 
+# Browser-like headers required for the NotebookLM homepage fetch.
+# These match _PAGE_FETCH_HEADERS in BaseClient (core/base.py).
+# The Sec-Fetch-* headers are critical: without them Google may redirect
+# even valid cookies to the login page, causing false "expired" results.
+_PAGE_FETCH_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+}
+
+
 def _fetch_notebooklm_homepage(
     cookies: dict[str, str] | list[dict],
     *,
@@ -598,6 +620,9 @@ def _fetch_notebooklm_homepage(
 
     Returns the final response after redirects. Callers decide what the
     final URL / status means.
+
+    Note: uses proper browser-like _PAGE_FETCH_HEADERS (including Sec-Fetch-*)
+    to avoid false redirects to Google login that occur with minimal headers.
     """
     import httpx
 
@@ -608,11 +633,7 @@ def _fetch_notebooklm_homepage(
     else:
         cookie_dict = cookies
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
+    headers = _PAGE_FETCH_HEADERS.copy()
 
     cookie_header = cookies_to_header(cookie_dict)
     if cookie_header:
@@ -686,7 +707,10 @@ def check_auth(
             age = (time.time() - p.last_validated.timestamp()) / 3600
             if age <= 168:
                 return AuthCheckResult(
-                    valid=True, live=False, profile=profile, checked_at=p.last_validated.timestamp()
+                    valid=True,
+                    live=False,
+                    profile=profile,
+                    checked_at=p.last_validated.timestamp(),
                 )
         return AuthCheckResult(valid=False, reason="stale_heuristic", live=False, profile=profile)
 
@@ -743,3 +767,362 @@ def check_auth(
             profile=profile,
             details={"exception": str(exc)},
         )
+
+
+# =============================================================================
+# AuthHealthChecker — multi-probe health check with caching
+# =============================================================================
+
+
+@dataclass
+class AuthProbeResult:
+    """Result from a single health probe (homepage or API).
+
+    Each probe records its own endpoint, latency, and error for
+    detailed diagnostics.
+    """
+
+    probe: str  # "homepage" or "api"
+    valid: bool
+    status_code: int | None = None
+    latency_ms: float = 0.0
+    error: str | None = None
+    detail: str | None = None
+
+
+@dataclass
+class AuthHealthReport:
+    """Full diagnostic report from AuthHealthChecker.
+
+    Contains all probe results, the final verdict, and timing info
+    so callers (server_info, doctor, CLI --check) can render either
+    a simple status string or a detailed breakdown.
+    """
+
+    valid: bool
+    status: str  # "configured" | "stale" | "unverified" | "not_configured"
+    probes: list[AuthProbeResult]
+    token_age_hours: float | None = None
+    profile: str = "default"
+    checked_at: float = 0.0
+    cached: bool = False
+
+
+class AuthHealthChecker:
+    """Professional auth health checker with multi-probe strategy and caching.
+
+    **Probe strategy (tried in order):**
+
+    1. **Homepage** (``check_auth(live=True)``) — fast, catches clear expiry.
+    2. **API** — creates a ``NotebookLMClient`` and lists notebooks with
+       ``pageSize=1``.  Only attempted when the homepage probe returns
+       a redirect to Google login ("expired").  This accounts for the
+       fact that the homepage and the RPC API endpoint may treat the
+       same cookies differently.
+
+    **Caching:**
+
+    Results are cached for 30 seconds (``CACHE_TTL``).  The cache is
+    invalidated when any auth file on disk changes (detected via
+    ``get_active_auth_mtime()``), so an external ``nlm login`` is
+    picked up instantly.
+
+    **Diagnostics:**
+
+    Every check returns an ``AuthHealthReport`` with per-probe details
+    (endpoint, status code, latency, error) so callers can render
+    a meaningful diagnostic message instead of a cryptic status label.
+    """
+
+    CACHE_TTL: float = 30.0
+
+    def __init__(self, profile: str | None = None) -> None:
+        self._profile = profile
+        self._report: AuthHealthReport | None = None
+        self._cache_ts: float = 0.0
+        self._auth_mtime: float = 0.0
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def check(self, *, force: bool = False, timeout: float = 12.0) -> AuthHealthReport:
+        """Return a cached or fresh health report.
+
+        Args:
+            force: If True, bypass the cache and run all probes.
+            timeout: Timeout in seconds for each HTTP probe.
+
+        Returns:
+            An ``AuthHealthReport`` with the final verdict and per-probe details.
+        """
+        now = time.time()
+
+        if not force and self._report is not None:
+            age = now - self._cache_ts
+            if age < self.CACHE_TTL:
+                current_mtime = self._get_auth_mtime()
+                if current_mtime == self._auth_mtime:
+                    return replace(self._report, cached=True)
+
+        report = self._run_checks(timeout=timeout)
+
+        self._report = report
+        self._cache_ts = now
+        self._auth_mtime = self._get_auth_mtime()
+        return report
+
+    def invalidate(self) -> None:
+        """Force the next ``check()`` call to re-run all probes."""
+        self._report = None
+        self._cache_ts = 0.0
+
+    # ------------------------------------------------------------------
+    # Probe orchestration
+    # ------------------------------------------------------------------
+
+    def _run_checks(self, *, timeout: float = 12.0) -> AuthHealthReport:
+        probes: list[AuthProbeResult] = []
+
+        # Phase 1: Resolve the auth profile
+        resolved_profile = self._profile
+        if resolved_profile is None:
+            from notebooklm_tools.utils.config import get_config
+
+            resolved_profile = get_config().auth.default_profile
+
+        manager = AuthManager(resolved_profile)
+
+        if not manager.profile_exists():
+            return AuthHealthReport(
+                valid=False,
+                status="not_configured",
+                probes=[],
+                profile=resolved_profile,
+                checked_at=time.time(),
+            )
+
+        try:
+            profile = manager.load_profile()
+            cookie_dict = self._cookies_to_dict(profile)
+        except Exception as e:
+            return AuthHealthReport(
+                valid=False,
+                status="stale",
+                probes=[AuthProbeResult(probe="load", valid=False, error=str(e))],
+                profile=resolved_profile,
+                checked_at=time.time(),
+            )
+
+        if not cookie_dict:
+            return AuthHealthReport(
+                valid=False,
+                status="not_configured",
+                probes=[],
+                profile=resolved_profile,
+                checked_at=time.time(),
+            )
+
+        token_age = self._compute_token_age(profile)
+
+        # Phase 2: Probe 1 — homepage fetch
+        hp_start = time.perf_counter()
+        hp_valid, hp_reason, hp_detail, hp_code = self._probe_homepage(cookie_dict, timeout=timeout)
+        hp_latency = (time.perf_counter() - hp_start) * 1000
+
+        if hp_reason is None:  # homepage succeeded
+            probes.append(
+                AuthProbeResult(
+                    probe="homepage",
+                    valid=True,
+                    status_code=hp_code,
+                    latency_ms=hp_latency,
+                )
+            )
+            self._update_profile_on_success(manager, profile, hp_detail)
+            return AuthHealthReport(
+                valid=True,
+                status="configured",
+                probes=probes,
+                token_age_hours=token_age,
+                profile=resolved_profile,
+                checked_at=time.time(),
+            )
+
+        probes.append(
+            AuthProbeResult(
+                probe="homepage",
+                valid=False,
+                status_code=hp_code,
+                latency_ms=hp_latency,
+                error=hp_reason,
+                detail=hp_detail,
+            )
+        )
+
+        # Phase 3: Probe 2 — lightweight API call (only when homepage redirects
+        # to login or rejects auth, which is the most common false-positive scenario)
+        if hp_reason in ("expired", "http_401", "http_403"):
+            api_start = time.perf_counter()
+            api_valid, api_error = self._probe_api(cookie_dict, profile.csrf_token, timeout=timeout)
+            api_latency = (time.perf_counter() - api_start) * 1000
+
+            if api_valid:
+                probes.append(
+                    AuthProbeResult(
+                        probe="api",
+                        valid=True,
+                        latency_ms=api_latency,
+                        detail="Homepage rejected auth but API succeeded (false positive avoided).",
+                    )
+                )
+                self._update_profile_on_success(manager, profile)
+                return AuthHealthReport(
+                    valid=True,
+                    status="configured",
+                    probes=probes,
+                    token_age_hours=token_age,
+                    profile=resolved_profile,
+                    checked_at=time.time(),
+                )
+
+            probes.append(
+                AuthProbeResult(
+                    probe="api",
+                    valid=False,
+                    error=api_error or "unknown",
+                    latency_ms=api_latency,
+                )
+            )
+
+        # Phase 4: Determine final verdict from all probe results
+        verdict = self._determine_verdict(probes)
+        return AuthHealthReport(
+            valid=verdict != "configured",
+            status=verdict,
+            probes=probes,
+            token_age_hours=token_age,
+            profile=resolved_profile,
+            checked_at=time.time(),
+        )
+
+    # ------------------------------------------------------------------
+    # Individual probes
+    # ------------------------------------------------------------------
+
+    def _probe_homepage(
+        self, cookie_dict: dict[str, str], *, timeout: float
+    ) -> tuple[bool, str | None, str | None, int | None]:
+        """Fetch the NotebookLM homepage.
+
+        Returns (valid, reason, detail, status_code).
+        reason is None when the homepage check passes.
+        """
+        try:
+            resp = _fetch_notebooklm_homepage(cookie_dict, timeout=timeout)
+            final_url = str(resp.url)
+
+            if "accounts.google.com" in final_url:
+                return False, "expired", final_url, resp.status_code
+            if resp.status_code != 200:
+                return False, f"http_{resp.status_code}", None, resp.status_code
+
+            csrf = extract_csrf_from_page_source(resp.text) or ""
+            return True, None, csrf, resp.status_code
+
+        except Exception as e:
+            return False, f"network_error: {type(e).__name__}", str(e), None
+
+    def _probe_api(
+        self, cookie_dict: dict[str, str], csrf_token: str | None, *, timeout: float
+    ) -> tuple[bool, str | None]:
+        """Lightweight API probe: create a NotebookLMClient and list notebooks.
+
+        Returns (valid, error_message_or_None).
+
+        This is only called as a fallback when the homepage check looks
+        expired.  The API endpoint often accepts cookies that the homepage
+        rejects due to missing request headers.
+        """
+        try:
+            from notebooklm_tools.core.client import NotebookLMClient
+
+            client = NotebookLMClient(cookies=cookie_dict, csrf_token=csrf_token or "")
+            client.list_notebooks()
+            return True, None
+        except Exception as e:
+            return False, f"{type(e).__name__}: {e}"
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _cookies_to_dict(profile: Any) -> dict[str, str]:
+        """Convert profile cookies to a plain dict."""
+        if isinstance(profile.cookies, list):
+            return {c["name"]: c["value"] for c in profile.cookies if "name" in c and "value" in c}
+        if isinstance(profile.cookies, dict):
+            return profile.cookies
+        return {}
+
+    @staticmethod
+    def _compute_token_age(profile: Any) -> float | None:
+        """Return token age in hours, or None if unknown."""
+        if profile.last_validated is None:
+            return None
+        try:
+            return float((time.time() - profile.last_validated.timestamp()) / 3600)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _get_auth_mtime() -> float:
+        """Return the mtime of the most recently modified auth file."""
+        try:
+            from notebooklm_tools.services.auth import get_active_auth_mtime
+
+            return get_active_auth_mtime()
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _update_profile_on_success(
+        manager: AuthManager, profile: Any, csrf_token: str | None = None
+    ) -> None:
+        """Persist fresh CSRF and update last_validated after a successful check."""
+        try:
+            manager.save_profile(
+                cookies=profile.cookies,
+                csrf_token=csrf_token or profile.csrf_token,
+                session_id=profile.session_id,
+                email=profile.email,
+                build_label=profile.build_label,
+            )
+        except Exception as e:
+            logger.debug(f"Failed to update profile on successful auth check: {e}")
+
+    @staticmethod
+    def _determine_verdict(probes: list[AuthProbeResult]) -> str:
+        """Aggregate probe results into a final verdict.
+
+        Prioritisation:
+        - Any network error across ALL probes → "unverified"
+        - Homepage expired + API also failed → "stale"
+        - Any other auth failure → "stale"
+        - All probes unreachable → "unverified"
+        """
+        if not probes:
+            return "not_configured"
+
+        has_auth_failure = any(p.error and not p.error.startswith("network_error:") for p in probes)
+        has_network_error = any(p.error and p.error.startswith("network_error:") for p in probes)
+        all_network_errors = all(p.error and p.error.startswith("network_error:") for p in probes)
+
+        if all_network_errors:
+            return "unverified"
+        if has_auth_failure:
+            return "stale"
+        if has_network_error:
+            return "unverified"
+        return "stale"  # conservative fallback
