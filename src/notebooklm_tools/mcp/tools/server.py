@@ -1,31 +1,12 @@
 """Server tools - Server info and version checking."""
 
 import json
-import threading
 import urllib.request
 from typing import Any, cast
 
 from notebooklm_tools import __version__
 
 from ._utils import logged_tool
-
-# Module-level AuthHealthChecker singleton (thread-safe).
-# Using a singleton avoids redundant cache state across sequential
-# server_info calls within the same MCP session.
-_checker: Any | None = None
-_checker_lock = threading.Lock()
-
-
-def _get_checker() -> Any:
-    """Get or create the AuthHealthChecker singleton."""
-    global _checker
-    if _checker is None:
-        with _checker_lock:
-            if _checker is None:
-                from notebooklm_tools.services.auth import AuthHealthChecker
-
-                _checker = AuthHealthChecker()
-    return _checker
 
 
 def _get_latest_pypi_version() -> str | None:
@@ -69,12 +50,14 @@ def _check_auth_status() -> str:
 
     The AuthHealthChecker runs a multi-probe strategy (homepage + API
     fallback) with TTL caching and mtime-based invalidation, providing
-    more reliable results than a single homepage fetch.
+    more reliable results than a single homepage fetch. Results are
+    cached for 30 seconds and bypassed on auth-file changes, so this
+    is not strictly a "live" check on every call.
     """
     try:
-        checker = _get_checker()
-        report = checker.check()
-        return str(report.status)
+        from notebooklm_tools.services.auth import get_auth_health_checker
+
+        return str(get_auth_health_checker().check().status)
     except Exception:
         return "error"
 
@@ -86,21 +69,25 @@ def server_info() -> dict[str, Any]:
     AI assistants: If update_available is True, inform the user that a new
     version is available and suggest updating with the provided command.
 
-    auth_status now performs a best-effort *live* validation against
-    NotebookLM (same mechanism as `nlm login --check`) when tokens exist.
-    This makes the reported status consistent with actual usability instead
-    of relying only on a local age heuristic.
+    auth_status is the result of an AuthHealthChecker probe. The checker
+    runs a multi-probe strategy (homepage fetch + API fallback) with
+    30-second TTL caching and mtime-based bypass on auth-file changes.
+    The reported value may therefore be up to 30 seconds old, and an
+    external `nlm login` is picked up within one check cycle without
+    waiting for the TTL to expire.
 
     auth_status meanings:
-    - "configured"     — live check passed; credentials are good.
+    - "configured"     — homepage (or API fallback) check passed; credentials
+                         are good. Cached credentials may be reported as
+                         configured for up to 30 seconds.
     - "not_configured" — no credentials are stored (first-time setup).
     - "stale"          — credentials are known-bad (expired or past the
                          7-day heuristic). Operations will fail; ask the
                          user to run `nlm login` to refresh.
-    - "unverified"     — the live check could not be completed (network
-                         error, timeout, non-200 response). Cached
-                         credentials may still work for actual API calls,
-                         so do not assume the user needs to re-auth.
+    - "unverified"     — the check could not be completed (network error,
+                         timeout, non-200 response). Cached credentials may
+                         still work for actual API calls, so do not assume
+                         the user needs to re-auth.
     - "error"          — unexpected exception inside the check itself.
 
     Returns:

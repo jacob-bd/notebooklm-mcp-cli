@@ -11,15 +11,22 @@ from notebooklm_tools.services import auth as services_auth
 
 def test_shim_reexports_expected_auth_symbols():
     """The shim exposes the full set of auth symbols needed by cli/mcp:
-    check_auth (function), the four data/auth helpers (load_cached_tokens,
-    save_tokens_to_cache, get_cache_path, validate_cookies), and the two
-    class symbols (AuthTokens, AuthManager).
+    the four data/auth helpers (check_auth, load_cached_tokens,
+    save_tokens_to_cache, get_cache_path, validate_cookies), the two
+    class symbols re-exported from core (AuthTokens, AuthManager), the
+    AuthHealthChecker family owned by this module, the mtime helper, and
+    the singleton accessor.
     """
     assert sorted(services_auth.__all__) == sorted(
         [
+            "AuthHealthChecker",
+            "AuthHealthReport",
             "AuthManager",
+            "AuthProbeResult",
             "AuthTokens",
             "check_auth",
+            "get_active_auth_mtime",
+            "get_auth_health_checker",
             "get_cache_path",
             "load_cached_tokens",
             "save_tokens_to_cache",
