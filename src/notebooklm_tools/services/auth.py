@@ -474,9 +474,16 @@ class AuthHealthChecker:
 
     @staticmethod
     def _update_profile_on_success(
-        manager: AuthManager, profile: Any, csrf_token: str | None = None
+        manager: Any, profile: Any, csrf_token: str | None = None
     ) -> None:
-        """Persist fresh CSRF and update last_validated after a successful check."""
+        """Persist fresh CSRF and update last_validated after a successful check.
+
+        ``manager`` is typed as ``Any`` rather than ``AuthManager`` because
+        ruff's name resolution does not honor ``from __future__ import
+        annotations`` and the class is re-exported lazily through the
+        services shim; the actual call site uses ``AuthManager`` from
+        ``notebooklm_tools.core.auth`` at runtime.
+        """
         try:
             manager.save_profile(
                 cookies=profile.cookies,

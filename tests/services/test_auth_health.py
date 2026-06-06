@@ -22,7 +22,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import httpx
-import pytest
 
 from notebooklm_tools.core.auth import AuthManager
 from notebooklm_tools.services.auth import (
@@ -31,7 +30,6 @@ from notebooklm_tools.services.auth import (
     AuthProbeResult,
     get_auth_health_checker,
 )
-
 
 # ---------------------------------------------------------------------------
 # Verdict logic — the heart of the multi-probe design
@@ -51,8 +49,12 @@ class TestDetermineVerdict:
         network problem, not an auth problem. The verdict must be
         ``unverified`` so we don't prompt them to re-auth."""
         probes = [
-            AuthProbeResult(probe="homepage", valid=False, error="network_error: ConnectError: refused"),
-            AuthProbeResult(probe="api", valid=False, error="network_error: TimeoutException: timed out"),
+            AuthProbeResult(
+                probe="homepage", valid=False, error="network_error: ConnectError: refused"
+            ),
+            AuthProbeResult(
+                probe="api", valid=False, error="network_error: TimeoutException: timed out"
+            ),
         ]
         assert AuthHealthChecker._determine_verdict(probes) == "unverified"
 
@@ -144,9 +146,7 @@ class TestReportValid:
 def _save_fake_profile(tmp_path, monkeypatch):
     """Plant a profile with valid-looking cookies in tmp_path and patch
     the config helpers so the checker reads it."""
-    monkeypatch.setattr(
-        "notebooklm_tools.utils.config.get_storage_dir", lambda: tmp_path
-    )
+    monkeypatch.setattr("notebooklm_tools.utils.config.get_storage_dir", lambda: tmp_path)
 
     mgr = AuthManager("default")
     mgr.save_profile(
@@ -189,9 +189,7 @@ class TestCheckEndToEnd:
         assert report.probes[0].probe == "homepage"
         assert report.probes[0].valid is True
 
-    def test_check_homepage_expired_api_success_returns_configured(
-        self, tmp_path, monkeypatch
-    ):
+    def test_check_homepage_expired_api_success_returns_configured(self, tmp_path, monkeypatch):
         """The bug-class this whole PR exists to fix: homepage says expired
         (Phase 2 / semi-stale cookies), but the RPC API would still accept
         them. The multi-probe design must return ``configured``."""
@@ -239,9 +237,7 @@ class TestCheckEndToEnd:
         assert report.status == "unverified"
         assert report.valid is False
 
-    def test_check_homepage_expired_api_auth_error_returns_stale(
-        self, tmp_path, monkeypatch
-    ):
+    def test_check_homepage_expired_api_auth_error_returns_stale(self, tmp_path, monkeypatch):
         """If both probes say auth is dead, the verdict is ``stale``."""
         _save_fake_profile(tmp_path, monkeypatch)
 
@@ -275,14 +271,10 @@ class TestProbeApiErrorClassification:
     def test_probe_api_success(self, tmp_path, monkeypatch):
         _save_fake_profile(tmp_path, monkeypatch)
 
-        with patch(
-            "notebooklm_tools.core.client.NotebookLMClient"
-        ) as MockClient:
+        with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
             instance = MockClient.return_value
             instance.list_notebooks.return_value = []
-            ok, err = AuthHealthChecker()._probe_api(
-                {"SID": "x"}, csrf_token="", timeout=2.0
-            )
+            ok, err = AuthHealthChecker()._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
         assert ok is True
         assert err is None
 
@@ -290,9 +282,7 @@ class TestProbeApiErrorClassification:
         """An httpx.TimeoutException from the API call must be reported
         with the ``network_error:`` prefix."""
         checker = AuthHealthChecker()
-        with patch(
-            "notebooklm_tools.core.client.NotebookLMClient"
-        ) as MockClient:
+        with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
             instance = MockClient.return_value
             instance.list_notebooks.side_effect = httpx.ConnectTimeout("timed out")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
@@ -307,9 +297,7 @@ class TestProbeApiErrorClassification:
     def test_probe_api_request_error_emits_network_error_prefix(self):
         """httpx.RequestError covers connection refused, DNS failures, etc."""
         checker = AuthHealthChecker()
-        with patch(
-            "notebooklm_tools.core.client.NotebookLMClient"
-        ) as MockClient:
+        with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
             instance = MockClient.return_value
             instance.list_notebooks.side_effect = httpx.ConnectError("refused")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
@@ -321,13 +309,12 @@ class TestProbeApiErrorClassification:
         """A non-httpx exception (e.g. a domain AuthenticationError) is
         treated as a credential problem, NOT a network error. The
         verdict logic will then classify it as ``stale``."""
+
         class FakeAuthError(Exception):
             pass
 
         checker = AuthHealthChecker()
-        with patch(
-            "notebooklm_tools.core.client.NotebookLMClient"
-        ) as MockClient:
+        with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
             instance = MockClient.return_value
             instance.list_notebooks.side_effect = FakeAuthError("bad creds")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
