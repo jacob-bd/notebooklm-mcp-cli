@@ -346,7 +346,13 @@ class AuthHealthChecker:
         # to login or rejects auth, which is the most common false-positive scenario)
         if hp_reason in ("expired", "http_401", "http_403"):
             api_start = time.perf_counter()
-            api_valid, api_error = self._probe_api(cookie_dict, profile.csrf_token, timeout=timeout)
+            api_valid, api_error = self._probe_api(
+                profile.cookies,
+                profile.csrf_token,
+                timeout=timeout,
+                session_id=getattr(profile, "session_id", None),
+                build_label=getattr(profile, "build_label", None),
+            )
             api_latency = (time.perf_counter() - api_start) * 1000
 
             if api_valid:
@@ -418,7 +424,13 @@ class AuthHealthChecker:
             return False, f"network_error: {type(e).__name__}", str(e), None
 
     def _probe_api(
-        self, cookie_dict: dict[str, str], csrf_token: str | None, *, timeout: float
+        self,
+        cookies: dict[str, str] | list[dict[str, str]],
+        csrf_token: str | None,
+        *,
+        timeout: float,
+        session_id: str | None = None,
+        build_label: str | None = None,
     ) -> tuple[bool, str | None]:
         """Lightweight API probe: create a NotebookLMClient and list notebooks.
 
@@ -435,8 +447,13 @@ class AuthHealthChecker:
         try:
             from notebooklm_tools.core.client import NotebookLMClient
 
-            client = NotebookLMClient(cookies=cookie_dict, csrf_token=csrf_token or "")
-            client.list_notebooks()
+            with NotebookLMClient(
+                cookies=cookies,
+                csrf_token=csrf_token or "",
+                session_id=session_id or "",
+                build_label=build_label or "",
+            ) as client:
+                client.list_notebooks()
             return True, None
         except Exception as e:
             import httpx as _httpx

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`AuthHealthChecker` API fallback falsely reported `stale` for valid multi-domain cookie profiles** — the homepage probe could correctly redirect to `accounts.google.com` (semi-stale cookies) while the RPC API still accepted the session, but the API fallback flattened `profile.cookies` to a dict before calling `NotebookLMClient`, dropping domain-specific duplicates (e.g. the same cookie name on `.google.com` and another host). `nlm login --check` passed the full cookie list and succeeded, so the two checks disagreed. The API probe now passes `profile.cookies` unchanged and includes `session_id` / `build_label`, matching `login --check`.
+
 ## [0.7.1] - 2026-06-06
 
 ### Fixed

@@ -212,6 +212,48 @@ class TestCheckEndToEnd:
         probe_kinds = {p.probe for p in report.probes}
         assert probe_kinds == {"homepage", "api"}
 
+    def test_check_api_fallback_uses_full_cookie_list(self, tmp_path, monkeypatch):
+        """Regression: API fallback must pass profile.cookies (list) through to
+        NotebookLMClient. Flattening to dict drops domain-specific duplicates
+        and falsely reports stale for profiles that nlm login --check accepts."""
+        monkeypatch.setattr("notebooklm_tools.utils.config.get_storage_dir", lambda: tmp_path)
+        duplicate_cookies = [
+            {"name": "HSID", "value": "hsid-google", "domain": ".google.com", "path": "/"},
+            {"name": "HSID", "value": "hsid-other", "domain": ".example.com", "path": "/"},
+            {"name": "SID", "value": "sid", "domain": ".google.com", "path": "/"},
+        ]
+        AuthManager("default").save_profile(
+            cookies=duplicate_cookies,
+            csrf_token="csrf",
+            session_id="sess",
+            build_label="build",
+            email="test@example.com",
+        )
+
+        captured: dict = {}
+
+        def capture_probe(cookies, csrf_token, *, timeout, session_id=None, build_label=None):
+            captured["cookies"] = cookies
+            captured["csrf_token"] = csrf_token
+            captured["session_id"] = session_id
+            captured["build_label"] = build_label
+            return True, None
+
+        with patch("httpx.Client") as MockClient:
+            client = MockClient.return_value.__enter__.return_value
+            req = httpx.Request("GET", "https://accounts.google.com/ServiceLogin")
+            client.get.return_value = httpx.Response(200, request=req, text="login page")
+
+            with patch.object(AuthHealthChecker, "_probe_api", side_effect=capture_probe):
+                report = AuthHealthChecker().check(force=True, timeout=2.0)
+
+        assert report.status == "configured"
+        assert isinstance(captured["cookies"], list)
+        assert len(captured["cookies"]) == 3
+        assert captured["csrf_token"] == "csrf"
+        assert captured["session_id"] == "sess"
+        assert captured["build_label"] == "build"
+
     def test_check_homepage_expired_api_network_error_returns_unverified(
         self, tmp_path, monkeypatch
     ):
@@ -262,6 +304,14 @@ class TestCheckEndToEnd:
 # ---------------------------------------------------------------------------
 
 
+def _enterable_client_mock(MockClient):
+    """NotebookLMClient is used as a context manager in _probe_api."""
+    instance = MockClient.return_value
+    instance.__enter__.return_value = instance
+    instance.__exit__.return_value = None
+    return instance
+
+
 class TestProbeApiErrorClassification:
     """`_probe_api` must prefix transport errors with `network_error:`
     so the verdict logic can distinguish them. The original PR emitted
@@ -272,18 +322,37 @@ class TestProbeApiErrorClassification:
         _save_fake_profile(tmp_path, monkeypatch)
 
         with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
-            instance = MockClient.return_value
+            instance = _enterable_client_mock(MockClient)
             instance.list_notebooks.return_value = []
             ok, err = AuthHealthChecker()._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
         assert ok is True
         assert err is None
+
+    def test_probe_api_passes_session_fields(self):
+        checker = AuthHealthChecker()
+        with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
+            instance = _enterable_client_mock(MockClient)
+            instance.list_notebooks.return_value = []
+            checker._probe_api(
+                {"SID": "x"},
+                csrf_token="csrf",
+                timeout=2.0,
+                session_id="sess-1",
+                build_label="build-1",
+            )
+        MockClient.assert_called_once_with(
+            cookies={"SID": "x"},
+            csrf_token="csrf",
+            session_id="sess-1",
+            build_label="build-1",
+        )
 
     def test_probe_api_timeout_emits_network_error_prefix(self):
         """An httpx.TimeoutException from the API call must be reported
         with the ``network_error:`` prefix."""
         checker = AuthHealthChecker()
         with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
-            instance = MockClient.return_value
+            instance = _enterable_client_mock(MockClient)
             instance.list_notebooks.side_effect = httpx.ConnectTimeout("timed out")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
         assert ok is False
@@ -298,7 +367,7 @@ class TestProbeApiErrorClassification:
         """httpx.RequestError covers connection refused, DNS failures, etc."""
         checker = AuthHealthChecker()
         with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
-            instance = MockClient.return_value
+            instance = _enterable_client_mock(MockClient)
             instance.list_notebooks.side_effect = httpx.ConnectError("refused")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
         assert ok is False
@@ -315,7 +384,7 @@ class TestProbeApiErrorClassification:
 
         checker = AuthHealthChecker()
         with patch("notebooklm_tools.core.client.NotebookLMClient") as MockClient:
-            instance = MockClient.return_value
+            instance = _enterable_client_mock(MockClient)
             instance.list_notebooks.side_effect = FakeAuthError("bad creds")
             ok, err = checker._probe_api({"SID": "x"}, csrf_token="", timeout=2.0)
         assert ok is False
