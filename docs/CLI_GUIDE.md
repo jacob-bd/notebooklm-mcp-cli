@@ -367,3 +367,23 @@ nlm download audio ai <artifact-id> --output podcast.mp3
 - Run `nlm login profile list` to see all profiles with their associated email addresses
 - Run `nlm doctor` to diagnose installation, auth, or config issues
 - Use `nlm setup add <client>` to quickly configure MCP for your AI tool
+
+---
+
+## Scripting & Automation
+
+### Parsing `--json` output
+
+The `--json` flag emits pretty-printed JSON. When writing automation scripts that capture
+notebook or source IDs from command output, use a JSON parser — not string splitting.
+
+**Reliable (works regardless of formatting):**
+```python
+import json, subprocess, re
+
+result = subprocess.run(
+    ["nlm", "notebook", "list", "--json"],
+    capture_output=True, text=True
+)
+notebooks = json.loads(result.stdout)
+notebook_id = notebooks[0]["id"]   # UUID like "abc12345-..."
