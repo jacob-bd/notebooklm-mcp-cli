@@ -17,6 +17,7 @@ from notebooklm_tools.cli.commands.alias import (
     set_alias,
 )
 from notebooklm_tools.cli.commands.chat import (
+    clear_chat_history,
     configure_chat,
 )
 from notebooklm_tools.cli.commands.config import (
@@ -532,6 +533,21 @@ def delete_alias_verb(
 ) -> None:
     """Delete an alias."""
     delete_alias(name=name, confirm=confirm)
+
+
+@delete_app.command("chat-history")
+def delete_chat_history_verb(
+    notebook: str = typer.Argument(..., help="Notebook ID or alias"),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        "-y",
+        help="Skip confirmation prompt (destructive: erases server-side chat history)",
+    ),
+    profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """Delete the chat history for a notebook (alias for ``nlm chat clear``)."""
+    clear_chat_history(notebook_id=notebook, confirm=confirm, profile=profile)
 
 
 # =============================================================================

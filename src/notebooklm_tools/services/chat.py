@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from ..core.client import NotebookLMClient
 from ..core.conversation import QueryRejectedError
+from ..core.errors import RPCError
 from . import notebooks as notebook_service
 from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
@@ -208,6 +209,7 @@ class DeleteChatHistoryResult(TypedDict):
 
     notebook_id: str
     message: str
+    partial: bool  # True if server-side delete failed but local cache was cleared
 
 
 def delete_chat_history(
@@ -217,17 +219,28 @@ def delete_chat_history(
     """Delete the chat history for a notebook.
 
     Fetches the notebook's persistent conversation ID, then deletes
-    the associated chat history from the server.
+    the associated chat history from the server. Also clears the local
+    conversation cache so the next ``notebook_query`` call starts from
+    a clean context.
+
+    If the server-side RPC fails with ``INVALID_ARGUMENT`` (Google error
+    code 3), the local cache is still cleared and a partial-success result
+    is returned. The user is informed via the ``partial`` flag and
+    ``message`` so they can fall back to the NotebookLM web UI for a full
+    server-side reset.
 
     Args:
         client: Authenticated NotebookLM client
         notebook_id: Notebook UUID
 
     Returns:
-        DeleteChatHistoryResult with confirmation message
+        DeleteChatHistoryResult with confirmation message and a ``partial``
+        flag (True when the server rejected the request and only the local
+        cache was cleared).
 
     Raises:
-        ServiceError: If no chat history exists or deletion fails
+        ServiceError: If no chat history exists, or if both the server-side
+            delete AND the local cache cleanup fail.
     """
     conv_id = client.get_conversation_id(notebook_id)
     if not conv_id:
@@ -236,13 +249,44 @@ def delete_chat_history(
             user_message="This notebook has no chat history to delete.",
         )
 
+    # Best-effort local cache cleanup — done regardless of server response
+    # so the next query starts from a clean client-side context.
+    def _clear_local_cache() -> bool:
+        try:
+            return bool(client.clear_conversation(conv_id))
+        except Exception as e:  # noqa: BLE001
+            logger.debug("Local conversation cache cleanup failed: %s", e)
+            return False
+
     try:
         client.delete_chat_history(notebook_id, conv_id)
+    except RPCError as e:
+        if e.error_code == 3:  # INVALID_ARGUMENT — known upstream RPC issue
+            _clear_local_cache()
+            logger.warning(
+                "Server-side chat history delete returned INVALID_ARGUMENT for "
+                "notebook %s; falling back to local cache cleanup only.",
+                notebook_id,
+            )
+            return {
+                "notebook_id": notebook_id,
+                "partial": True,
+                "message": (
+                    "Local conversation cache cleared. Server-side history could "
+                    "not be erased (NotebookLM API returned INVALID_ARGUMENT); "
+                    "use the NotebookLM web UI (⋮ → Clear chat) for a full reset."
+                ),
+            }
+        # Other RPC errors — fail loudly with the original message
+        raise ServiceError(f"Failed to delete chat history: {e}") from e
     except Exception as e:
         raise ServiceError(f"Failed to delete chat history: {e}") from e
 
+    # Successful server delete — also clear local cache to keep them in sync
+    _clear_local_cache()
     return {
         "notebook_id": notebook_id,
+        "partial": False,
         "message": "Chat history deleted.",
     }
 

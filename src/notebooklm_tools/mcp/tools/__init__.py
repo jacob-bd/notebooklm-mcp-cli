@@ -4,6 +4,7 @@
 from .auth import refresh_auth, save_auth_tokens
 from .batch import batch
 from .chat import (
+    chat_clear,
     chat_configure,
     notebook_query,
 )
@@ -86,9 +87,10 @@ __all__ = [
     "studio_status",
     "studio_delete",
     "studio_revise",
-    # Chat (2)
+    # Chat (3)
     "notebook_query",
     "chat_configure",
+    "chat_clear",
     # Exports (1)
     "export_artifact",
     # Notes (1 consolidated)

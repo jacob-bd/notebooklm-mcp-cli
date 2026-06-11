@@ -143,3 +143,27 @@ def notebook_query_status(
         return error_result(e.user_message, hint=e.hint)
     except Exception as e:
         return error_result(str(e))
+
+
+@logged_tool()
+def chat_clear(notebook_id: str) -> ResultDict:
+    """Delete the chat history for a notebook.
+
+    This erases the persistent conversation on the server, so future
+    ``notebook_query`` calls start from a clean context. Useful when a
+    notebook has many sources and accumulated answers are biasing follow-ups
+    — the model becomes "hostage" to its own prior replies.
+
+    Mirrors the "Clear chat" action in the NotebookLM web UI.
+
+    Args:
+        notebook_id: Notebook UUID
+    """
+    try:
+        client = get_client()
+        result = chat_service.delete_chat_history(client, notebook_id)
+        return {"status": "success", **result}
+    except ServiceError as e:
+        return error_result(e.user_message, hint=e.hint)
+    except Exception as e:
+        return error_result(str(e))

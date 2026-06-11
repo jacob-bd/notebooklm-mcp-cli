@@ -82,3 +82,41 @@ def start_chat(
     from notebooklm_tools.cli.commands.repl import run_chat_repl
 
     run_chat_repl(notebook_id, profile)
+
+
+@app.command("clear")
+def clear_chat_history(
+    notebook_id: str = typer.Argument(..., help="Notebook ID or alias"),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        "-y",
+        help="Skip confirmation prompt (destructive: erases server-side chat history)",
+    ),
+    profile: str | None = typer.Option(None, "--profile", "-p", help="Profile to use"),
+) -> None:
+    """
+    Delete the chat history for a notebook.
+
+    Erases the persistent conversation on the NotebookLM server, so the next
+    ``notebook_query`` starts from a clean context. Mirrors the "Clear chat"
+    action in the NotebookLM web UI. Useful when a notebook with many sources
+    has accumulated answers that bias follow-up questions.
+    """
+    try:
+        notebook_id = get_alias_manager().resolve(notebook_id)
+        if not confirm:
+            confirmed = typer.confirm(
+                f"Delete chat history for notebook {notebook_id}? This cannot be undone.",
+                default=False,
+            )
+            if not confirmed:
+                console.print("[yellow]Cancelled.[/yellow]")
+                raise typer.Exit(0)
+        with get_client(profile) as client:
+            result = chat_service.delete_chat_history(client, notebook_id)
+
+        console.print(f"[green]✓[/green] {result['message']}")
+
+    except (ServiceError, NLMError) as e:
+        handle_error(e, json_output=locals().get("json_output", False))

@@ -11,6 +11,7 @@ from notebooklm_tools.services.chat import (
     query_start,
     query_status,
 )
+from notebooklm_tools.core.errors import RPCError
 from notebooklm_tools.services.errors import ServiceError, ValidationError
 
 
@@ -180,6 +181,48 @@ class TestDeleteChatHistory:
 
         with pytest.raises(ServiceError, match="Failed to delete"):
             delete_chat_history(mock_client, "nb-123")
+
+    def test_invalid_argument_rpc_returns_partial_success(self, mock_client):
+        """When server returns INVALID_ARGUMENT (code 3) — known upstream RPC
+        issue — the service should still clear the local cache and return a
+        partial-success result so the next query starts from a clean context.
+        """
+        mock_client.get_conversation_id.return_value = "conv-123"
+        mock_client.delete_chat_history.side_effect = RPCError(
+            "API error (code 3): INVALID_ARGUMENT", error_code=3
+        )
+        mock_client.clear_conversation.return_value = True
+
+        result = delete_chat_history(mock_client, "nb-123")
+
+        assert result["notebook_id"] == "nb-123"
+        assert result["partial"] is True
+        assert "INVALID_ARGUMENT" in result["message"]
+        mock_client.clear_conversation.assert_called_once_with("conv-123")
+
+    def test_other_rpc_error_still_raises_service_error(self, mock_client):
+        """Non-INVALID_ARGUMENT RPC errors should still fail loudly."""
+        mock_client.get_conversation_id.return_value = "conv-123"
+        mock_client.delete_chat_history.side_effect = RPCError(
+            "API error (code 16): UNAUTHENTICATED", error_code=16
+        )
+
+        with pytest.raises(ServiceError, match="Failed to delete"):
+            delete_chat_history(mock_client, "nb-123")
+
+    def test_partial_success_clears_cache_even_if_clear_fails(self, mock_client):
+        """If both server delete and local clear fail, surface a clear message
+        but still don't crash."""
+        mock_client.get_conversation_id.return_value = "conv-123"
+        mock_client.delete_chat_history.side_effect = RPCError(
+            "API error (code 3): INVALID_ARGUMENT", error_code=3
+        )
+        mock_client.clear_conversation.return_value = False  # nothing to clear
+
+        result = delete_chat_history(mock_client, "nb-123")
+
+        assert result["partial"] is True
+        mock_client.clear_conversation.assert_called_once_with("conv-123")
 
 
 class TestQueryStart:

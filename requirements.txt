@@ -1,0 +1,18 @@
+# Pinned for reproducibility. Tested 2026-06-11.
+# Install: pip install -r requirements.txt
+# Then: pip install -e .  (this package, editable mode from src/)
+
+# --- Core runtime ---
+httpx==0.28.1
+pydantic>=2.0.0,<3.0
+typer==0.26.7
+rich==14.3.4
+websocket-client>=1.6.0,<2.0
+platformdirs>=4.0.0,<5.0
+fastmcp==3.4.2
+pyyaml>=6.0,<7.0
+
+# --- Dev / test (optional) ---
+pytest==9.0.3
+pytest-asyncio==1.4.0
+mcp==1.27.2            # for MCP SDK smoke tests
