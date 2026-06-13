@@ -7,6 +7,11 @@ from .chat import (
     chat_configure,
     notebook_query,
 )
+from .chatgpt_bridge import (
+    chatgpt_add_file_source,
+    chatgpt_bridge_cleanup,
+    chatgpt_bridge_status,
+)
 from .cross_notebook import cross_notebook_query
 from .downloads import download_artifact
 from .exports import (
@@ -89,6 +94,10 @@ __all__ = [
     # Chat (2)
     "notebook_query",
     "chat_configure",
+    # ChatGPT file bridge (3; disabled by default)
+    "chatgpt_bridge_status",
+    "chatgpt_add_file_source",
+    "chatgpt_bridge_cleanup",
     # Exports (1)
     "export_artifact",
     # Notes (1 consolidated)

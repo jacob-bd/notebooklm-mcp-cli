@@ -80,6 +80,7 @@ def _register_tools() -> None:
         auth,
         batch,
         chat,
+        chatgpt_bridge,
         cross_notebook,
         downloads,
         exports,
