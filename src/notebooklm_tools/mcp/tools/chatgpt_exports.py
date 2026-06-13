@@ -157,7 +157,7 @@ def chatgpt_export_status() -> ResultDict:
         "status": "success",
         "enabled": _enabled(),
         "public_base_url_configured": bool(_public_base_url()),
-        "cache_dir": str(_cache_dir()),
+        "cache_dir_configured": bool(os.environ.get("NOTEBOOKLM_CHATGPT_EXPORT_CACHE_DIR", "")),
         "ttl_seconds": _ttl_seconds(),
         "max_bytes": _max_bytes(),
         "active_exports": active,
@@ -259,7 +259,7 @@ def chatgpt_prepare_artifact_download(
         return {
             "status": "success",
             "artifact_type": artifact_type,
-            "path": str(final_path),
+            "file_name": record["file_name"],
             "bytes": size,
             "expires_at": record["expires_at"],
             "downloads_remaining": record["downloads_remaining"],
