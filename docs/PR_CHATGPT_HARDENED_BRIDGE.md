@@ -35,6 +35,16 @@ This implementation addresses those by construction:
 - no `download_url` is added to `source_get_content` or `download_artifact`;
 - ordinary read-only tools do not write files to disk.
 
+## Issues addressed
+
+This PR explicitly addresses the issues raised against the earlier reverted bridge:
+
+- SSRF risk is addressed with `https://`-only URLs, required host allowlisting, DNS resolution checks, and rejection of private/link-local/loopback addresses.
+- Redirect bypass risk is addressed by manually following redirects and revalidating every redirected URL.
+- Disk leak risk is addressed by making downloads temporary, explicit, size-limited, and cleaned up after upload by default.
+- Surprise behavior is addressed by keeping ordinary read-only MCP tools unchanged: no implicit file writes and no automatic `download_url` injection.
+- Accidental upload risk is addressed by requiring an explicit bridge tool call and `confirm=True` before NotebookLM upload.
+
 ## New tools
 
 ```text
@@ -42,6 +52,48 @@ chatgpt_bridge_status
 chatgpt_add_file_source
 chatgpt_bridge_cleanup
 ```
+
+## How to use with ChatGPT
+
+This PR covers the inbound flow:
+
+```text
+ChatGPT-accessible HTTPS file URL -> NotebookLM file source
+```
+
+1. Enable the bridge in the MCP server environment:
+
+   ```text
+   NOTEBOOKLM_CHATGPT_BRIDGE_ENABLED=true
+   NOTEBOOKLM_CHATGPT_FILE_HOST_ALLOWLIST=host.example.com,*.trusted.example.com
+   ```
+
+2. Put the file somewhere ChatGPT/the MCP server can reach by HTTPS, and make sure the hostname is in `NOTEBOOKLM_CHATGPT_FILE_HOST_ALLOWLIST`.
+
+3. In the MCP client, call:
+
+   ```text
+   chatgpt_bridge_status
+   ```
+
+   Confirm the bridge is enabled and the allowlist is loaded.
+
+4. Ask ChatGPT to provide or use the trusted HTTPS file URL, then call:
+
+   ```text
+   chatgpt_add_file_source(
+     notebook_id="<notebook-id>",
+     file_url="https://host.example.com/path/to/file.pdf",
+     title="Optional source title",
+     confirm=true
+   )
+   ```
+
+5. The bridge downloads the file into a temporary cache, validates it, uploads it to NotebookLM as a source, and deletes the temporary file by default.
+
+6. Use `chatgpt_bridge_cleanup` to clear any expired temporary downloads.
+
+Important limitation: this does not let arbitrary ChatGPT-provided URLs through. The URL must be HTTPS and must resolve to a public address on an explicitly allowed hostname.
 
 ## Configuration
 
