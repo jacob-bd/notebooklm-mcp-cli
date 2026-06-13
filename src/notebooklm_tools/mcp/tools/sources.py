@@ -1,5 +1,7 @@
 """Source tools - Source management with consolidated source_add."""
 
+import time
+
 from ...services import ServiceError, ValidationError
 from ...services import sources as sources_service
 from ._utils import ResultDict, coerce_list, error_result, get_client, logged_tool
@@ -242,8 +244,29 @@ def source_describe(source_id: str) -> ResultDict:
         return error_result(str(e))
 
 
+def _source_content_transient(message: str) -> bool:
+    """Return True for source-content states that may resolve after polling."""
+    lowered = message.lower()
+    return any(
+        phrase in lowered
+        for phrase in (
+            "failed to get source content",
+            "no content returned",
+            "not ready",
+            "processing",
+            "indexing",
+            "try again",
+        )
+    )
+
+
 @logged_tool()
-def source_get_content(source_id: str) -> ResultDict:
+def source_get_content(
+    source_id: str,
+    wait: bool = True,
+    wait_timeout: float = 120.0,
+    poll_interval: float = 3.0,
+) -> ResultDict:
     """Get raw text content of a source (no AI processing).
 
     Returns the original indexed text from PDFs, web pages, pasted text,
@@ -251,13 +274,42 @@ def source_get_content(source_id: str) -> ResultDict:
 
     Args:
         source_id: Source UUID
+        wait: If True, poll while NotebookLM is still indexing the source.
+        wait_timeout: Maximum seconds to wait when wait=True.
+        poll_interval: Seconds between readiness checks.
 
     Returns: content (str), title (str), source_type (str), char_count (int)
     """
     try:
         client = get_client()
-        result = sources_service.get_source_content(client, source_id)
-        return {"status": "success", **result}
+        deadline = time.monotonic() + max(0.0, wait_timeout)
+        attempts = 0
+        last_error: ServiceError | None = None
+
+        while True:
+            attempts += 1
+            try:
+                result = sources_service.get_source_content(client, source_id)
+                if result.get("content") or not wait:
+                    return {"status": "success", **result}
+            except ServiceError as e:
+                last_error = e
+                message = f"{e.user_message} {e}"
+                if not wait or not _source_content_transient(message) or time.monotonic() >= deadline:
+                    raise
+
+            if not wait or time.monotonic() >= deadline:
+                if last_error:
+                    raise last_error
+                return error_result(
+                    "Source content is not ready yet.",
+                    status="pending",
+                    hint="NotebookLM may still be indexing this source. Retry source_get_content shortly or increase wait_timeout.",
+                    source_id=source_id,
+                    attempts=attempts,
+                )
+
+            time.sleep(max(0.5, poll_interval))
     except ServiceError as e:
         return error_result(e.user_message, hint=e.hint)
     except Exception as e:
