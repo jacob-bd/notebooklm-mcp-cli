@@ -82,9 +82,13 @@ async def chatgpt_export_download(request: Request) -> FileResponse | JSONRespon
     token = request.path_params.get("token", "")
     record, delete_after_response = claim_chatgpt_export(token)
     if not record:
-        return JSONResponse({"status": "error", "error": "Export link expired or not found."}, status_code=404)
+        return JSONResponse(
+            {"status": "error", "error": "Export link expired or not found."}, status_code=404
+        )
 
-    background = BackgroundTask(delete_export_file, record["path"]) if delete_after_response else None
+    background = (
+        BackgroundTask(delete_export_file, record["path"]) if delete_after_response else None
+    )
     return FileResponse(
         record["path"],
         media_type=record["mime_type"],

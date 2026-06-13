@@ -101,7 +101,9 @@ def cleanup_chatgpt_exports() -> int:
     return removed
 
 
-def _register_export(path: Path, file_name: str, ttl_seconds: int, max_downloads: int) -> dict[str, Any]:
+def _register_export(
+    path: Path, file_name: str, ttl_seconds: int, max_downloads: int
+) -> dict[str, Any]:
     token = secrets.token_urlsafe(32)
     expires_at = time.time() + ttl_seconds
     mime_type, _ = mimetypes.guess_type(file_name)
