@@ -12,6 +12,11 @@ from .chatgpt_bridge import (
     chatgpt_bridge_cleanup,
     chatgpt_bridge_status,
 )
+from .chatgpt_exports import (
+    chatgpt_export_cleanup,
+    chatgpt_export_status,
+    chatgpt_prepare_artifact_download,
+)
 from .cross_notebook import cross_notebook_query
 from .downloads import download_artifact
 from .exports import (
@@ -94,10 +99,14 @@ __all__ = [
     # Chat (2)
     "notebook_query",
     "chat_configure",
-    # ChatGPT file bridge (3; disabled by default)
+    # ChatGPT inbound file bridge (3; disabled by default)
     "chatgpt_bridge_status",
     "chatgpt_add_file_source",
     "chatgpt_bridge_cleanup",
+    # ChatGPT outbound export bridge (3; disabled by default)
+    "chatgpt_export_status",
+    "chatgpt_prepare_artifact_download",
+    "chatgpt_export_cleanup",
     # Exports (1)
     "export_artifact",
     # Notes (1 consolidated)

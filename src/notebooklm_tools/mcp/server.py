@@ -22,8 +22,9 @@ import logging
 import os
 
 from fastmcp import FastMCP
+from starlette.background import BackgroundTask
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse
 
 from notebooklm_tools import __version__
 
@@ -73,6 +74,25 @@ async def health_check(request: Request) -> JSONResponse:
     )
 
 
+@mcp.custom_route("/chatgpt-exports/{token}", methods=["GET"])
+async def chatgpt_export_download(request: Request) -> FileResponse | JSONResponse:
+    """Serve one short-lived, tokenized ChatGPT export if explicitly staged."""
+    from .tools.chatgpt_exports import claim_chatgpt_export, delete_export_file
+
+    token = request.path_params.get("token", "")
+    record, delete_after_response = claim_chatgpt_export(token)
+    if not record:
+        return JSONResponse({"status": "error", "error": "Export link expired or not found."}, status_code=404)
+
+    background = BackgroundTask(delete_export_file, record["path"]) if delete_after_response else None
+    return FileResponse(
+        record["path"],
+        media_type=record["mime_type"],
+        filename=record["file_name"],
+        background=background,
+    )
+
+
 def _register_tools() -> None:
     """Import and register all tools from the modular tools package."""
     # Import all tool modules to populate the registry
@@ -81,6 +101,7 @@ def _register_tools() -> None:
         batch,
         chat,
         chatgpt_bridge,
+        chatgpt_exports,
         cross_notebook,
         downloads,
         exports,
