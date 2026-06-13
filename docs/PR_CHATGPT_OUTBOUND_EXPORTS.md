@@ -70,9 +70,11 @@ This does not reintroduce the reverted bridge behavior:
 ## Validation performed
 
 ```text
-ruff: All checks passed
+ruff check: All checks passed
+ruff format --check: clean
 pytest tests/test_mcp_chatgpt_exports_hardened.py: 9 passed
-server import ok
+pytest combined PR-specific suite: 38 passed locally
+GitHub Actions: lint, tests, and version alignment passed
 ```
 
 The tests cover:
