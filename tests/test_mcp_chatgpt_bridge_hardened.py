@@ -36,7 +36,9 @@ def test_validate_remote_url_requires_allowlist(monkeypatch):
 def test_validate_remote_url_rejects_non_https(monkeypatch):
     monkeypatch.setattr(chatgpt_bridge, "_public_ip_check", lambda _host: None)
     with pytest.raises(ValidationError, match="https"):
-        chatgpt_bridge._validate_remote_url("http://files.example.com/doc.pdf", ["files.example.com"])
+        chatgpt_bridge._validate_remote_url(
+            "http://files.example.com/doc.pdf", ["files.example.com"]
+        )
 
 
 def test_validate_remote_url_rejects_private_ip_even_when_allowlisted():

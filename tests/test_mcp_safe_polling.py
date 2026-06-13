@@ -36,7 +36,12 @@ def test_source_get_content_pending_without_disk_side_effect(monkeypatch):
     monkeypatch.setattr(
         sources.sources_service,
         "get_source_content",
-        lambda _client, _source_id: {"content": "", "title": "Pending", "source_type": "text", "char_count": 0},
+        lambda _client, _source_id: {
+            "content": "",
+            "title": "Pending",
+            "source_type": "text",
+            "char_count": 0,
+        },
     )
 
     result = sources.source_get_content("src-1", wait=True, wait_timeout=0, poll_interval=0.5)

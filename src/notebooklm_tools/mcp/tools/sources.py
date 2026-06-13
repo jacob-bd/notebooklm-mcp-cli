@@ -295,7 +295,11 @@ def source_get_content(
             except ServiceError as e:
                 last_error = e
                 message = f"{e.user_message} {e}"
-                if not wait or not _source_content_transient(message) or time.monotonic() >= deadline:
+                if (
+                    not wait
+                    or not _source_content_transient(message)
+                    or time.monotonic() >= deadline
+                ):
                     raise
 
             if not wait or time.monotonic() >= deadline:

@@ -1319,6 +1319,7 @@ def has_chrome_profile(profile_name: str = "default") -> bool:
 
     Checks both standard and snap-accessible profile directories.
     """
+
     def _profile_has_cookie_db(profile_dir: Path) -> bool:
         cookie_paths = (
             profile_dir / "Default" / "Cookies",

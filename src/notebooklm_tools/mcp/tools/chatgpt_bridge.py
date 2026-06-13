@@ -28,9 +28,24 @@ _DEFAULT_TTL_SECONDS = 3600
 _MAX_REDIRECTS = 3
 
 _ALLOWED_EXTENSIONS = {
-    ".pdf", ".txt", ".md", ".docx", ".csv", ".epub",
-    ".mp3", ".m4a", ".wav", ".aac", ".ogg", ".opus",
-    ".mp4", ".jpg", ".jpeg", ".png", ".gif", ".webp",
+    ".pdf",
+    ".txt",
+    ".md",
+    ".docx",
+    ".csv",
+    ".epub",
+    ".mp3",
+    ".m4a",
+    ".wav",
+    ".aac",
+    ".ogg",
+    ".opus",
+    ".mp4",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
 }
 
 
@@ -120,8 +135,7 @@ def _validate_remote_url(url: str, allowed_hosts: list[str]) -> str:
         raise ValidationError("URL must include a hostname.")
     if not allowed_hosts:
         raise ValidationError(
-            "No ChatGPT file host allowlist configured. Set "
-            "NOTEBOOKLM_CHATGPT_FILE_HOST_ALLOWLIST."
+            "No ChatGPT file host allowlist configured. Set NOTEBOOKLM_CHATGPT_FILE_HOST_ALLOWLIST."
         )
     if not _host_allowed(parsed.hostname, allowed_hosts):
         raise ValidationError("URL host is not in NOTEBOOKLM_CHATGPT_FILE_HOST_ALLOWLIST.")
@@ -174,20 +188,28 @@ def _download_remote_file(download_url: str, file_name: str | None) -> tuple[Pat
                 if resp.status_code in (301, 302, 303, 307, 308):
                     location = resp.headers.get("location")
                     if not location:
-                        raise ValidationError("Redirect response did not include a Location header.")
-                    current_url = _validate_remote_url(urljoin(current_url, location), allowed_hosts)
+                        raise ValidationError(
+                            "Redirect response did not include a Location header."
+                        )
+                    current_url = _validate_remote_url(
+                        urljoin(current_url, location), allowed_hosts
+                    )
                     continue
 
                 resp.raise_for_status()
                 content_length = resp.headers.get("content-length")
                 if content_length and int(content_length) > max_bytes:
-                    raise ValidationError("ChatGPT file is larger than NOTEBOOKLM_CHATGPT_FILE_MAX_BYTES.")
+                    raise ValidationError(
+                        "ChatGPT file is larger than NOTEBOOKLM_CHATGPT_FILE_MAX_BYTES."
+                    )
 
                 with target.open("wb") as handle:
                     for chunk in resp.iter_bytes():
                         total += len(chunk)
                         if total > max_bytes:
-                            raise ValidationError("ChatGPT file exceeded NOTEBOOKLM_CHATGPT_FILE_MAX_BYTES.")
+                            raise ValidationError(
+                                "ChatGPT file exceeded NOTEBOOKLM_CHATGPT_FILE_MAX_BYTES."
+                            )
                         handle.write(chunk)
                 return target, total
         raise ValidationError("Too many redirects while downloading ChatGPT file.")
