@@ -65,9 +65,10 @@ NOTEBOOKLM_CHATGPT_FILE_CACHE_DIR=<custom cache directory>
 Static and unit validation:
 
 ```text
-ruff: All checks passed
-pytest: 27 passed
-server import ok
+ruff check: All checks passed
+ruff format --check: clean
+pytest: 29 passed locally for PR-specific tests
+GitHub Actions: lint, tests, and version alignment passed
 ```
 
 Live NotebookLM validation:
