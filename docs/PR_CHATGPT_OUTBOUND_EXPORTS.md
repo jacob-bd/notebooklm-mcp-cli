@@ -10,6 +10,17 @@ It is intentionally separate from ordinary `download_artifact` behavior. Nothing
 NotebookLM artifact -> explicit staging -> tokenized route -> one-time/TTL-bound download
 ```
 
+## Issues addressed
+
+This PR addresses the outbound side of the earlier bridge concerns without reintroducing the reverted broad artifact server:
+
+- Public artifact exposure is addressed by using random, high-entropy, per-export tokens instead of filename-addressable routes.
+- Long-lived link risk is addressed with TTL expiration and cleanup of expired staged files.
+- Link reuse risk is addressed with one-time download by default and explicit `max_downloads` for the rare multi-download case.
+- Local path disclosure is addressed by never returning the local staged file path in successful tool or status responses.
+- Surprise serving behavior is addressed by requiring explicit export-tool invocation, `confirm=True`, and `NOTEBOOKLM_CHATGPT_EXPORTS_ENABLED=true`.
+- Tunnel exposure risk is addressed by requiring an explicit `NOTEBOOKLM_CHATGPT_EXPORT_BASE_URL`; the server will not guess or silently expose a URL.
+
 ## New tools
 
 ```text
@@ -17,6 +28,55 @@ chatgpt_export_status
 chatgpt_prepare_artifact_download
 chatgpt_export_cleanup
 ```
+
+## How to use with ChatGPT
+
+This PR covers the outbound flow:
+
+```text
+NotebookLM artifact -> short-lived HTTPS link -> ChatGPT can fetch/download it
+```
+
+1. Expose the MCP server through a trusted HTTPS origin, such as a controlled Cloudflare Tunnel or equivalent reverse proxy.
+
+2. Enable outbound exports in the MCP server environment:
+
+   ```text
+   NOTEBOOKLM_CHATGPT_EXPORTS_ENABLED=true
+   NOTEBOOKLM_CHATGPT_EXPORT_BASE_URL=https://<your HTTPS tunnel origin>
+   ```
+
+3. In the MCP client, call:
+
+   ```text
+   chatgpt_export_status
+   ```
+
+   Confirm exports are enabled and the base URL is correct.
+
+4. Generate or locate the NotebookLM artifact you want ChatGPT to read, then call:
+
+   ```text
+   chatgpt_prepare_artifact_download(
+     notebook_id="<notebook-id>",
+     artifact_id="<artifact-id>",
+     confirm=true
+   )
+   ```
+
+5. The tool stages the artifact and returns a short-lived URL like:
+
+   ```text
+   https://<your HTTPS tunnel origin>/chatgpt-exports/<token>
+   ```
+
+6. Paste that returned URL into ChatGPT or use it from ChatGPT while the token is still valid.
+
+7. By default, the first successful download consumes the token and schedules the staged file for deletion. Use `max_downloads` only when multiple fetches are intentional.
+
+8. Use `chatgpt_export_cleanup` to remove expired staged exports.
+
+Important limitation: this does not create permanent public artifact links. The returned link is tokenized, TTL-bound, and one-time by default.
 
 ## New route
 
