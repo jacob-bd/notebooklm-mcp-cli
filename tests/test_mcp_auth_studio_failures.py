@@ -28,36 +28,20 @@ def _auth_result(valid, reason=None):
     return core_auth.AuthCheckResult(valid=valid, reason=reason, live=True, profile="default")
 
 
-def _patch_credentials_usable(monkeypatch, usable, status="stale", detail=None):
+def _patch_credentials_usable(monkeypatch, usable, status="stale", detail=None, counter=None):
+    """Patch the service-layer auth wrapper used by refresh_auth and studio_create."""
+
+    def _credentials_are_usable(**_kw):
+        if counter is not None:
+            counter["n"] += 1
+        return usable, "configured" if usable else status, detail
+
     monkeypatch.setattr(
         services_auth,
         "credentials_are_usable",
-        lambda **kw: (usable, "configured" if usable else status, detail),
+        _credentials_are_usable,
         raising=True,
     )
-
-
-def _health_report(valid, status=None):
-    """Build a real AuthHealthReport for studio_create's shared checker."""
-    return services_auth.AuthHealthReport(
-        valid=valid,
-        status=status or ("configured" if valid else "stale"),
-        probes=[],
-        profile="default",
-        checked_at=0.0,
-    )
-
-
-def _patch_auth_health(monkeypatch, valid, status=None, counter=None):
-    """Patch the shared auth-health singleton used by studio_create."""
-
-    class _Checker:
-        def check(self):
-            if counter is not None:
-                counter["n"] += 1
-            return _health_report(valid, status)
-
-    monkeypatch.setattr(services_auth, "get_auth_health_checker", lambda: _Checker(), raising=True)
 
 
 class _FakeClient:
@@ -168,7 +152,7 @@ def test_studio_create_fails_loudly_on_stale_auth(monkeypatch):
     — not status:"success" with an artifact_id that immediately fails.
     """
     studio_tools._auth_guard_expires = 0.0  # force guard expired so auth is re-checked
-    _patch_auth_health(monkeypatch, False, "expired")
+    _patch_credentials_usable(monkeypatch, usable=False, status="expired")
 
     # If the code wrongly proceeds, make the client call explode so the test can't pass by luck.
     def _boom():
@@ -321,7 +305,7 @@ def test_studio_create_e2e_per_auth_state(monkeypatch, auth_state, valid, reason
     status:"error" (never a fake success).
     """
     studio_tools._auth_guard_expires = 0.0  # force guard expired so auth is re-checked
-    _patch_auth_health(monkeypatch, valid, reason)
+    _patch_credentials_usable(monkeypatch, usable=valid, status=reason or "stale")
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(
         studio_tools.studio_service,
@@ -365,7 +349,7 @@ def test_studio_create_resets_auth_guard_on_invalid_auth(monkeypatch):
     the TTL has already expired and we just detected the invalid auth: we
     should not let a future-valid guard leak forward to the next call.
     """
-    _patch_auth_health(monkeypatch, False, "expired")
+    _patch_credentials_usable(monkeypatch, usable=False, status="expired")
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
 
     # Pre-seed the guard with a future timestamp, simulating "auth was valid
@@ -397,7 +381,7 @@ def test_studio_create_invalidates_auth_guard_when_auth_file_changes(monkeypatch
 
     # First call: mtime=N. Guard populated with mtime=N.
     monkeypatch.setattr(studio_tools, "_get_auth_file_mtime", lambda: 1000.0, raising=True)
-    _patch_auth_health(monkeypatch, True, counter=check_call_count)
+    _patch_credentials_usable(monkeypatch, usable=True, counter=check_call_count)
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(
         studio_tools.studio_service,
@@ -437,7 +421,7 @@ def test_studio_create_invalidates_auth_guard_when_auth_file_appears(monkeypatch
 
     # First call: file does not exist (mtime=0.0). Guard populated with mtime=0.0.
     monkeypatch.setattr(studio_tools, "_get_auth_file_mtime", lambda: 0.0, raising=True)
-    _patch_auth_health(monkeypatch, True, counter=check_call_count)
+    _patch_credentials_usable(monkeypatch, usable=True, counter=check_call_count)
     monkeypatch.setattr(studio_tools, "get_client", lambda: _FakeClient(), raising=True)
     monkeypatch.setattr(
         studio_tools.studio_service,
