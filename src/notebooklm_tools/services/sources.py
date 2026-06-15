@@ -409,7 +409,9 @@ def list_drive_sources(
         }
 
         if source.get("can_sync"):
-            is_fresh = freshness_map.get(source["id"]) if isinstance(source.get("id"), str) else None
+            is_fresh = (
+                freshness_map.get(source["id"]) if isinstance(source.get("id"), str) else None
+            )
             source_id = source.get("id")
             source_title = source.get("title")
             source_type_name = source.get("source_type_name")
