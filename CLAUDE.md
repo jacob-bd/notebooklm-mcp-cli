@@ -269,6 +269,14 @@ When adding new features:
 8. Update the "Features NOT Yet Implemented" checklist
 9. Add test case to docs/MCP_TEST_PLAN.md
 
+**Bumping the version:** the `Version Alignment Check` workflow (`.github/workflows/version-check.yml`) requires the **same** version in all 5 of these files — bump them together or CI fails:
+
+- `pyproject.toml` → `version = "X.Y.Z"`
+- `src/notebooklm_tools/__init__.py` → `__version__ = "X.Y.Z"`
+- `src/notebooklm_tools/data/SKILL.md` → `version: "X.Y.Z"`
+- `src/notebooklm_tools/data/AGENTS_SECTION.md` → `<!-- nlm-version: X.Y.Z -->`
+- `desktop-extension/manifest.json` → `"version": "X.Y.Z"`
+
 ## License
 
 MIT License
