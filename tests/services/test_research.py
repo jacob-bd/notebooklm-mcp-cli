@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from notebooklm_tools.core.errors import RPCError
+from notebooklm_tools.core.errors import RPCDriftError, RPCError
 from notebooklm_tools.services.errors import ServiceError, ValidationError
 from notebooklm_tools.services.research import (
     annotate_cited_sources,
@@ -102,6 +102,12 @@ class TestStartResearch:
 
         # Should mention method-specific error code, not generic "Failed to start research"
         assert "error code 3" in str(exc_info.value)
+
+    def test_drift_error_propagates_verbatim(self, mock_client):
+        """RPCDriftError must NOT be re-wrapped into a generic ServiceError."""
+        mock_client.start_research.side_effect = RPCDriftError("Ljjv0c", ["QA9ei"])
+        with pytest.raises(RPCDriftError):
+            start_research(mock_client, "nb-1", "query")
 
     def test_drive_fast_works(self, mock_client):
         mock_client.start_research.return_value = {"task_id": "t-1"}

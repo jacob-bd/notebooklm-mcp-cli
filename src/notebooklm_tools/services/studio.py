@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from notebooklm_tools.core import constants
-from notebooklm_tools.core.errors import ResourceExhaustedError, RPCError
+from notebooklm_tools.core.errors import ResourceExhaustedError, RPCDriftError, RPCError
 
 from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
@@ -375,6 +375,9 @@ def create_artifact(
             f"Failed to create {artifact_type}: {formatted_error}",
             user_message=f"Could not create {artifact_type.replace('_', ' ')} — {formatted_error}.",
         ) from e
+    except RPCDriftError:
+        # Let the actionable NOTEBOOKLM_RPC_OVERRIDES guidance reach the user verbatim.
+        raise
     except Exception as e:
         logger.error("Studio create failed: %s: %s", type(e).__name__, e, exc_info=True)
         raise ServiceError(
@@ -851,6 +854,9 @@ def revise_artifact(
             user_message=f"Failed to revise slide deck — {formatted_error}.",
             hint=hint,
         ) from e
+    except RPCDriftError:
+        # Let the actionable NOTEBOOKLM_RPC_OVERRIDES guidance reach the user verbatim.
+        raise
     except Exception as e:
         raise ServiceError(
             f"Failed to revise slide deck: {e}",

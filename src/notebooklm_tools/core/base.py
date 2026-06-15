@@ -425,7 +425,9 @@ class BaseClient:
                 continue
             old_id = getattr(type(self), name)
             setattr(self, name, new_id)
-            logger.warning("RPC override applied: %s %s -> %s", name, old_id, new_id)
+            # INFO, not WARNING: an applied override is an intentional, benign
+            # event and should not pollute the warning stream.
+            logger.info("RPC override applied: %s %s -> %s", name, old_id, new_id)
 
     # =========================================================================
     # Cookie Handling

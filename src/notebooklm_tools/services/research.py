@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from ..core.client import NotebookLMClient
 from ..core.constants import RESULT_TYPE_DEEP_REPORT
-from ..core.errors import RPCError
+from ..core.errors import RPCDriftError, RPCError
 from ._compat import TypedDict
 from .errors import ServiceError, ValidationError
 
@@ -256,6 +256,9 @@ def start_research(
                 f"This is likely a transient issue. Try again in a few minutes, or use --mode fast."
             ),
         ) from e
+    except RPCDriftError:
+        # Let the actionable NOTEBOOKLM_RPC_OVERRIDES guidance reach the user verbatim.
+        raise
     except Exception as e:
         raise ServiceError(f"Failed to start research: {e}") from e
 
