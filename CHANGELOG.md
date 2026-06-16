@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-06-15
+
+### Fixed
+
+- **Layering violation on RPCDriftError** — The `RPCDriftError` was bypassing the service layer error wrapping, exposing raw exception types instead of the friendly `ServiceError` payload. It is now correctly wrapped while perfectly preserving the actionable `NOTEBOOKLM_RPC_OVERRIDES` hot-patch instructions for the user.
+
+### Community
+
+- **Version alignment & PR #233 follow-ups (PR #235)** — Brought version strings back into alignment and silenced a noisy RPC override warning in the logs by dropping it to `INFO` level. Thanks to **@Grobiou** for the cleanups!
+
 ## [0.7.4] - 2026-06-15
 
 ### Added
