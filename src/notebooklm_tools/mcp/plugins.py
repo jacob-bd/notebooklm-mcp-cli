@@ -91,7 +91,9 @@ def _load_module_plugin(spec: str) -> PluginCallable:
         try:
             return _coerce_plugin_callable(getattr(module, attr_name), spec)
         except AttributeError as exc:
-            raise PluginLoadError(f"Plugin attribute '{attr_name}' not found in {module_name}.") from exc
+            raise PluginLoadError(
+                f"Plugin attribute '{attr_name}' not found in {module_name}."
+            ) from exc
 
     entry_point = _load_entry_point(spec)
     if entry_point is not None:
@@ -116,13 +118,11 @@ def _invoke_plugin(plugin: PluginCallable, mcp: Any) -> Any:
         in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
     ]
     accepts_variadic = any(
-        param.kind == inspect.Parameter.VAR_POSITIONAL
-        for param in signature.parameters.values()
+        param.kind == inspect.Parameter.VAR_POSITIONAL for param in signature.parameters.values()
     )
     accepts_keyword_mcp = any(
         param.name == "mcp"
-        and param.kind
-        in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+        and param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
         for param in signature.parameters.values()
     )
 
