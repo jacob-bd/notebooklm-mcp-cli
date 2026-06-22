@@ -5,6 +5,8 @@
       "command": "notebooklm-mcp",
       "args": [],
       "autoConnect": false,
+      "alwaysLoad": true,
+      "timeout": 60,
       "contextCost": "medium"
     }
   }

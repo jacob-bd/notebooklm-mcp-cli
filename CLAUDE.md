@@ -65,7 +65,7 @@ src/notebooklm_mcp/
 
 ## MCP Tools Provided
 
-31 tools registered in `server.py`. Tools marked `confirm=True` require explicit user confirmation before execution. See tool docstrings in `server.py` for the full reference.
+Tools are registered in `server.py` (one `@mcp.tool()` per tool). Tools marked `confirm=True` require explicit user confirmation before execution. See tool docstrings in `server.py` for the full reference.
 
 ## Troubleshooting
 
@@ -88,7 +88,7 @@ src/notebooklm_mcp/
 ## Documentation
 
 - **[docs/API_REFERENCE.md](./docs/API_REFERENCE.md)** — RPC IDs, parameter structures, response formats (read when debugging API issues or adding features)
-- **[docs/MCP_TEST_PLAN.md](./docs/MCP_TEST_PLAN.md)** — Step-by-step test cases for all 31 MCP tools (read when validating after code changes)
+- **[docs/MCP_TEST_PLAN.md](./docs/MCP_TEST_PLAN.md)** — Step-by-step test cases for all MCP tools (read when validating after code changes)
 
 ## Contributing
 

@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__notebooklm-mcp__notebook_list",
+      "mcp__notebooklm-mcp__notebook_create",
+      "mcp__notebooklm-mcp__notebook_get",
+      "mcp__notebooklm-mcp__notebook_rename",
+      "mcp__notebooklm-mcp__notebook_describe",
+      "mcp__notebooklm-mcp__notebook_add_text",
+      "mcp__notebooklm-mcp__notebook_add_url",
+      "mcp__notebooklm-mcp__notebook_add_drive",
+      "mcp__notebooklm-mcp__notebook_query",
+      "mcp__notebooklm-mcp__source_describe",
+      "mcp__notebooklm-mcp__source_list_drive",
+      "mcp__notebooklm-mcp__source_sync_drive",
+      "mcp__notebooklm-mcp__chat_configure",
+      "mcp__notebooklm-mcp__research_start",
+      "mcp__notebooklm-mcp__research_status",
+      "mcp__notebooklm-mcp__research_import",
+      "mcp__notebooklm-mcp__audio_overview_create",
+      "mcp__notebooklm-mcp__video_overview_create",
+      "mcp__notebooklm-mcp__infographic_create",
+      "mcp__notebooklm-mcp__slide_deck_create",
+      "mcp__notebooklm-mcp__report_create",
+      "mcp__notebooklm-mcp__flashcards_create",
+      "mcp__notebooklm-mcp__quiz_create",
+      "mcp__notebooklm-mcp__data_table_create",
+      "mcp__notebooklm-mcp__mind_map_create",
+      "mcp__notebooklm-mcp__mind_map_list",
+      "mcp__notebooklm-mcp__studio_status",
+      "Bash(notebooklm-mcp-auth *)",
+      "Bash(notebooklm-sync *)",
+      "Bash(PYTHONPATH=src uv run pytest *)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "notebooklm-mcp"
+  ]
+}

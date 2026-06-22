@@ -33,7 +33,9 @@ ENV/
 
 # Session/tool state (machine-specific)
 .bbot/
-.claude/
+.claude/*
+# ...but track the shared, committed project settings (team contract)
+!.claude/settings.json
 
 # Testing
 .pytest_cache/
