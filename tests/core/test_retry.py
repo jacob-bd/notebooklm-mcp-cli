@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from notebooklm_tools.core.retry import (
+    RETRYABLE_CONNECT_ERRORS,
     execute_with_retry,
     is_retryable_error,
     retry_on_server_error,
@@ -102,3 +103,18 @@ def test_retry_decorator():
 
     assert result == "decorated success"
     assert mock_func.call_count == 2
+
+
+def test_retryable_connect_errors_boundary():
+    """The connect-error tuple captures connection-establishment failures and
+    nothing else. Read/write/pool timeouts must be excluded so they are never
+    auto-retried — a post-connection timeout may already have been processed
+    server-side, and retrying it could duplicate side effects on mutating RPCs.
+    """
+    # Connection-establishment failures ARE captured (safe to retry).
+    assert issubclass(httpx.ConnectError, RETRYABLE_CONNECT_ERRORS)
+    assert issubclass(httpx.ConnectTimeout, RETRYABLE_CONNECT_ERRORS)
+    # Post-connection timeouts are NOT captured.
+    assert not issubclass(httpx.ReadTimeout, RETRYABLE_CONNECT_ERRORS)
+    assert not issubclass(httpx.WriteTimeout, RETRYABLE_CONNECT_ERRORS)
+    assert not issubclass(httpx.PoolTimeout, RETRYABLE_CONNECT_ERRORS)

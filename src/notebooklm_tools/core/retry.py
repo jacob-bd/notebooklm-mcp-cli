@@ -30,6 +30,17 @@ def is_retryable_error(exc: Exception) -> bool:
     return False
 
 
+# Transport errors that are always safe to retry: the connection was never
+# established, so the server never received the request. This is deliberately
+# narrower than ``httpx.TimeoutException`` — a read or write timeout means the
+# request may already have been delivered and processed, so retrying it could
+# duplicate side effects on mutating RPCs (e.g. create notebook, add source).
+RETRYABLE_CONNECT_ERRORS: tuple[type[Exception], ...] = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+)
+
+
 def retry_on_server_error(
     max_retries: int = DEFAULT_MAX_RETRIES,
     base_delay: float = DEFAULT_BASE_DELAY,

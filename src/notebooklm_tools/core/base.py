@@ -26,7 +26,13 @@ from . import constants
 from .data_types import ConversationTurn
 from .errors import ClientAuthenticationError as AuthenticationError
 from .errors import ResourceExhaustedError, RPCDriftError, RPCError
-from .retry import DEFAULT_BASE_DELAY, DEFAULT_MAX_DELAY, DEFAULT_MAX_RETRIES, is_retryable_error
+from .retry import (
+    DEFAULT_BASE_DELAY,
+    DEFAULT_MAX_DELAY,
+    DEFAULT_MAX_RETRIES,
+    RETRYABLE_CONNECT_ERRORS,
+    is_retryable_error,
+)
 from .utils import (
     RPC_NAMES,
     _decode_request_body,
@@ -830,6 +836,36 @@ class BaseClient:
 
             # Fall through to auth recovery below
             pass
+
+        except RETRYABLE_CONNECT_ERRORS as e:
+            # Connection never established → the server never received the
+            # request, so retrying is always safe (even for mutating RPCs).
+            # Read/write timeouts are intentionally excluded; see
+            # retry.RETRYABLE_CONNECT_ERRORS.
+            if _server_retry < DEFAULT_MAX_RETRIES:
+                import time as _time
+
+                delay = min(DEFAULT_BASE_DELAY * (2**_server_retry), DEFAULT_MAX_DELAY)
+                logger.warning(
+                    "Connection error (%s) on %s, attempt %d/%d, retrying in %.1fs...",
+                    type(e).__name__,
+                    rpc_id,
+                    _server_retry + 1,
+                    DEFAULT_MAX_RETRIES + 1,
+                    delay,
+                )
+                _time.sleep(delay)
+                return self._call_rpc(
+                    rpc_id,
+                    params,
+                    path,
+                    timeout,
+                    _retry,
+                    _deep_retry,
+                    _server_retry=_server_retry + 1,
+                )
+            # Exhausted retries, re-raise
+            raise
 
         except ResourceExhaustedError:
             # RPC-level rate limit (HTTP 200, error code 8). Back off and retry.

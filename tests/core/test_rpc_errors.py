@@ -81,3 +81,66 @@ def test_call_rpc_resource_exhausted_exhausts_retries(monkeypatch):
         mock_get_client.return_value.post.return_value = fake_resp
         with pytest.raises(ResourceExhaustedError):
             client._call_rpc("EXPECTED", [])
+
+
+def test_call_rpc_retries_on_connect_timeout():
+    """A connect timeout (connection never established) is retried, then succeeds."""
+    import httpx
+
+    client = _client()
+    ok = [[["wrb.fr", "EXPECTED", "[1]", None, None, None, "generic"]]]
+    fake_resp = type(
+        "R", (), {"text": "", "status_code": 200, "raise_for_status": lambda self: None}
+    )()
+
+    with (
+        patch.object(client, "_get_client") as mock_get_client,
+        patch.object(client, "_parse_response", return_value=ok),
+        patch("time.sleep"),
+    ):
+        mock_get_client.return_value.post.side_effect = [
+            httpx.ConnectTimeout("connect timed out"),
+            fake_resp,
+        ]
+        result = client._call_rpc("EXPECTED", [])
+
+    assert result == [1]
+    assert mock_get_client.return_value.post.call_count == 2
+
+
+def test_call_rpc_connect_timeout_exhausts_retries():
+    """After max retries the connect timeout propagates."""
+    import httpx
+
+    from notebooklm_tools.core.retry import DEFAULT_MAX_RETRIES
+
+    client = _client()
+
+    with (
+        patch.object(client, "_get_client") as mock_get_client,
+        patch("time.sleep"),
+    ):
+        mock_get_client.return_value.post.side_effect = httpx.ConnectTimeout("connect timed out")
+        with pytest.raises(httpx.ConnectTimeout):
+            client._call_rpc("EXPECTED", [])
+
+    # initial attempt + DEFAULT_MAX_RETRIES retries
+    assert mock_get_client.return_value.post.call_count == DEFAULT_MAX_RETRIES + 1
+
+
+def test_call_rpc_does_not_retry_read_timeout():
+    """A read timeout may already have been processed server-side, so it is NOT
+    auto-retried — it propagates after a single attempt."""
+    import httpx
+
+    client = _client()
+
+    with (
+        patch.object(client, "_get_client") as mock_get_client,
+        patch("time.sleep"),
+    ):
+        mock_get_client.return_value.post.side_effect = httpx.ReadTimeout("read timed out")
+        with pytest.raises(httpx.ReadTimeout):
+            client._call_rpc("EXPECTED", [])
+
+    assert mock_get_client.return_value.post.call_count == 1

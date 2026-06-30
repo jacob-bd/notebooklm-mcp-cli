@@ -88,33 +88,101 @@ profile_app = typer.Typer(
 )
 
 
-def _validate_saved_profile(auth: Any) -> tuple[Any, int]:
-    """Validate saved credentials by making a real NotebookLM API call."""
+def _auth_failure_from_result(result: Any) -> Exception:
+    """Translate a failed AuthCheckResult into a CLI-facing AuthenticationError.
+
+    Args:
+        result: An AuthCheckResult with ``valid=False``.
+
+    Returns:
+        An AuthenticationError whose message/hint match the failure reason.
+    """
+    from notebooklm_tools.core.exceptions import AuthenticationError
+
+    reason = result.reason or "unknown"
+    if reason == "no_tokens":
+        return AuthenticationError(
+            "No saved credentials found.",
+            hint="Run 'nlm login' to authenticate.",
+        )
+    if reason == "expired":
+        return AuthenticationError(
+            "Credentials have expired.",
+            hint="Run 'nlm login' to re-authenticate.",
+        )
+    if reason.startswith("network_error"):
+        return AuthenticationError(
+            f"Could not reach NotebookLM ({reason}).",
+            hint="Check your connection and try again — your saved credentials may still be valid.",
+        )
+    return AuthenticationError(
+        f"Authentication check failed ({reason}).",
+        hint="Run 'nlm login' to re-authenticate.",
+    )
+
+
+def _best_effort_notebook_count(profile: Any) -> int | None:
+    """Return the notebook count, or None if it cannot be retrieved quickly.
+
+    The notebook count is a convenience shown alongside a successful auth
+    check. A slow or timed-out notebook list must never turn an otherwise-valid
+    session into a failure, so every error here degrades to ``None``.
+
+    Args:
+        profile: The loaded profile whose credentials are used for the call.
+
+    Returns:
+        The number of notebooks, or None if the list could not be fetched.
+    """
     from notebooklm_tools.core.client import NotebookLMClient
 
+    try:
+        with NotebookLMClient(
+            cookies=profile.cookies,
+            csrf_token=profile.csrf_token or "",
+            session_id=profile.session_id or "",
+            build_label=profile.build_label or "",
+        ) as client:
+            return len(client.list_notebooks())
+    except Exception:
+        return None
+
+
+def _validate_saved_profile(auth: Any) -> tuple[Any, int | None]:
+    """Validate saved credentials using the lightweight authoritative check.
+
+    Validity is decided by ``check_validity`` (a homepage probe), not by a full
+    ``list_notebooks()`` call, so a slow notebook list on a large account cannot
+    turn a valid session into a crash or false failure. The notebook count is
+    fetched as a best-effort extra and is None when it cannot be retrieved.
+
+    Args:
+        auth: The AuthManager for the profile being checked.
+
+    Returns:
+        A tuple of (profile, notebook_count) where notebook_count may be None.
+
+    Raises:
+        AuthenticationError: If the credentials are not valid.
+    """
     p = auth.load_profile()
-    with NotebookLMClient(
-        cookies=p.cookies,
-        csrf_token=p.csrf_token or "",
-        session_id=p.session_id or "",
-        build_label=p.build_label or "",
-    ) as client:
-        notebooks = client.list_notebooks()
 
-    auth.save_profile(
-        cookies=p.cookies,
-        csrf_token=p.csrf_token,
-        session_id=p.session_id,
-        email=p.email,
-        build_label=p.build_label,
-    )
-    return p, len(notebooks)
+    result = auth.check_validity(live=True)
+    if not result.valid:
+        raise _auth_failure_from_result(result)
+
+    return p, _best_effort_notebook_count(p)
 
 
-def _print_auth_valid(profile: Any, notebook_count: int) -> None:
+def _print_auth_valid(profile: Any, notebook_count: int | None) -> None:
     console.print("[green]✓[/green] Authentication valid!")
     console.print(f"  Profile: {profile.name}")
-    console.print(f"  Notebooks found: {notebook_count}")
+    if notebook_count is not None:
+        console.print(f"  Notebooks found: {notebook_count}")
+    else:
+        console.print(
+            "  [dim]Notebook count unavailable (network slow); credentials are valid[/dim]"
+        )
     if profile.email:
         console.print(f"  Account: {profile.email}")
 

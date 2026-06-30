@@ -113,6 +113,30 @@ class TestCheckAuthAPI:
             assert result.reason == "expired"
             assert result.live is True
 
+    def test_check_auth_live_true_degrades_on_read_timeout(self, tmp_path, monkeypatch):
+        """Regression for #243: a real httpx.ReadTimeout from the homepage probe
+        must degrade to a graceful invalid result, never propagate as an uncaught
+        exception (which previously crashed `nlm login --check`). This pins the
+        fault line directly — narrowing the except in check_auth fails this test.
+        """
+        monkeypatch.setattr("notebooklm_tools.utils.config.get_storage_dir", lambda: tmp_path)
+
+        mgr = AuthManager("default")
+        mgr.save_profile(
+            cookies={"SID": "x", "HSID": "x", "SSID": "x", "APISID": "x", "SAPISID": "x"},
+            email="test@example.com",
+        )
+
+        with patch("httpx.Client") as MockClient:
+            client = MockClient.return_value.__enter__.return_value
+            client.get.side_effect = httpx.ReadTimeout("read timed out")
+
+            result = check_auth(live=True, timeout=5.0)
+
+        assert result.valid is False
+        assert result.reason == "network_error: ReadTimeout"
+        assert result.live is True
+
     def test_auth_manager_has_check_validity(self, tmp_path, monkeypatch):
         """AuthManager should expose a convenient .check_validity() method."""
         monkeypatch.setattr("notebooklm_tools.utils.config.get_storage_dir", lambda: tmp_path)
