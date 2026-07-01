@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CDP reuse with foreign Chrome on port 9222 (Issue #244)** — `find_existing_nlm_chrome()` now verifies mapped Chrome PIDs still use the NLM profile's `--user-data-dir` and the expected `--remote-debugging-port`, skips headless automation browsers on all platforms, and clears stale port-map entries instead of reconnecting to unrelated CDP listeners (e.g. agent-browser / Playwright on 9222).
+
 ## [0.8.0] - 2026-06-30
 
 ### Added

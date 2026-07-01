@@ -520,6 +520,86 @@ def is_profile_locked(profile_name: str = "default", profile_dir: Path | None = 
     return lock_file.exists()
 
 
+def _get_process_cmdline(pid: int) -> str | None:
+    """Best-effort process command line for Chrome ownership checks."""
+    system = platform.system()
+    if system == "Linux":
+        try:
+            raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+            return raw.replace(b"\x00", b" ").decode("utf-8", errors="replace").strip()
+        except OSError:
+            return None
+    if system == "Darwin":
+        try:
+            result = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "command="],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            return None
+    if system == "Windows":
+        try:
+            result = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    f'(Get-CimInstance Win32_Process -Filter "ProcessId={pid}").CommandLine',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            if result.returncode == 0:
+                cmd = result.stdout.strip()
+                return cmd if cmd else None
+        except Exception:
+            return None
+    return None
+
+
+def _mapped_chrome_owns_profile(pid: int | None, profile_name: str, port: int) -> bool:
+    """Return True when the mapped PID was launched with this profile's user-data-dir."""
+    if pid is None:
+        return True
+
+    chrome_path = get_chrome_path()
+    if chrome_path:
+        profile_dir = _get_profile_dir_for_launch(chrome_path, profile_name)
+    else:
+        from notebooklm_tools.utils.config import get_chrome_profile_dir
+
+        profile_dir = get_chrome_profile_dir(profile_name)
+
+    cmdline = _get_process_cmdline(pid)
+    if cmdline is None:
+        # Can't verify ownership — fail closed so we never attach to a foreign CDP listener.
+        return False
+
+    normalized_cmdline = cmdline.replace("\\", "/")
+    profile_path = str(profile_dir).replace("\\", "/")
+    port_flag = f"--remote-debugging-port={port}"
+
+    if port_flag not in normalized_cmdline:
+        return False
+
+    # Match --user-data-dir=... with optional quotes around the path (common on Windows).
+    for prefix in (f"--user-data-dir={profile_path}", f'--user-data-dir="{profile_path}"'):
+        if prefix in normalized_cmdline:
+            return True
+
+    # Fallback: path appears as a standalone token (snap / unusual launchers).
+    return f" {profile_path}" in f" {normalized_cmdline}" or normalized_cmdline.endswith(
+        profile_path
+    )
+
+
 def find_existing_nlm_chrome(
     port_range: range = CDP_PORT_RANGE, profile_name: str = "default"
 ) -> tuple[int | None, str | None]:
@@ -544,13 +624,35 @@ def find_existing_nlm_chrome(
         if entry.get("profile") != profile_name:
             continue
         port = int(port_str)
-        debugger_url = get_debugger_url(port, timeout=1)
+        version_info = _fetch_cdp_version(port, timeout=1)
+        if not version_info:
+            # Mapped but not responding — stale entry, clean it up
+            _clear_port_map(port)
+            continue
+
+        ua = version_info.get("User-Agent", "")
+        if "Headless" in ua:
+            _logger.debug("Skipping headless mapped browser on port %d", port)
+            _clear_port_map(port)
+            continue
+
+        pid = entry.get("pid")
+        if not _mapped_chrome_owns_profile(pid, profile_name, port):
+            _logger.debug(
+                "Mapped Chrome on port %d (pid=%s) does not own profile '%s'; clearing",
+                port,
+                pid,
+                profile_name,
+            )
+            _clear_port_map(port)
+            continue
+
+        debugger_url = _normalize_ws_url(version_info.get("webSocketDebuggerUrl"))
         if debugger_url:
             _logger.debug(f"Reusing mapped Chrome on port {port} for profile '{profile_name}'")
             return port, debugger_url
-        else:
-            # Mapped but not responding — stale entry, clean it up
-            _clear_port_map(port)
+
+        _clear_port_map(port)
 
     # No mapped instance found for this profile
     return None, None
