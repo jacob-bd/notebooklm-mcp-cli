@@ -45,7 +45,7 @@ verify both staleness detection and sync functionality work correctly.
 
 ### Test 1.1 - Refresh Auth
 **Tool:** `refresh_auth`
-**CLI:** `nlm login --check` (or `nlm auth refresh` if implemented, but `nlm login --check` validates tokens)
+**CLI:** `nlm login --check` (validates tokens)
 
 **Prompt:**
 ```
@@ -53,6 +53,22 @@ Refresh authentication tokens for NotebookLM.
 ```
 
 **Expected:** Success message with auth status.
+
+---
+
+### Test 1.1b - Non-Interactive Session Refresh (unattended)
+**CLI:** `nlm auth refresh` (headless refresh; `--profile <name>` for a named profile)
+
+**Prompt:**
+```
+Refresh my NotebookLM session without opening a browser window.
+```
+
+**Expected:** With a saved Chrome profile and a working login, prints
+`✓ Session refreshed for profile '<name>'` and exits 0. With no saved profile
+or a dead login, prints a clear failure and exits non-zero (usable in
+cron/launchd). Refuses up front when `NOTEBOOKLM_COOKIES` is set in the
+environment (that value overrides saved credentials).
 
 ---
 

@@ -22,10 +22,15 @@ nlm login switch <profile>        # Switch default profile
 nlm login profile list            # List all profiles with email addresses
 nlm login profile delete <name>   # Delete a profile
 nlm login profile rename <old> <new>  # Rename a profile
+nlm auth refresh                  # Non-interactive refresh (for schedulers)
 
 # External CDP provider (e.g., OpenClaw-managed browser)
 nlm login --provider openclaw --cdp-url http://127.0.0.1:18800
 ```
+
+For unattended machines, `nlm auth refresh` runs a headless-browser pass that
+makes Google reissue the short-lived cookies keeping a session alive — no
+interactive login. It exits non-zero on failure, so cron/launchd jobs can react.
 
 Each profile gets its own isolated browser session (supports Chrome, Arc, Dia, Brave, Edge, Chromium, Firefox, and more), so you can stay logged into multiple Google accounts simultaneously.
 

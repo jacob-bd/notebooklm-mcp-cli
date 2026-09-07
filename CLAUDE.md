@@ -98,6 +98,14 @@ Gemini Notebook's internal API uses short RPC "method IDs" (e.g. `wXbhsf`) that 
 
 When API calls fail with auth errors, re-extract fresh cookies from Chrome DevTools.
 
+**Unattended keep-alive:** A live session self-heals — auth recovery reloads
+newer disk cookies (external re-login) or runs a headless-browser refresh to
+make Google reissue the short-lived `*PSIDTS` freshness cookies when they age
+out. For schedulers, `nlm auth refresh` triggers that headless refresh
+non-interactively so a session never lapses between jobs. (RotateCookies alone
+refreshes only the `*SIDCC` session cookies, not `*PSIDTS`, from a plain HTTP
+client — see issue #316.)
+
 ## Architecture
 
 ```

@@ -89,6 +89,7 @@ nlm status artifacts <notebook>
 | Command | Description |
 |---------|-------------|
 | `nlm login` | Authenticate with NotebookLM and manage profiles (**START HERE**) |
+| `nlm auth refresh` | Non-interactive headless session refresh (for unattended/schedulers) |
 | `nlm config` | View/edit configuration (show, get, set) |
 | `nlm notebook` | Manage notebooks (list, create, get, describe, rename, delete, query) |
 | `nlm source` | Manage sources (list, add, get, describe, content, rename, delete, stale, sync) |
@@ -177,6 +178,7 @@ nlm login switch <profile>          # Switch the default profile
 nlm login profile list              # List all profiles with email addresses
 nlm login profile delete <name>     # Delete a profile
 nlm login profile rename <old> <new> # Rename a profile
+nlm auth refresh                    # Non-interactive headless refresh (unattended/schedulers)
 ```
 
 

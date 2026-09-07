@@ -10,6 +10,7 @@ Expert assistant for Gemini Notebook automation via CLI. Use when users want to 
 
 ```bash
 nlm login                    # Authenticate with NotebookLM
+nlm auth refresh             # Non-interactive refresh (unattended/schedulers)
 nlm notebook create "Title"  # Create notebook
 nlm source add <id> --url "https://..."  # Add web source
 nlm audio create <id> --confirm          # Generate podcast

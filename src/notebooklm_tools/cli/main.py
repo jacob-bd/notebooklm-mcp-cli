@@ -88,6 +88,13 @@ profile_app = typer.Typer(
     no_args_is_help=True,
 )
 
+# Non-interactive session maintenance (for unattended installs / schedulers)
+auth_app = typer.Typer(
+    help="Session auth maintenance (headless refresh for schedulers)",
+    rich_markup_mode="rich",
+    no_args_is_help=True,
+)
+
 
 def _auth_failure_from_result(result: Any) -> Exception:
     """Translate a failed AuthCheckResult into a CLI-facing AuthenticationError.
@@ -785,11 +792,65 @@ def login_switch(
         console.print(f"[green]✓[/green] Switched default profile to [cyan]{profile}[/cyan]")
 
 
+@auth_app.command("refresh")
+def auth_refresh(
+    profile: str = typer.Option(
+        None,
+        "--profile",
+        "-p",
+        help="Profile to refresh (default: the configured default profile).",
+    ),
+) -> None:
+    """Refresh a session non-interactively so Google reissues its cookies.
+
+    Runs a headless-browser pass against the saved Chrome profile, which makes
+    Google reissue the short-lived cookies (``*PSIDTS``) that keep a session
+    alive. Unlike ``nlm login``, this needs no user interaction, so schedulers
+    (cron/launchd) can keep an unattended session alive without an interactive
+    re-login. Exits non-zero if the refresh fails, so scripts can react.
+    """
+    import os
+
+    from notebooklm_tools.utils.config import get_config
+
+    if os.environ.get("NOTEBOOKLM_COOKIES"):
+        console.print(
+            "[yellow]![/yellow] NOTEBOOKLM_COOKIES is set and overrides saved "
+            "credentials, so a refresh won't take effect. Update that value "
+            "(e.g. in your MCP config) instead."
+        )
+        raise typer.Exit(1)
+
+    profile_name = profile or get_config().auth.default_profile
+
+    from notebooklm_tools.utils.auth_browser import run_headless_auth
+
+    with console.status(f"Refreshing session for profile '{profile_name}'..."):
+        try:
+            tokens = run_headless_auth(profile_name=profile_name)
+        except Exception as exc:
+            console.print(f"[red]✗[/red] Refresh failed: {exc}")
+            raise typer.Exit(1) from exc
+
+    if not tokens:
+        console.print(
+            f"[red]✗[/red] Could not refresh profile '{profile_name}'. The saved "
+            "Chrome profile may be missing or its login expired — run 'nlm login' "
+            "to re-authenticate."
+        )
+        raise typer.Exit(1)
+
+    console.print(f"[green]✓[/green] Session refreshed for profile '{profile_name}'.")
+
+
 # Register profile commands under login
 login_app.add_typer(profile_app, name="profile")
 
 # Register login app with nested profile commands
 app.add_typer(login_app, name="login")
+
+# Register non-interactive session maintenance commands
+app.add_typer(auth_app, name="auth", help="Session auth maintenance")
 
 # Register noun-first subcommands (existing structure)
 app.add_typer(notebook_app, name="notebook", help="Manage notebooks")

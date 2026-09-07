@@ -135,6 +135,32 @@ This means you can stay logged into multiple Google accounts simultaneously with
 
 ---
 
+## Unattended / Scheduled Refresh
+
+A logged-in session normally self-heals: when the short-lived cookies age out,
+the client automatically runs a headless-browser pass to make Google reissue
+them. For unattended machines (a Mac mini or server running scheduled jobs),
+you can also refresh proactively so a session never lapses between jobs:
+
+```bash
+nlm auth refresh                 # Refresh the default profile
+nlm auth refresh --profile work  # Refresh a named profile
+```
+
+`nlm auth refresh` runs a headless browser against the saved profile — no
+interactive login, no window to click. It exits non-zero when the refresh
+fails, so a scheduler can react. Example launchd/cron keep-alive (every 30 min):
+
+```bash
+*/30 * * * * /path/to/nlm auth refresh >/dev/null 2>&1
+```
+
+> **Note:** This needs a saved Chrome profile (from a prior `nlm login`). It
+> does not help when `NOTEBOOKLM_COOKIES` is set as an environment variable —
+> that value overrides saved credentials, so update it directly instead.
+
+---
+
 ## Enterprise / Google Workspace
 
 If your organization uses **Gemini Notebook Enterprise**, ask your Enterprise administrator for the project ID or number, the deployment location/multi-region, and confirmation that your account has access. Use the project- and location-specific host configured by your administrator (normally `notebook.cloud.google.com`). Set the base URL, project, and location before authenticating:

@@ -44,6 +44,18 @@ nlm login
 nlm login --check || nlm login
 ```
 
+**Unattended machines:** A live session self-heals — when the short-lived
+cookies age out, the client runs a headless refresh automatically. To refresh
+proactively from a scheduler (so a session never lapses between jobs), use:
+
+```bash
+nlm auth refresh          # Headless, no interaction; exits non-zero on failure
+```
+
+Run it on a timer (e.g. cron/launchd every 30 min). It needs a saved Chrome
+profile from a prior `nlm login`, and does not apply when `NOTEBOOKLM_COOKIES`
+is set as an environment variable (that value overrides saved credentials).
+
 ### Browser Doesn't Launch
 
 **Symptoms:**

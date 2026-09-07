@@ -314,6 +314,21 @@ nlm login profile delete <profile>   # Delete a profile
 nlm login profile rename <old> <new> # Rename a profile
 ```
 
+**Unattended / scheduled refresh:**
+
+A live session self-heals — when Google's short-lived cookies age out, the
+client automatically runs a headless refresh. For unattended machines you can
+also refresh proactively from a scheduler so a session never lapses:
+
+```bash
+nlm auth refresh                     # Headless, no interaction; exits non-zero on failure
+nlm auth refresh --profile work      # Refresh a named profile
+```
+
+Run it on a timer (cron/launchd). It needs a saved Chrome profile from a prior
+`nlm login`, and does not apply when `NOTEBOOKLM_COOKIES` is set as an
+environment variable (that value overrides saved credentials).
+
 ### Enterprise Authentication (Gemini Notebook Enterprise)
 
 For organizations using **Gemini Notebook Enterprise** via Google Cloud, ask your Enterprise administrator for the project ID or number, the deployment location/multi-region, and confirmation that your account has access. The current documented host is `notebook.cloud.google.com`; older deployments may use `notebooklm.cloud.google.com` or `vertexaisearch.cloud.google.com`.

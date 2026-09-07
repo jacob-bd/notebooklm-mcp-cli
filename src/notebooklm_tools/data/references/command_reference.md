@@ -95,6 +95,22 @@ nlm login switch <profile>
 |----------|-------------|
 | `<profile>` | Profile name to switch to |
 
+### nlm auth refresh
+
+Refresh a session non-interactively so Google reissues its short-lived
+cookies. Runs a headless-browser pass against the saved profile — no user
+interaction — which keeps an unattended session (cron/launchd) alive without
+an interactive `nlm login`. Exits non-zero if the refresh fails.
+
+```bash
+nlm auth refresh
+nlm auth refresh --profile work
+```
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--profile` | `-p` | Profile to refresh (default: the configured default profile) |
+
 **Example:**
 ```bash
 nlm login switch work
