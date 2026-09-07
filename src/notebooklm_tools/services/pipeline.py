@@ -1,5 +1,6 @@
 """Pipeline automation service — define and execute multi-step notebook workflows."""
 
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -100,6 +101,31 @@ def _get_pipelines_dir() -> Path:
     d = get_storage_dir() / PIPELINES_DIR
     d.mkdir(exist_ok=True)
     return d
+
+
+# Pipeline names are identifiers, not paths. Constrain them to a safe charset so
+# a caller-supplied name cannot be interpolated into a filesystem path to read
+# or write files outside the pipelines directory (GHSA-596g-p98x-c7hw). Both
+# ``..`` sequences and absolute paths (which Path.__truediv__ resolves against
+# the left operand's root) are rejected because a separator is never allowed.
+_PIPELINE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def _validate_pipeline_name(name: str) -> str:
+    """Validate a pipeline name, rejecting anything that could escape the dir.
+
+    Raises:
+        ValidationError: If the name is not a safe identifier.
+    """
+    if not isinstance(name, str) or name in {".", ".."} or not _PIPELINE_NAME_RE.match(name):
+        raise ValidationError(
+            f"Invalid pipeline name '{name}'.",
+            user_message=(
+                "Pipeline names may contain letters, digits, dot, dash and "
+                "underscore only (up to 64 characters)."
+            ),
+        )
+    return name
 
 
 def _substitute_vars(params: dict, variables: dict[str, str]) -> dict:
@@ -256,6 +282,8 @@ def pipeline_run(
 
 def _load_pipeline(name: str) -> dict | None:
     """Load a pipeline by name. Checks builtin first, then user-defined."""
+    _validate_pipeline_name(name)
+
     # Check builtin
     if name in BUILTIN_PIPELINES:
         return BUILTIN_PIPELINES[name]
@@ -333,6 +361,8 @@ def pipeline_create(
         raise ValidationError(
             "Pipeline name is required.", user_message="Please provide a pipeline name."
         )
+
+    _validate_pipeline_name(name)
 
     if name in BUILTIN_PIPELINES:
         raise ValidationError(
