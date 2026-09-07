@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-09-07
+
+Security release. Upgrading is recommended for anyone running the MCP server.
+
+### Security
+
+- **Pipeline names are validated to prevent path traversal (GHSA-596g-p98x-c7hw)** — `_load_pipeline` (reachable from a model through the MCP `pipeline` tool with `action="run"`) and `pipeline_create` (CLI) interpolated a caller-supplied name straight into a filesystem path (`pipelines_dir / f"{name}.yaml"`) with no sanitization, so a name containing `..` or an absolute path escaped the pipelines directory. On the read side, a crafted `pipeline_name` reached via prompt injection could load and execute any `.yaml` file on disk as a pipeline — bounded to the whitelisted actions, which include `notebook_delete`, so the reachable outcome was destructive action against the user's notebooks. Pipeline names are now validated as identifiers (letters, digits, dot, dash, underscore; no path separators) at both entry points. Reported privately by **@Naor-Peretz**.
+
 ## [0.11.0] - 2026-09-07
 
 Reliability release for long-lived and unattended sessions. Upgrading is
