@@ -1164,6 +1164,19 @@ class BaseClient:
 
         # Layer 2 & 3: Reload from disk or run headless auth (deep retry)
         if not _deep_retry and self._try_reload_or_headless_auth():
+            # Layer 2 (disk reload) blanks the CSRF token to force a fresh
+            # extraction, but the deep retry below skips Layer 1 — the only
+            # place that re-extracts it. Without re-extracting here the retry
+            # would POST an empty at= token, get an HTTP 400, and fail even
+            # though valid cookies were just loaded (issue #316). Layer 3
+            # (headless) already supplies a token, so only refresh when missing.
+            if not self.csrf_token:
+                try:
+                    self._refresh_auth_tokens()
+                except (ValueError, httpx.HTTPError, OSError) as exc:
+                    # Freshly loaded cookies may themselves be expired; fall
+                    # through to the deep retry, which surfaces the auth failure.
+                    logger.debug("CSRF re-extraction after auth recovery failed: %s", exc)
             with self._state_lock:
                 self._client = None
             return self._call_rpc(rpc_id, params, path, timeout, _retry=True, _deep_retry=True)
@@ -1202,9 +1215,11 @@ class BaseClient:
         headers = self._PAGE_FETCH_HEADERS.copy()
 
         # Use a temporary client for the page fetch. Before the fetch, touch
-        # Google's RotateCookies endpoint as a non-fatal freshness recovery
-        # step. This helps when the short-lived *PSIDTS cookies are stale while
-        # the browser profile can still rotate them.
+        # Google's RotateCookies endpoint as a non-fatal freshness step. Note
+        # this refreshes only the short-lived *SIDCC session cookies; it does
+        # NOT rotate *PSIDTS from a plain HTTP client (only a real browser
+        # session does), so it cannot revive an aged-out session on its own —
+        # the headless refresh in _try_reload_or_headless_auth does (issue #316).
         with httpx.Client(
             cookies=cookies, headers=headers, follow_redirects=True, timeout=15.0
         ) as client:
@@ -1308,20 +1323,25 @@ class BaseClient:
         """
         from .auth import load_cached_tokens
 
-        # Layer 2: Reload cookies from the same profile on disk. The configured
-        # default may also fall back to legacy auth.json for compatibility.
+        # Layer 2: Reload cookies from the same profile on disk — but only when
+        # those cookies actually differ from the known-bad ones already in
+        # memory (e.g. the user ran `nlm login` in another terminal). Reloading
+        # identical cookies cannot fix the auth failure, and returning True here
+        # regardless is what kept Layer 3 (headless refresh) from ever running
+        # (issue #316). The configured default may also fall back to legacy
+        # auth.json for compatibility.
         cached = load_cached_tokens(profile_name=self._profile_name)
-        if cached and cached.cookies:
-            # Always reload from disk when auth fails - current tokens are known-bad
-            # The cached tokens may be fresher (user ran nlm login)
-            # or the same, but worth retrying with a fresh CSRF token extraction
+        if cached and cached.cookies and cached.cookies != self.cookies:
             with self._state_lock:
                 self.cookies = cached.cookies
                 self.csrf_token = ""  # Force re-extraction of CSRF token
                 self._session_id = ""  # Force re-extraction of session ID
             return True
 
-        # Try headless auth for the same profile that owns this client.
+        # Layer 3: Headless auth for the same profile that owns this client.
+        # Relaunching Chrome with the saved profile makes Google reissue the
+        # short-lived *PSIDTS freshness cookies, which is what revives an
+        # otherwise-valid session that aged out (issue #316).
         try:
             from notebooklm_tools.utils.auth_browser import run_headless_auth
             from notebooklm_tools.utils.config import get_config

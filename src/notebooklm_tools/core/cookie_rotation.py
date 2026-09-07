@@ -1,8 +1,13 @@
 """Google auth cookie rotation helpers.
 
-NotebookLM RPC traffic alone does not reliably refresh Google's short-lived
-``*PSIDTS`` freshness cookies.  A best-effort POST to the Google identity
-rotation endpoint can refresh those cookies before we retry auth recovery.
+NotebookLM RPC traffic alone does not refresh Google's short-lived session
+cookies.  A best-effort POST to Google's identity RotateCookies endpoint
+refreshes the ``*SIDCC`` session cookies, which helps keep a session warm.
+
+Note: this endpoint does NOT refresh the ``*PSIDTS`` freshness cookies from a
+plain ``httpx`` client — Google only reissues those to a real browser session
+(measured in issue #316).  Reviving an aged-out ``*PSIDTS`` requires the
+headless-browser refresh in the auth-recovery path, not this call.
 """
 
 from __future__ import annotations
