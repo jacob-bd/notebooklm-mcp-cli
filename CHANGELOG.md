@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-09-07
+
+Reliability release for long-lived and unattended sessions. Upgrading is
+recommended for anyone running the MCP server or scheduled `nlm` jobs.
+
+### Added
+
+- **`nlm auth refresh` — non-interactive session refresh ([#316](https://github.com/jacob-bd/gemini-notebook-mcp-cli/issues/316))** — Runs a headless-browser pass against the saved profile so Google reissues the short-lived cookies that keep a session alive, without an interactive `nlm login`. It exits non-zero on failure, so schedulers (cron/launchd) on unattended machines can keep a session alive between jobs and react to failures. Refuses up front when `NOTEBOOKLM_COOKIES` is set in the environment, since that value overrides saved credentials. Suggested by **@Scouer**.
+
+### Fixed
+
+- **Sessions no longer die after ~8 hours ([#316](https://github.com/jacob-bd/gemini-notebook-mcp-cli/issues/316))** — Auth recovery loaded fresh cookies from disk but blanked the CSRF token, then retried in a mode that skipped the only step that re-extracts it — so the retry sent an empty token, got an HTTP 400, and raised "Authentication expired" even when valid cookies were already on disk. The headless-browser refresh that revives an aged-out session was also unreachable because the disk-reload path always returned early. Recovery now re-extracts the CSRF token after loading cookies, only reloads disk cookies when they actually differ from the known-bad ones (otherwise it falls through to the headless refresh), and corrects docstrings that overstated what Google's `RotateCookies` endpoint refreshes (it rotates the `*SIDCC` session cookies, not `*PSIDTS`, from a plain HTTP client). Thoroughly diagnosed and reported by **@Scouer**, who also verified the behavior against a live session.
+
+### Changed
+
+- **CI: `actions/checkout` pinned to v6 across all workflows ([#317](https://github.com/jacob-bd/gemini-notebook-mcp-cli/issues/317))** — The release, publish, and version-check workflows pinned `actions/checkout` v4 (Node 20), which GitHub force-runs on Node 24 runners with a deprecation annotation. All workflows now share the v6 (node24) pin already used by lint-test.
+
 ## [0.10.1] - 2026-09-03
 
 Security release. Upgrading is recommended for anyone running the MCP server.

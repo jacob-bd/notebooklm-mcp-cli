@@ -1,5 +1,5 @@
 <!-- nlm-skill-start -->
-<!-- nlm-version: 0.10.1 -->
+<!-- nlm-version: 0.11.0 -->
 ## NLM - Gemini Notebook (formerly Google NotebookLM) CLI Expert
 
 **Triggers:** "nlm", "notebooklm", "Gemini Notebook", "podcast", "audio overview", "research"
