@@ -2,7 +2,9 @@
 Script to launch Chrome, inject saved cookies, and inspect DOM.
 """
 
+import argparse
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -35,7 +37,19 @@ def inject_cookies(ws_url, cookies):
     print(f"Injected {len(cookies)} cookies.")
 
 
-def inspect_dom():
+def save_dom_capture(html: str, output_path: Path | None = None) -> Path:
+    """Save an authenticated DOM capture outside the repository by default."""
+    if output_path is None:
+        output_path = Path(tempfile.mkdtemp(prefix="notebooklm-dom-")) / "dom.html"
+    else:
+        output_path = Path(output_path).expanduser()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(html, encoding="utf-8")
+    return output_path
+
+
+def inspect_dom(output_path: Path | None = None):
     tokens = load_cached_tokens()
     if not tokens:
         print("No tokens found in auth.json. Cannot inject.")
@@ -94,8 +108,8 @@ def inspect_dom():
     # 4. Dump HTML
     print("Capturing HTML...")
     html = get_page_html(ws_url)
-    Path("dom_with_cookies.html").write_text(html)
-    print("Saved to dom_with_cookies.html")
+    saved_path = save_dom_capture(html, output_path)
+    print(f"Saved authenticated DOM capture to {saved_path}")
 
     # 5. Click "Add Source" and Look for File Input
     print("\nClicking 'Add source' and searching for file inputs...")
@@ -183,4 +197,10 @@ def inspect_dom():
 
 
 if __name__ == "__main__":
-    inspect_dom()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Explicit path for the authenticated DOM capture; otherwise use a system temp directory.",
+    )
+    inspect_dom(parser.parse_args().output)

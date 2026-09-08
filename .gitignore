@@ -45,6 +45,13 @@ run_log.txt
 # Credentials
 cookies.txt
 
+# Sensitive browser/debug artifacts
+dom_with_cookies.html
+dom_with_cookies-*.html
+*.har
+.chrome-debug-profile/
+.chrome-profile/
+
 # uv
 .uv/
 
