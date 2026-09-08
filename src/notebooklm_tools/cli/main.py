@@ -365,7 +365,7 @@ def login_callback(
                 wsl = False
 
         if wsl:
-            from notebooklm_tools.utils.wsl import DEFAULT_WSL_CDP_PORT
+            from notebooklm_tools.utils.wsl import DEFAULT_WSL_CDP_PORT, WSL_ADAPTER_ALIAS
 
             wsl_port = DEFAULT_WSL_CDP_PORT
             # Chrome binds to localhost only (newer Chrome ignores
@@ -405,7 +405,7 @@ def login_callback(
                     "\n[bold]Step 1:[/bold] Open [cyan]Windows PowerShell as Administrator[/cyan] and run:"
                 )
                 console.print(
-                    f'\n  New-NetFirewallRule -DisplayName "NotebookLM-CDP-{wsl_port}" -Direction Inbound -Action Allow -Protocol TCP -LocalPort {wsl_port} -RemoteAddress LocalSubnet\n'
+                    f'\n  New-NetFirewallRule -DisplayName "NotebookLM-CDP-{wsl_port}" -Direction Inbound -Action Allow -Protocol TCP -LocalPort {wsl_port} -InterfaceAlias "{WSL_ADAPTER_ALIAS}" -RemoteAddress LocalSubnet\n'
                 )
                 console.print(
                     "[bold]Step 2:[/bold] After running the command above, press [bold]Enter[/bold] here to continue..."
@@ -423,6 +423,12 @@ def login_callback(
                 console.print()
             else:
                 console.print("[dim]Windows Firewall: rule exists[/dim]")
+                console.print(
+                    f'[dim]If you created it before v0.11.2 it may not be scoped to "{WSL_ADAPTER_ALIAS}".[/dim]'
+                )
+                console.print(
+                    "[dim]See docs/WSL_SETUP.md (Removing the bridge) to check and replace it.[/dim]"
+                )
             console.print()
 
             try:

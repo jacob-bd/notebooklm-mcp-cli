@@ -6,18 +6,25 @@ the cross-boundary authentication flow.
 
 Security Note:
 --------------
-This module launches Chrome with --remote-debugging-address=0.0.0.0 to allow
-connections from the WSL2 virtual network. This differs from the standard
-H-3 remediation (which restricts to 127.0.0.1) because WSL2 uses a virtual
-network bridge that requires cross-boundary access.
+Chrome is launched with --remote-debugging-port only, so it binds to
+127.0.0.1 on the Windows side. Chrome 136+ ignores
+--remote-debugging-address, so WSL reaches it through a `netsh portproxy`
+bridge that the user creates manually (see docs/WSL_SETUP.md).
 
-Mitigations in place:
-- Windows Firewall limits connections to LocalSubnet (WSL virtual network only)
-- Temporary Chrome profiles are used and cleaned up after authentication
-- Chrome remote debugging is only active during explicit nlm login --wsl
-- No other network hosts can reach the debugging port
+That bridge listens on 0.0.0.0, so the Windows Firewall rule is the only
+boundary in front of it. The rule is therefore scoped to the WSL virtual
+adapter with -InterfaceAlias, so traffic arriving on Wi-Fi or Ethernet
+cannot match it regardless of network profile. -RemoteAddress LocalSubnet
+is kept as a second layer, not as the primary control.
 
-See: docs/SECURITY_REMEDIATION_PLAN.md (H-3) for original security context.
+Known limits:
+- The portproxy and the firewall rule are created by the user, in Windows.
+  Nothing in this package can remove them. docs/WSL_SETUP.md documents the
+  teardown commands.
+- Chrome only listens during an explicit `nlm login --wsl`, so the CDP
+  endpoint is unreachable outside that window. The bridge itself persists.
+- Users who created the rule before v0.11.2 have an adapter-wide rule and
+  must replace it using the commands in docs/WSL_SETUP.md.
 """
 
 import contextlib
@@ -33,6 +40,13 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_WSL_CDP_PORT = 9222
+
+# The firewall rule for the CDP bridge is scoped to the WSL virtual adapter.
+# The adapter routinely lands on the Public network profile, so profile-based
+# filtering cannot separate it from real networks; interface scoping can.
+# The alias is stable across reboots even though the WSL IP is not.
+WSL_ADAPTER_ALIAS = "vEthernet (WSL)"
+
 WINDOWS_CHROME_PATHS = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -507,6 +521,7 @@ def create_firewall_rule(port: int = DEFAULT_WSL_CDP_PORT) -> tuple[bool, str]:
         ps_cmd = (
             f"New-NetFirewallRule -DisplayName '{rule_name}' "
             f"-Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} "
+            f"-InterfaceAlias '{WSL_ADAPTER_ALIAS}' "
             f"-RemoteAddress LocalSubnet "
             f"-Description 'Allow WSL2 to connect to Chrome DevTools Protocol for NotebookLM MCP'"
         )
@@ -537,7 +552,9 @@ def create_firewall_rule(port: int = DEFAULT_WSL_CDP_PORT) -> tuple[bool, str]:
                     "Administrator privileges required.\n"
                     "Please run in Windows PowerShell (as Administrator):\n"
                     f"  New-NetFirewallRule -DisplayName '{rule_name}' "
-                    f"-Direction Inbound -Action Allow -Protocol TCP -LocalPort {port}"
+                    f"-Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} "
+                    f"-InterfaceAlias '{WSL_ADAPTER_ALIAS}' "
+                    f"-RemoteAddress LocalSubnet"
                 )
             return False, error
 

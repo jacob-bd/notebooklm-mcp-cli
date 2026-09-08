@@ -36,17 +36,32 @@ via port **9222** (the proxy port accessible from WSL).
 netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9223 connectaddress=127.0.0.1
 ```
 
+The port proxy listens on `0.0.0.0`, so the Windows Firewall rule is the only
+boundary in front of it. Chrome DevTools Protocol has no authentication, so
+anything that reaches port 9222 while Chrome is running can drive the browser.
+
 **Mitigations in place:**
-- **Windows Firewall**: Only connections from `LocalSubnet` (WSL virtual network)
-  are allowed to reach port 9222
+- **Windows Firewall**: The rule is scoped with `-InterfaceAlias "vEthernet (WSL)"`,
+  so traffic arriving on Wi-Fi or Ethernet cannot match it. `-RemoteAddress LocalSubnet`
+  is kept as a second layer. Interface scoping is what does the work here, because the
+  WSL adapter usually lands on the **Public** network profile and profile filtering
+  cannot separate it from a real network.
 - **Port proxy**: Only forwards to localhost:9223; Chrome is never exposed
   directly on the network
 - **Temporary profiles**: Each Chrome instance uses a fresh, isolated profile
   on the Windows filesystem that is cleaned up after authentication
 - **Short-lived**: Remote debugging is only active during the explicit `nlm login --wsl`
-  command and terminated immediately after
-- **No external exposure**: The Windows Firewall rule prevents connections from
-  external network hosts
+  command and terminated immediately after. Outside that window nothing listens on 9223,
+  so the bridge forwards to a closed port.
+
+**Known limits, stated plainly:**
+- You create the port proxy and the firewall rule yourself, in Windows. Nothing in this
+  package can remove them, and both survive upgrades. See
+  [Removing the bridge](#removing-the-bridge) below.
+- If you created the firewall rule before v0.11.2 it has no `-InterfaceAlias` and applies
+  to every adapter on every network profile. Replace it using the commands below.
+- If you later switch WSL to mirrored networking, the rule is no longer needed at all and
+  should be removed.
 
 If you have concerns about this setup, you can use manual mode instead:
 ```bash
@@ -122,6 +137,32 @@ WSL Auth Script
     ↓  waits for login
     ↓  extracts cookies via CDP
     ↓  terminates Chrome process
+```
+
+## Removing the bridge
+
+The port proxy and the firewall rule persist until you remove them. Run both in an
+**elevated PowerShell** when you no longer need WSL login, or before recreating a
+narrower rule:
+
+```powershell
+Remove-NetFirewallRule -DisplayName "NotebookLM-CDP-9222"
+netsh interface portproxy delete v4tov4 listenport=9222 listenaddress=0.0.0.0
+```
+
+### Replacing a pre-v0.11.2 firewall rule
+
+Check whether your existing rule is scoped to the WSL adapter:
+
+```powershell
+Get-NetFirewallRule -DisplayName "NotebookLM-CDP-9222" | Get-NetFirewallInterfaceFilter
+```
+
+If `InterfaceAlias` comes back as `Any`, remove the rule and create the scoped one:
+
+```powershell
+Remove-NetFirewallRule -DisplayName "NotebookLM-CDP-9222"
+New-NetFirewallRule -DisplayName "NotebookLM-CDP-9222" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 9222 -InterfaceAlias "vEthernet (WSL)" -RemoteAddress LocalSubnet
 ```
 
 ## Troubleshooting

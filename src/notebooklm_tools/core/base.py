@@ -1251,11 +1251,18 @@ class BaseClient:
 
                 debug_dir = get_storage_dir()
                 debug_path = debug_dir / "debug_page.html"
-                debug_path.write_text(html, encoding="utf-8")
-                import contextlib as _ctxlib
-
-                with _ctxlib.suppress(OSError):
-                    debug_path.chmod(0o600)
+                # The dump is the authenticated page: session identifiers and
+                # notebook metadata. Create it 0o600 atomically rather than
+                # writing first and narrowing after, which leaves a window in
+                # which the file is world-readable.
+                fd = os.open(str(debug_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                try:
+                    f = os.fdopen(fd, "w", encoding="utf-8")
+                except BaseException:
+                    os.close(fd)
+                    raise
+                with f:
+                    f.write(html)
                 raise ValueError(
                     f"Could not extract CSRF token from page. "
                     f"Page saved to {debug_path} for debugging. "
