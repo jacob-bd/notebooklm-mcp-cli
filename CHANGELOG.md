@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.2] - 2026-09-08
+
+Security release. Recommended for anyone who set up WSL login, and for anyone
+who runs the MCP server with debug logging.
+
+### Security
+
+- **WSL CDP bridge is now scoped to the WSL virtual adapter.** The `netsh portproxy`
+  that bridges WSL to Windows Chrome listens on `0.0.0.0`, so the Windows Firewall
+  rule is the only boundary in front of Chrome DevTools Protocol, which has no
+  authentication. The rule printed by `nlm login --wsl` and built by
+  `create_firewall_rule()` now carries `-InterfaceAlias "vEthernet (WSL)"`, so traffic
+  arriving on Wi-Fi or Ethernet cannot match it. Interface scoping is what does the
+  work here: the WSL adapter usually lands on the **Public** network profile, so
+  profile filtering cannot separate it from a real network. `-RemoteAddress LocalSubnet`
+  is kept as a second layer. The privilege-failure fallback command previously printed
+  no `-RemoteAddress` at all, which defaults to `Any`; it is now scoped like the others.
+  Thanks to **@Naor-Peretz** for the report (GHSA-v558-4774-r6wq).
+
+  **Existing WSL users must act.** The firewall rule and the port proxy are created by
+  you, in Windows, so upgrading cannot change them. See
+  [Removing the bridge](./docs/WSL_SETUP.md#removing-the-bridge) to check whether your
+  rule is scoped and to replace it if not.
+
+- **`debug_page.html` is now created private.** The debug dump of the authenticated
+  page was written with the process umask and narrowed with `chmod` afterwards, leaving
+  a window in which it was world-readable, and the `chmod` failure was suppressed
+  silently. It is now created `0o600` atomically with `os.open`, matching the pattern
+  already used for credential writes in `core/auth.py` and `utils/cdp.py`.
+  Thanks to **@Naor-Peretz** for the report (GHSA-747w-q55c-m74m).
+
+- **MCP debug logging now redacts responses, not only requests.** Request parameters
+  were sanitized while responses were serialized whole, with a 1000-character
+  truncation as the only limit. Redaction is now recursive, covers nested dicts and
+  lists in both requests and responses, and matches sensitive key names by substring
+  (`token`, `secret`, `password`, `credential`, `apikey`, `authorization`, `bearer`
+  and others) rather than an exact five-key denylist that failed open for anything
+  added later. Thanks to **@Naor-Peretz** for the report (GHSA-jhrc-qgxv-3c2g).
+
+### Added
+
+- `SECURITY.md` with a private reporting channel, response targets, and scope.
+- `.github/dependabot.yml` for weekly Python and GitHub Actions updates.
+- Regression tests: `tests/test_log_redaction.py`, `tests/test_debug_page_permissions.py`,
+  `tests/test_wsl_firewall_scope.py`.
+
+### Changed
+
+- `docs/WSL_SETUP.md` now documents the teardown commands for the firewall rule and the
+  port proxy, states the exposure honestly instead of claiming external hosts cannot
+  reach the port, and explains how to replace a pre-0.11.2 rule.
+- The `utils/wsl.py` module docstring described the pre-0.5.24 architecture, in which
+  Chrome bound `--remote-debugging-address=0.0.0.0`, and referenced
+  `docs/SECURITY_REMEDIATION_PLAN.md`, which is not in the repository. Rewritten to
+  describe the port proxy and its actual limits.
+
 ## [0.11.1] - 2026-09-07
 
 Security release. Upgrading is recommended for anyone running the MCP server.
